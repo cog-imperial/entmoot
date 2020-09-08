@@ -57,13 +57,13 @@ def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
 
     # Evaluate acquisition function
     if acq_func == "LCB":
-        acq_vals = gaussian_lcb(X, model, kappa)
+        acq_vals = gaussian_lcb(X, model, kappa, acq_func_kwargs=acq_func_kwargs)
     else:
         raise ValueError("Acquisition function not implemented.")
 
     return acq_vals
 
-def gaussian_lcb(X, model, kappa=1.96, return_grad=False):
+def gaussian_lcb(X, model, kappa=1.96, return_grad=False, acq_func_kwargs=None):
     """
     Use the lower confidence bound to estimate the acquisition
     values.
@@ -100,7 +100,9 @@ def gaussian_lcb(X, model, kappa=1.96, return_grad=False):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
 
-        mu, std = model.predict(X, return_std=True)
+        scaled = acq_func_kwargs.get("scaled", True)
+
+        mu, std = model.predict(X, return_std=True, scaled=scaled)
 
         if kappa == "inf":
             return -std

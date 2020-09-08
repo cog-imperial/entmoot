@@ -755,7 +755,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         y_var = np.var(yi)
         self.distance_bound = abs(self.zeta*y_var)
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`. By default `dist` is
         bounded by attribute `distance_bound`.
 
@@ -770,7 +770,7 @@ class DistanceBasedExploration(DistanceBasedStd):
             Returns distances to closest `ref_point` for every point per row
             in `n_rows`.
         """
-        dist = super().predict(X)
+        dist = super().predict(X, scaled=scaled)
 
         # prediction has max out at `distance_bound`
         dist[dist > self.distance_bound] = self.distance_bound
@@ -886,7 +886,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         self.ref_points = self.Xi_standard  
 
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`. Sign of `dist` is negative
         because it contributes as a penalty.
 
@@ -901,7 +901,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
             Returns distances to closest `ref_point` for every point per row
             in `n_rows`.
         """
-        dist = super().predict(X)
+        dist = super().predict(X, scaled=scaled)
         return -dist
 
     def get_gurobi_obj(self, model, scaled=True):

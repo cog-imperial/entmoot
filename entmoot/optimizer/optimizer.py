@@ -213,7 +213,10 @@ class Optimizer(object):
 
         # Store and create acquisition function set
         self.acq_func = acq_func
-        self.acq_func_kwargs = acq_func_kwargs
+        if acq_func_kwargs is None:
+            self.acq_func_kwargs = dict()
+        else:
+            self.acq_func_kwargs = acq_func_kwargs
 
         allowed_acq_funcs = ["LCB"]
         if self.acq_func not in allowed_acq_funcs:
