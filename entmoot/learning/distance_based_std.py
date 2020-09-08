@@ -561,6 +561,8 @@ class DistanceBasedStd(ABC):
         self.Xi = Xi
         self.yi = yi
 
+        self.n_features = self.Xi.shape[1]
+
         # compute mean and scaler of data set
         standard_scaler = StandardScaler()
         projected_features = standard_scaler.fit_transform(self.Xi)
@@ -612,7 +614,7 @@ class DistanceBasedStd(ABC):
         
         return np.min(dist_cont)
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`.
 
         Parameters
@@ -630,7 +632,13 @@ class DistanceBasedStd(ABC):
 
         for row_res,Xi in enumerate(X):
             ref_distance = self.get_closest_point_distance(Xi)
-            dist[row_res] = ref_distance     
+            dist[row_res] = ref_distance
+
+        if scaled:
+            y_scaler = np.std(self.yi)
+            n_dim = len(self.x_means)
+            dist *= y_scaler
+            dist /= n_dim
         return dist
 
     @abstractmethod

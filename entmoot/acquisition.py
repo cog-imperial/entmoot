@@ -52,7 +52,7 @@ def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
 
     if acq_func_kwargs is None:
         acq_func_kwargs = dict()
-    xi = acq_func_kwargs.get("xi", 0.01)
+
     kappa = acq_func_kwargs.get("kappa", 1.96)
 
     # Evaluate acquisition function
