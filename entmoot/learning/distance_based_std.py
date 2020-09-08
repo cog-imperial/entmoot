@@ -569,6 +569,10 @@ class DistanceBasedStd(ABC):
         self.x_means = standard_scaler.mean_
         self.x_scalers = standard_scaler.scale_
 
+        # compute scale coefficient
+        y_scaler = np.std(self.yi)
+        self.std_scale_coef = abs(y_scaler / self.n_features)
+
         # standardize dataset
         self.Xi_standard = self.standardize_with_Xi(self.Xi)
 
@@ -635,10 +639,8 @@ class DistanceBasedStd(ABC):
             dist[row_res] = ref_distance
 
         if scaled:
-            y_scaler = np.std(self.yi)
-            n_dim = len(self.x_means)
-            dist *= y_scaler
-            dist /= n_dim
+            dist *= self.std_scale_coef
+
         return dist
 
     @abstractmethod
@@ -774,7 +776,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         dist[dist > self.distance_bound] = self.distance_bound
         return dist
 
-    def get_gurobi_obj(self, model):
+    def get_gurobi_obj(self, model, scaled=True):
         """Get contribution of standard estimator to gurobi model objective
         function.
 
@@ -790,7 +792,10 @@ class DistanceBasedExploration(DistanceBasedStd):
         """
         # negative contributation of alpha requires non-convex flag in gurobi.
         model.Params.NonConvex=2
-        return -model._alpha
+        if scaled:
+            return -self.std_scale_coef*model._alpha
+        else:
+            return -model._alpha
 
     def add_to_gurobi_model(self,model):
         """Add standard estimator to gurobi model. Model details are 
@@ -899,7 +904,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         dist = super().predict(X)
         return -dist
 
-    def get_gurobi_obj(self, model):
+    def get_gurobi_obj(self, model, scaled=True):
         """Get contribution of standard estimator to gurobi model objective
         function.
 
@@ -913,7 +918,10 @@ class DistanceBasedPenalty(DistanceBasedStd):
         alpha : gurobipy.Var,
             Model variable that takes the value of the uncertainty measure.
         """
-        return model._alpha
+        if scaled:
+            return self.std_scale_coef*model._alpha
+        else:
+            return model._alpha
 
     def add_to_gurobi_model(self,model):
         """Add standard estimator to gurobi model. Model details are 
