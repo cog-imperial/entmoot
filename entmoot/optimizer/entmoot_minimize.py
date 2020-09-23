@@ -229,7 +229,7 @@ def entmoot_minimize(
 
     Returns
     -------
-    res : `OptimizeResult`, scipy object
+    result : `OptimizeResult`, scipy object
         OptimizeResult instance with the required information.
     """
 
@@ -303,8 +303,6 @@ def entmoot_minimize(
             raise ValueError("`x0` and `y0` should have the same length")
         result = optimizer.tell(x0, y0)
         result.specs = specs
-        if eval_callbacks(callbacks, result):
-            return result
 
     # Handle solver output
     if not isinstance(verbose, (int, type(None))):
@@ -384,20 +382,20 @@ def entmoot_minimize(
 
         itr += 1
 
-        res = optimizer.tell(
+        result = optimizer.tell(
             next_x, next_y,
             fit= batch_size is None and not _n_calls <=0
         )
 
-        best_fun = res.fun  
+        best_fun = result.fun  
 
-        res.specs = specs
+        result.specs = specs
     
     # print end of solve once convergence criteria is met
     if verbose>0:
         print("")
         print("SOLVER: finished run!")
-        print(f"SOLVER: best obj.: {round(best_fun,5)}")
+        print(f"SOLVER: best obj.: {round(result.fun,5)}")
         print("")
 
-    return res
+    return result
