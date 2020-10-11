@@ -199,7 +199,7 @@ class SquaredEuclidean(DistanceMetric):
             model.addVars(
                 range(n_ref_points),
                 name="b_ref", 
-                vtype=GRB.INTEGER
+                vtype=GRB.BINARY
             )
 
         # variable alpha captures distance measure
@@ -429,7 +429,7 @@ class Manhattan(DistanceMetric):
         # binary variables b_ref correspond to active cluster centers
         model._b_ref = \
             model.addVars(n_ref_points,
-                        name="b_ref", vtype=GRB.INTEGER)
+                        name="b_ref", vtype=GRB.BINARY)
 
         # variable alpha captures distance measure
         model._alpha = \
