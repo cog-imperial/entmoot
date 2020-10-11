@@ -253,7 +253,7 @@ def add_gbm_variables(model):
     model._y = model.addVars(
                     misic_interval_index(model), 
                     name="y", 
-                    vtype=GRB.INTEGER
+                    vtype=GRB.BINARY
                 )
     model.update()
 
