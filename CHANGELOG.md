@@ -7,7 +7,8 @@
 ## [0.1.1] - 2020-09-23
  
 ### Added
-   
+- arxiv *.bib reference
+
 ### Changed
 - variable names for better readability
 - minor model modifications

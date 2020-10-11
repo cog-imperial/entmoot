@@ -6,6 +6,17 @@ tree models from `lightgbm` are combined with a distance-based uncertainty
 measure in a deterministic global optimization framework to optimize black-box functions. More
 details on the method here: https://arxiv.org/abs/2003.04774.
 
+When using any `ENTMOOT` for any publications please reference this software package as:
+```
+@article{entmoot,
+  author  = {Alexander Thebelt, Jan Kronqvist, Miten Mistry, Robert M. Lee, Nathan Sudermann-Merx and Ruth Misener},
+  title   = {{ENTMOOT: A Framework for Optimization over Ensemble Tree Models}},
+  journal = {ArXiv},
+  volume = {2003.04774},
+  year    = {2020}
+}
+```
+
 The "ask-tell" optimizer interface for an intuitive incorporation of own 
 black-box functions was included from 
 [scikit-optimize](https://github.com/scikit-optimize/scikit-optimize/) 
