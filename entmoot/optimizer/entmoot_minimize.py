@@ -236,10 +236,6 @@ def entmoot_minimize(
     specs = {"args": copy.copy(inspect.currentframe().f_locals),
              "function": inspect.currentframe().f_code.co_name}
 
-    acq_optimizer_kwargs = {
-        "n_points": n_points
-    }
-
     # Initialize optimization
     # Suppose there are points provided (x0 and y0), record them
 
