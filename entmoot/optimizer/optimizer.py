@@ -629,11 +629,6 @@ class Optimizer(object):
                 self.models.pop(0)
                 self.models.append(est)
 
-            # sample a large number of points and then pick the best ones as 
-            # starting points
-            X = self.space.transform(self.space.rvs(
-                n_samples=self.n_points, random_state=self.rng))
-
             if not self.printed_switch_to_model:
                 print("")
                 print("SOLVER: initial points exhausted")
@@ -641,6 +636,11 @@ class Optimizer(object):
                 self.printed_switch_to_model = True
 
             if self.acq_optimizer == "sampling":
+                # sample a large number of points and then pick the best ones as 
+                # starting points
+                X = self.space.transform(self.space.rvs(
+                    n_samples=self.n_points, random_state=self.rng))
+
                 values = _gaussian_acquisition(
                     X=X, model=est, 
                     y_opt=np.min(self.yi),
