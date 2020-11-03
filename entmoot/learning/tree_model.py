@@ -87,7 +87,7 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         """
         self.base_estimator.set_params(**params)
 
-    def predict(self, X, return_std=False):
+    def predict(self, X, return_std=False, scaled=True):
         """Predict.
 
         If `return_std` is set to False, only tree model prediction is returned.
@@ -108,7 +108,7 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         mean = self.regressor_.predict(X)
 
         if return_std:
-            std = self.std_estimator.predict(X)
+            std = self.std_estimator.predict(X,scaled=scaled)
             return mean, std
 
         # return the mean

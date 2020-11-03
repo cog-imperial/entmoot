@@ -6,3 +6,6 @@ __pycache__
 *.pkl
 test.py
 .DS_Store
+env
+*.log
+*.sh

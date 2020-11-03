@@ -15,3 +15,15 @@
 
 ### Fixed
 - fix support for initial data points in [entmoot_minimize.py](https://github.com/cog-imperial/entmoot/blob/master/entmoot/optimizer/entmoot_minimize.py)
+
+## [0.1.2] - 2020-11-03
+ 
+### Added
+- support for additional gurobi constraints
+- additional scaling options for acquisition function
+
+### Changed
+- 
+
+### Fixed
+- fix passing of `acq_optimizer_kwargs`

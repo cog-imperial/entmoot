@@ -162,6 +162,57 @@ res = entmoot_minimize(
 
 ```
 
+The following example shows how own constraints can be enforced on the input 
+variables. This only works when Gurobi is selected as the solution strategy,
+ i. e. `acq_optimizer="global"`. Constraints are formulated according to 
+ [documentation](https://www.gurobi.com/documentation/9.0/refman/py_model_addconstr.html).
+```
+from entmoot.optimizer.entmoot_minimize import entmoot_minimize
+from entmoot.benchmarks import Rosenbrock
+
+func = Rosenbrock()
+
+# initialize the search space manually
+from entmoot.space.space import Space
+space = Space(func.get_bounds())
+
+# get the core of the gurobi model from helper function 'get_core_gurobi_model'
+from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
+core_model = get_core_gurobi_model(space)
+
+# access variables and define constraints accordingly
+x0 = core_model.getVarByName("c_x[0]")
+x1 = core_model.getVarByName("c_x[1]")
+core_model.addConstr(x0 + x1 >= 2)
+core_model.addConstr(x1 == 1)
+
+# specify the model core in `acq_optimizer_kwargs`
+res = entmoot_minimize(
+    func,
+    func.get_bounds(),
+    n_calls=60,
+    n_points=10000,
+    base_estimator="GBRT",
+    std_estimator="L1DDP", 
+    n_initial_points=50, 
+    initial_point_generator="random",
+    acq_func="LCB", 
+    acq_optimizer="global",
+    x0=None,
+    y0=None,  
+    random_state=100, 
+    acq_func_kwargs=None, 
+    acq_optimizer_kwargs={
+      "add_model_core": core_model
+    },
+    std_estimator_kwargs=None,
+    model_queue_size=None,
+    base_estimator_kwargs=None,
+    verbose = True,
+)
+
+```
+
 ## Authors
 * **[Alexander Thebelt](https://optimisation.doc.ic.ac.uk/person/alexander-thebelt/)** ([ThebTron](https://github.com/ThebTron)) - Imperial College London
 

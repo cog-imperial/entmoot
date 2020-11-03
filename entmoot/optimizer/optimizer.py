@@ -213,7 +213,10 @@ class Optimizer(object):
 
         # Store and create acquisition function set
         self.acq_func = acq_func
-        self.acq_func_kwargs = acq_func_kwargs
+        if acq_func_kwargs is None:
+            self.acq_func_kwargs = dict()
+        else:
+            self.acq_func_kwargs = acq_func_kwargs
 
         allowed_acq_funcs = ["LCB"]
         if self.acq_func not in allowed_acq_funcs:
@@ -626,11 +629,6 @@ class Optimizer(object):
                 self.models.pop(0)
                 self.models.append(est)
 
-            # sample a large number of points and then pick the best ones as 
-            # starting points
-            X = self.space.transform(self.space.rvs(
-                n_samples=self.n_points, random_state=self.rng))
-
             if not self.printed_switch_to_model:
                 print("")
                 print("SOLVER: initial points exhausted")
@@ -638,6 +636,11 @@ class Optimizer(object):
                 self.printed_switch_to_model = True
 
             if self.acq_optimizer == "sampling":
+                # sample a large number of points and then pick the best ones as 
+                # starting points
+                X = self.space.transform(self.space.rvs(
+                    n_samples=self.n_points, random_state=self.rng))
+
                 values = _gaussian_acquisition(
                     X=X, model=est, 
                     y_opt=np.min(self.yi),
@@ -663,7 +666,7 @@ class Optimizer(object):
                     sys.exit(1)
 
                 from entmoot.optimizer.gurobi_utils import \
-                    add_core_to_gurobi_model, add_gbm_to_gurobi_model, \
+                    get_core_gurobi_model, add_gbm_to_gurobi_model, \
                     add_std_to_gurobi_model, add_acq_to_gurobi_model, \
                     set_gurobi_init_to_ref
 
@@ -673,7 +676,11 @@ class Optimizer(object):
                 logger.setLevel(logging.CRITICAL)
 
                 # start building model
-                gurobi_model = gp.Model('seq_opt')
+
+                add_model_core = \
+                    self.acq_optimizer_kwargs.get("add_model_core", None)
+                gurobi_model = \
+                    get_core_gurobi_model(self.space, add_model_core)
 
                 if self.verbose == 2:
                     print("")
@@ -683,7 +690,6 @@ class Optimizer(object):
                     gurobi_model.Params.LogToConsole=1
                 else:
                     gurobi_model.Params.LogToConsole=0
-                add_core_to_gurobi_model(self.space, gurobi_model)
 
                 # convert into gbm_model format
                 # and add to gurobi model
@@ -707,6 +713,11 @@ class Optimizer(object):
                 gurobi_model.Params.OutputFlag=1
                 
                 gurobi_model.optimize()
+
+                assert gurobi_model.SolCount >= 1, "gurobi couldn't find a feasible " + \
+                    "solution. Try increasing the timelimit if specified. " + \
+                        "In case you specify your own 'add_model_core' " + \
+                            "please check that the model is feasible."
 
                 # store optimality gap of gurobi computation
                 self.gurobi_mipgap.append(gurobi_model.mipgap)

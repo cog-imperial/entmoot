@@ -561,11 +561,17 @@ class DistanceBasedStd(ABC):
         self.Xi = Xi
         self.yi = yi
 
+        self.n_features = self.Xi.shape[1]
+
         # compute mean and scaler of data set
         standard_scaler = StandardScaler()
         projected_features = standard_scaler.fit_transform(self.Xi)
         self.x_means = standard_scaler.mean_
         self.x_scalers = standard_scaler.scale_
+
+        # compute scale coefficient
+        y_scaler = np.std(self.yi)
+        self.std_scale_coef = abs(y_scaler / self.n_features)
 
         # standardize dataset
         self.Xi_standard = self.standardize_with_Xi(self.Xi)
@@ -612,7 +618,7 @@ class DistanceBasedStd(ABC):
         
         return np.min(dist_cont)
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`.
 
         Parameters
@@ -630,7 +636,11 @@ class DistanceBasedStd(ABC):
 
         for row_res,Xi in enumerate(X):
             ref_distance = self.get_closest_point_distance(Xi)
-            dist[row_res] = ref_distance     
+            dist[row_res] = ref_distance
+
+        if scaled:
+            dist *= self.std_scale_coef
+
         return dist
 
     @abstractmethod
@@ -745,7 +755,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         y_var = np.var(yi)
         self.distance_bound = abs(self.zeta*y_var)
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`. By default `dist` is
         bounded by attribute `distance_bound`.
 
@@ -760,13 +770,13 @@ class DistanceBasedExploration(DistanceBasedStd):
             Returns distances to closest `ref_point` for every point per row
             in `n_rows`.
         """
-        dist = super().predict(X)
+        dist = super().predict(X, scaled=scaled)
 
         # prediction has max out at `distance_bound`
         dist[dist > self.distance_bound] = self.distance_bound
         return dist
 
-    def get_gurobi_obj(self, model):
+    def get_gurobi_obj(self, model, scaled=True):
         """Get contribution of standard estimator to gurobi model objective
         function.
 
@@ -782,7 +792,10 @@ class DistanceBasedExploration(DistanceBasedStd):
         """
         # negative contributation of alpha requires non-convex flag in gurobi.
         model.Params.NonConvex=2
-        return -model._alpha
+        if scaled:
+            return -self.std_scale_coef*model._alpha
+        else:
+            return -model._alpha
 
     def add_to_gurobi_model(self,model):
         """Add standard estimator to gurobi model. Model details are 
@@ -873,7 +886,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         self.ref_points = self.Xi_standard  
 
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`. Sign of `dist` is negative
         because it contributes as a penalty.
 
@@ -888,10 +901,10 @@ class DistanceBasedPenalty(DistanceBasedStd):
             Returns distances to closest `ref_point` for every point per row
             in `n_rows`.
         """
-        dist = super().predict(X)
+        dist = super().predict(X, scaled=scaled)
         return -dist
 
-    def get_gurobi_obj(self, model):
+    def get_gurobi_obj(self, model, scaled=True):
         """Get contribution of standard estimator to gurobi model objective
         function.
 
@@ -905,7 +918,10 @@ class DistanceBasedPenalty(DistanceBasedStd):
         alpha : gurobipy.Var,
             Model variable that takes the value of the uncertainty measure.
         """
-        return model._alpha
+        if scaled:
+            return self.std_scale_coef*model._alpha
+        else:
+            return model._alpha
 
     def add_to_gurobi_model(self,model):
         """Add standard estimator to gurobi model. Model details are 
