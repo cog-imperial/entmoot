@@ -135,7 +135,7 @@ def get_gurobi_obj(model, est, return_std=False, acq_func_kwargs=None):
     depending on value of `return_std`.
     
     """
-    scaled = acq_func_kwargs.get("scaled", True)
+    scaled = acq_func_kwargs.get("scaled", False)
 
     mean = get_gbm_obj(model)
 
