@@ -6,6 +6,6 @@ __pycache__
 *.pkl
 test.py
 .DS_Store
-push_to_public_repo.sh
-*.log
 env
+*.log
+*.sh
