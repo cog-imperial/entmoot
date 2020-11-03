@@ -8,3 +8,4 @@ test.py
 .DS_Store
 env
 *.log
+*.sh

@@ -213,7 +213,10 @@ class Optimizer(object):
 
         # Store and create acquisition function set
         self.acq_func = acq_func
-        self.acq_func_kwargs = acq_func_kwargs
+        if acq_func_kwargs is None:
+            self.acq_func_kwargs = dict()
+        else:
+            self.acq_func_kwargs = acq_func_kwargs
 
         allowed_acq_funcs = ["LCB"]
         if self.acq_func not in allowed_acq_funcs:
@@ -626,11 +629,6 @@ class Optimizer(object):
                 self.models.pop(0)
                 self.models.append(est)
 
-            # sample a large number of points and then pick the best ones as 
-            # starting points
-            X = self.space.transform(self.space.rvs(
-                n_samples=self.n_points, random_state=self.rng))
-
             if not self.printed_switch_to_model:
                 print("")
                 print("SOLVER: initial points exhausted")
@@ -638,6 +636,11 @@ class Optimizer(object):
                 self.printed_switch_to_model = True
 
             if self.acq_optimizer == "sampling":
+                # sample a large number of points and then pick the best ones as 
+                # starting points
+                X = self.space.transform(self.space.rvs(
+                    n_samples=self.n_points, random_state=self.rng))
+
                 values = _gaussian_acquisition(
                     X=X, model=est, 
                     y_opt=np.min(self.yi),

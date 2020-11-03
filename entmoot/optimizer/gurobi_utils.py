@@ -104,13 +104,15 @@ def add_acq_to_gurobi_model(model, est, acq_func="LCB", acq_func_kwargs=None):
     kappa = acq_func_kwargs.get("kappa", 1.96)
 
     # collect objective contribution for tree model and std estimator
-    mu, std = get_gurobi_obj(model, est, return_std=True)
+    mu, std = get_gurobi_obj(
+        model, est, return_std=True, acq_func_kwargs=acq_func_kwargs
+    )
     ob_expr = quicksum((mu, kappa*std))
 
     model.setObjective(ob_expr,GRB.MINIMIZE)
 
 
-def get_gurobi_obj(model, est, return_std=False):
+def get_gurobi_obj(model, est, return_std=False, acq_func_kwargs=None):
     """Returns gurobi model objective contribution of tree model and std
     estimator.
 
@@ -133,10 +135,12 @@ def get_gurobi_obj(model, est, return_std=False):
     depending on value of `return_std`.
     
     """
+    scaled = acq_func_kwargs.get("scaled", False)
+
     mean = get_gbm_obj(model)
 
     if return_std:
-        std = est.std_estimator.get_gurobi_obj(model)
+        std = est.std_estimator.get_gurobi_obj(model, scaled=scaled)
         return mean, std
 
     return mean
