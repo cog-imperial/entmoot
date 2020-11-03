@@ -1,6 +1,7 @@
 from gurobipy import GRB, quicksum
+import gurobipy as gp
 
-def add_core_to_gurobi_model(space, model):
+def get_core_gurobi_model(space, add_model_core=None):
     """Add core to gurobi model, i.e. bounds, variables and parameters.
 
     Parameters
@@ -14,18 +15,38 @@ def add_core_to_gurobi_model(space, model):
     -------
     -
     """
-    x_lb = [bound[0] for bound in space.bounds]
-    x_ub = [bound[1] for bound in space.bounds]
-    model._c_x_lb = x_lb
-    model._c_x_ub = x_ub
-    n_features = len(x_lb)
-    feature_numbers = range(n_features)
-    model._n_feat = n_features
-    model._c_x = \
-        model.addVars(feature_numbers, 
-                    lb=x_lb, 
-                    ub=x_ub, name="c_x", vtype='C')
-    model.update()
+    if add_model_core is None:
+        model = gp.Model()
+        x_lb = [bound[0] for bound in space.bounds]
+        x_ub = [bound[1] for bound in space.bounds]
+        model._c_x_lb = x_lb
+        model._c_x_ub = x_ub
+        n_features = len(x_lb)
+        feature_numbers = range(n_features)
+        model._n_feat = n_features
+        model._c_x = \
+            model.addVars(feature_numbers, 
+                        lb=x_lb, 
+                        ub=x_ub, name="c_x", vtype='C')
+        model.update()
+        return model
+    else:
+        # validate model core input
+        assert type(add_model_core) is gp.Model, \
+            "wrong model core type given, please create model core using: " + \
+                "entmoot.optimizer.gurobi_utils.add_core_to_gurobi_model(..."
+
+        check_attributes = \
+            hasattr(add_model_core,"_c_x_lb") and \
+            hasattr(add_model_core,"_c_x_ub") and \
+            hasattr(add_model_core,"_n_feat") and \
+            hasattr(add_model_core,"_c_x")
+
+        assert check_attributes, \
+            "model core was not configured correctly, please create model core using: " + \
+                "entmoot.optimizer.gurobi_utils.add_core_to_gurobi_model(..."
+
+        return add_model_core
 
 def add_std_to_gurobi_model(est, model):
     """Adds standard estimator formulation to gurobi model.
