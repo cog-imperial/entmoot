@@ -8,10 +8,6 @@ version_path = project_root / 'entmoot' / '__version__.py'
 with version_path.open() as f:
     exec(f.read(), about)
 
-requirements_path = project_root / 'requirements.txt'
-with requirements_path.open() as f:
-    requirements = f.readlines()  
-
 setup(
     name='entmoot',
     author=about['__author__'],
@@ -20,5 +16,17 @@ setup(
     version=about['__version__'],
     url='https://github.com/cog-imperial/entmoot',
     packages=find_packages(exclude=['tests','docs']),
-    install_requires=requirements
+    install_requires=[
+        'numpy>=1.18.4',
+        'scikit-learn>=0.21.3',
+        'pyYAML>=5.3.1',
+        'lightgbm>=2.3.1'
+    ],
+    setup_requires=[
+        'numpy>=1.18.4',
+        'scikit-learn>=0.21.3',
+        'pyYAML>=5.3.1',
+        'lightgbm>=2.3.1'
+    ]
 )
+

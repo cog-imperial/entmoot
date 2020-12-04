@@ -28,7 +28,7 @@
 ### Fixed
 - fix passing of `acq_optimizer_kwargs`
 
-## [0.1.3] - 2020-12-04
+## [0.1.4] - 2020-12-04 
  
 ### Added
 - 
