@@ -30,6 +30,8 @@ which is available under the BSD 3-Clause License.
 * pyyaml >= 5.3.1
 * lightgbm >= 2.3.1
 
+On Mac, you will also need to install libomp: `brew install libomp`.
+
 ### Optional
 * gurobi >= 9.0.1
 
