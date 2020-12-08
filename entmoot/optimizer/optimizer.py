@@ -93,7 +93,9 @@ class Optimizer(object):
               distance to standardized data points
             - "L1BDD" for bounded-data distance, which uses manhattan
               distance to standardized data points
-        
+            - "MP" for Misic proximity, which uses the number of trees
+              which match leaves with reference data points
+              
         - penalty:
             - "DDP" for data distance, which uses squared euclidean
               distance to standardized data points
@@ -238,7 +240,7 @@ class Optimizer(object):
         if std_estimator_kwargs is None:
             std_estimator_kwargs = dict()
         
-        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP"]
+        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP","MP"]
         if self.std_estimator not in allowed_std_est:
             raise ValueError("expected std_estimator to be in %s, got %s" %
                              (",".join(allowed_std_est), self.std_estimator))
