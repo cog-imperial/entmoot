@@ -19,7 +19,7 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         None (default). If LGBMRegressor instance of None is given: new 
         EntingRegressor is defined. If EntingRegressor is given: base_estimator
         and std_estimator are given to new instance.
-    std_estimator : DistanceBasedStd instance,
+    std_estimator : DistanceBasedStd or MisicProximityStd instance,
         Determines which measure is used to capture uncertainty.
     random_state : int, RandomState instance, or None (default)
         Set random state to something other than None for reproducible
@@ -70,6 +70,11 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
 
         # update tree model regressor
         self.regressor_.fit(X, y)
+        
+        # If using Misic proximity, use the regression tree model 
+        # to define proximity.
+        if isinstance(self.std_estimator, MisicProximityStd):
+            self.std_estimator.update_model(self.get_gbm_model())
 
     def set_params(self, **params):
         """Sets parameters related to tree model estimator. All parameter 
