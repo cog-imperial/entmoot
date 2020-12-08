@@ -135,6 +135,8 @@ def cook_std_estimator(std_estimator,
               distance to standardized data points
             - "L1BDD" for bounded-data distance, which uses manhattan
               distance to standardized data points
+            - "MP" for Misic proximity, which uses the number of trees
+              which match leaves with reference data points
         
         - penalty:
             - "DDP" for data distance, which uses squared euclidean
@@ -153,6 +155,10 @@ def cook_std_estimator(std_estimator,
     """
     from entmoot.learning.distance_based_std import \
         DistanceBasedExploration, DistanceBasedPenalty
+   
+   from entmoot.learning.proximity_std import \
+        MisicProximityStd
+
 
     if std_estimator == "BDD":
         std_estimator = \
@@ -177,6 +183,11 @@ def cook_std_estimator(std_estimator,
             DistanceBasedPenalty(
                 metric="manhattan",
             )
+    
+    elif std_estimator == "MP":
+         std_estimator = MisicProximityStd(
+            threshold = 0.8
+         )
 
     std_estimator.set_params(**std_estimator_params)
     return std_estimator
