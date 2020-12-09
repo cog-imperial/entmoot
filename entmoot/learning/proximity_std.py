@@ -166,7 +166,7 @@ class MisicProximityStd(ABC):
         """
         from gurobipy import LinExpr
         
-        n_points = len(self.ref_points)
+        n_points = len(self.ref_leaves)
 
         model._proxcap = \
             model.addVar(
