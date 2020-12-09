@@ -73,6 +73,8 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         
         # If using Misic proximity, use the regression tree model 
         # to define proximity.
+        from entmoot.learning.proximity_std import MisicProximityStd
+        
         if isinstance(self.std_estimator, MisicProximityStd):
             self.std_estimator.update_model(self.get_gbm_model())
 
