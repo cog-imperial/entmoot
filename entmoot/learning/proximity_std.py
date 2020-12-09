@@ -184,7 +184,7 @@ class MisicProximityStd(ABC):
             # expression in terms of the indicator variables.
             for observation in range(n_points):
                 prox_name = 'prox_X'+str(observation)+' < '+str(self.threshold)
-                alpha = model._alpha
+                proxcap = model._proxcap
                 prox_obs = LinExpr()
                 for j in range(n_trees):
                     # Construct the leaf variable name
