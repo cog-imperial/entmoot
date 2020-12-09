@@ -101,7 +101,7 @@ class MisicProximityStd(ABC):
                 # split value.
                 var,split = gbm_model.get_branch_partition_pair(tree,encoding)
                 # If the point is less than the split, go left.
-                if np.round(point[var],9) < np.round(split,9):
+                if np.round(X[var],9) < np.round(split,9):
                     encoding = encoding + '0'
                 # If the point is greater than or equal to the split value, go right.
                 else:
