@@ -197,7 +197,7 @@ class MisicProximityStd(ABC):
                 model.update()    
         return model
 
-    def get_gurobi_obj(self,model):
+    def get_gurobi_obj(self,model,scaled=True):
         """Get contribution of standard estimator to gurobi model objective
         function.
         Parameters
