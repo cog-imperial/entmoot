@@ -60,6 +60,7 @@ class MisicProximityStd(ABC):
         self.yi = yi
 
         self.n_features = self.Xi.shape[1]
+        self.ref_points_unscaled = self.Xi
 
     def update_model(self,gbm_model):
         """ Add a reference GBM model, and encode leaf assignments for the 
