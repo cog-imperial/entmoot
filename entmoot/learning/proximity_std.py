@@ -209,4 +209,4 @@ class MisicProximityStd(ABC):
         alpha : gurobipy.Var,
             Model variable that takes the value of the uncertainty measure.
         """
-        pass
+        return model._proxcap
