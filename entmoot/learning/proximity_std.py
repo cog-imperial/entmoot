@@ -169,11 +169,11 @@ class MisicProximityStd(ABC):
         
         n_points = len(self.ref_leaves)
 
-        model._proxcap = \
+        model._alpha = \
             model.addVar(
                 lb=0, 
                 ub=self.threshold, 
-                name="proxcap", 
+                name="alpha", 
                 vtype='C'
             )
         
@@ -185,7 +185,7 @@ class MisicProximityStd(ABC):
             # expression in terms of the indicator variables.
             for observation in range(n_points):
                 prox_name = 'prox_X'+str(observation)+' < '+str(self.threshold)
-                proxcap = model._proxcap
+                alpha = model._alpha
                 prox_obs = LinExpr()
                 for j in range(n_trees):
                     # Construct the leaf variable name
@@ -194,7 +194,7 @@ class MisicProximityStd(ABC):
                     prox_obs.addTerms([1],[leafvar])
                 
                 # Add constraint to model.
-                model.addLConstr(prox_obs/n_trees,'<=',proxcap, name=prox_name)
+                model.addLConstr(prox_obs/n_trees,'<=',alpha, name=prox_name)
                 model.update()    
         return model
 
@@ -210,4 +210,4 @@ class MisicProximityStd(ABC):
         alpha : gurobipy.Var,
             Model variable that takes the value of the uncertainty measure.
         """
-        return model._proxcap
+        return model._alpha
