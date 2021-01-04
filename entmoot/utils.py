@@ -392,3 +392,39 @@ def check_random_state(seed):
         return seed
     raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
                      ' instance' % seed)
+
+def normalize_dimensions(dimensions):
+    """Create a ``Space`` where all dimensions are normalized to unit range.
+    This is particularly useful for Gaussian process based regressors and is
+    used internally by ``gp_minimize``.
+    Parameters
+    ----------
+    dimensions : list, shape (n_dims,)
+        List of search space dimensions.
+        Each search dimension can be defined either as
+        - a `(lower_bound, upper_bound)` tuple (for `Real` or `Integer`
+          dimensions),
+        - a `(lower_bound, upper_bound, "prior")` tuple (for `Real`
+          dimensions),
+        - as a list of categories (for `Categorical` dimensions), or
+        - an instance of a `Dimension` object (`Real`, `Integer` or
+          `Categorical`).
+         NOTE: The upper and lower bounds are inclusive for `Integer`
+         dimensions.
+    """
+    space = Space(dimensions)
+    transformed_dimensions = []
+    for dimension in space.dimensions:
+        # check if dimension is of a Dimension instance
+        if isinstance(dimension, Dimension):
+            # Change the transformer to normalize
+            # and add it to the new transformed dimensions
+            dimension.set_transformer("normalize")
+            transformed_dimensions.append(
+                dimension
+            )
+        else:
+            raise RuntimeError("Unknown dimension type "
+                               "(%s)" % type(dimension))
+
+    return Space(transformed_dimensions)

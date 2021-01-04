@@ -40,13 +40,13 @@ from numpy.testing import assert_array_equal
 from numpy.testing import assert_equal
 from numpy.testing import assert_raises_regex
 
-from skopt import Optimizer
-from skopt.space import Space
-from skopt.space import Real
-from skopt.space import Integer
-from skopt.space import Categorical
-from skopt.space import check_dimension as space_check_dimension
-from skopt.utils import normalize_dimensions
+from entmoot import Optimizer
+from entmoot.space import Space
+from entmoot.space import Real
+from entmoot.space import Integer
+from entmoot.space import Categorical
+from entmoot.space import check_dimension as space_check_dimension
+from entmoot.utils import normalize_dimensions
 
 
 def check_dimension(Dimension, vals, random_val):
