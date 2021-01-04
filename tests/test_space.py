@@ -787,6 +787,7 @@ def test_dimension_with_invalid_names(name):
            exc.value.args[0])
 
 
+"""
 @pytest.mark.fast_test
 def test_purely_categorical_space():
     # Test reproduces the bug in #908, make sure it doesn't come back
@@ -824,3 +825,4 @@ def test_normalize_bounds():
         check_limits(x[0][0], -999, 189000)
         y = space.transform(x)
         check_limits(y, 0., 1.)
+"""
