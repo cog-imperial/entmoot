@@ -5,6 +5,7 @@ from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.utils import check_random_state
 
+import copy
 import sys
 
 
@@ -28,10 +29,13 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
 
     def __init__(self, base_estimator=None,
                 std_estimator=None,
-                random_state=None):
+                random_state=None,
+                cat_idx=[]):
+
         self.random_state = random_state
         self.base_estimator = base_estimator
         self.std_estimator = std_estimator
+        self.cat_idx = cat_idx
 
         # check if base_estimator is EntingRegressor
         if isinstance(base_estimator, EntingRegressor):
@@ -66,10 +70,17 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         self.regressor_ = clone(base_estimator)
 
         # update std estimator
-        self.std_estimator.update(X, y)
+        self.std_estimator.update(X, y, cat_column=self.cat_idx)
 
         # update tree model regressor
-        self.regressor_.fit(X, y)
+        import warnings
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.cat_idx:
+                self.regressor_.fit(X, y, categorical_feature=self.cat_idx)
+            else:
+                self.regressor_.fit(X, y)
 
     def set_params(self, **params):
         """Sets parameters related to tree model estimator. All parameter 
@@ -134,6 +145,12 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         original_tree_model_dict = self.regressor_._Booster.dump_model()
         ordered_tree_model_dict = \
             order_tree_model_dict(original_tree_model_dict)
+
+        ordered_tree_model_dict = \
+            order_tree_model_dict(
+                original_tree_model_dict,
+                cat_column=self.cat_idx
+            )
         gbm_model = GbmModel(ordered_tree_model_dict)
         return gbm_model
 

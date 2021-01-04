@@ -111,9 +111,15 @@ class GbmModel:
         for tree in self.trees:
             for var, breakpoint in tree.get_all_partition_pairs():
                 try:
-                    var_breakpoints[var].add(breakpoint)
+                    if isinstance(breakpoint,list):
+                        var_breakpoints[var].append(breakpoint)
+                    else:
+                        var_breakpoints[var].add(breakpoint)
                 except KeyError:
-                    var_breakpoints[var] = set([breakpoint])
+                    if isinstance(breakpoint,list):
+                        var_breakpoints[var] = [breakpoint]
+                    else:    
+                        var_breakpoints[var] = set([breakpoint])
 
         for k in var_breakpoints.keys():
             var_breakpoints[k] = sorted(var_breakpoints[k])

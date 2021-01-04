@@ -41,9 +41,12 @@ class DistanceMetric(ABC):
 
     def get_max_space_scaled_dist(self, ref_points, x_means, x_stddev, model):
         # computes maximum distance in search space
-        n_features = len(model._c_x)
-        lb = np.asarray(model._c_x_lb)
-        ub = np.asarray(model._c_x_ub)
+        lb = np.asarray(
+            [model._cont_var_dict[i].lb for i in model._cont_var_dict.keys()]
+        )
+        ub = np.asarray(
+            [model._cont_var_dict[i].ub for i in model._cont_var_dict.keys()]
+        )
 
         lb_std = np.divide(lb - x_means, x_stddev)
         ub_std = np.divide(ub - x_means, x_stddev)
@@ -96,7 +99,7 @@ class SquaredEuclidean(DistanceMetric):
         return dist
 
     def add_exploration_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, distance_bound, model):
+        ref_points, x_means, x_stddev, distance_bound, model, add_rhs=None):
         """Adds exploration constraints to a gurobi optimization model.
         Incentivizes solutions far away from reference points.
 
@@ -136,31 +139,41 @@ class SquaredEuclidean(DistanceMetric):
                 vtype='C'
             )
 
-        def distance_ref_point_i(model, xi_ref, x_mean, x_stddev):
+        def distance_ref_point_i(model, xi_ref, x_mean, x_stddev, add_rhs=None):
             # function returns constraints capturing the standardized
             # exploration distance
-            c_x = model._c_x
+            c_x = model._cont_var_dict
             alpha = model._alpha
             n_features = len(xi_ref)
 
             diff_to_ref_point_i = quicksum(
-                ( (xi_ref[j] - (c_x[j]-x_mean[j]) / x_stddev[j]) * \
-                    (xi_ref[j] - (c_x[j]-x_mean[j]) / x_stddev[j]) )
-                for j in range(n_features)
+                ( (xi_ref[j] - (c_x[key]-x_mean[j]) / x_stddev[j]) * \
+                    (xi_ref[j] - (c_x[key]-x_mean[j]) / x_stddev[j]) )
+                for j,key in enumerate(model._cont_var_dict.keys())
             )
             
-            return alpha <= diff_to_ref_point_i
+            if add_rhs is None:
+                return alpha <= diff_to_ref_point_i
+            else:
+                return alpha <= diff_to_ref_point_i + add_rhs
 
         # add exploration distances as quadratic constraints to the model
         for i in range(n_ref_points):
+            if add_rhs:
+                temp_rhs = add_rhs[i]
+            else:
+                temp_rhs = None
+
             model.addQConstr(
-                distance_ref_point_i(model, ref_points[i], x_means, x_stddev),
+                distance_ref_point_i(
+                    model, ref_points[i], x_means, x_stddev, temp_rhs
+                ),
                 name=f"std_const_{i}"
             )
         model.update()
 
     def add_penalty_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, model):
+        ref_points, x_means, x_stddev, model, add_rhs=None):
         """Adds penalty constraints to a gurobi optimization model.
         Incentivizes solutions close to reference points.
 
@@ -211,21 +224,24 @@ class SquaredEuclidean(DistanceMetric):
                 vtype='C'
             )
 
-        def distance_ref_point_k(model, xk_ref, k_ref, x_mean, x_stddev):
+        def distance_ref_point_k(model, xk_ref, k_ref, x_mean, x_stddev, add_rhs=None):
             # function returns constraints capturing the standardized
             # penalty distance
-            c_x = model._c_x
+            c_x = model._cont_var_dict
             b_ref = model._b_ref
             alpha = model._alpha
             n_features = len(xk_ref)
 
             diff_to_ref_point_k = quicksum(
-                ( (xk_ref[j]  - (c_x[j]-x_mean[j]) / x_stddev[j]) * \
-                    (xk_ref[j]  - (c_x[j]-x_mean[j]) / x_stddev[j]) )
-                for j in range(n_features)
+                ( (xk_ref[j]  - (c_x[key]-x_mean[j]) / x_stddev[j]) * \
+                    (xk_ref[j]  - (c_x[key]-x_mean[j]) / x_stddev[j]) )
+                for j,key in enumerate(model._cont_var_dict.keys())
             )
             big_m_term = model._big_m*(1-b_ref[k_ref])
-            return diff_to_ref_point_k <= alpha + big_m_term
+            if add_rhs is None:
+                return diff_to_ref_point_k <= alpha + big_m_term
+            else:
+                return diff_to_ref_point_k + add_rhs[k_ref] <= alpha + big_m_term
 
         # add penalty distances as quadratic constraints to the model
         for k in range(n_ref_points):
@@ -294,7 +310,7 @@ class Manhattan(DistanceMetric):
         return dist
 
     def add_exploration_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, distance_bound, model):
+        ref_points, x_means, x_stddev, distance_bound, model, add_rhs=None):
         """Adds exploration constraints to a gurobi optimization model.
         Incentivizes solutions far away from reference points.
 
@@ -323,15 +339,16 @@ class Manhattan(DistanceMetric):
         from gurobipy import GRB, quicksum
 
         n_ref_points = len(ref_points)
+        cont_feat_ids = model._cont_var_dict.keys()
 
         # two sets of variables are used to capture positive and negative 
         # parts of manhattan distance
         model._c_x_aux_pos = \
-            model.addVars(range(n_ref_points), range(model._n_feat), 
+            model.addVars(range(n_ref_points), cont_feat_ids, 
                         name="c_x_aux_pos", vtype='C')
 
         model._c_x_aux_neg = \
-            model.addVars(range(n_ref_points), range(model._n_feat), 
+            model.addVars(range(n_ref_points), cont_feat_ids, 
                         name="c_x_aux_neg", vtype='C')
         
         # variable alpha captures distance measure
@@ -342,47 +359,56 @@ class Manhattan(DistanceMetric):
                         name="alpha", vtype='C')
 
         def distance_ref_point_i_for_feat_j(
-            model, xi_ref, i_ref, feat_j, x_mean, x_stddev):
+            model, xi_ref, i_ref, feat_j, i_var, x_mean, x_stddev, add_rhs=None):
             # function returns constraints capturing the standardized
             # exploration distance
-            c_x = model._c_x
+            c_x = model._cont_var_dict
 
             diff_to_ref_point_i = \
-                ( xi_ref[feat_j] - (c_x[feat_j]-x_mean[feat_j]) / \
+                ( xi_ref[feat_j] - (c_x[i_var]-x_mean[feat_j]) / \
                     x_stddev[feat_j] ) 
-            return diff_to_ref_point_i == model._c_x_aux_pos[i_ref, feat_j] - \
-                model._c_x_aux_neg[i_ref, feat_j]
+            return diff_to_ref_point_i == model._c_x_aux_pos[i_ref, i_var] - \
+                model._c_x_aux_neg[i_ref, i_var]
 
         for i_ref in range(n_ref_points):
-            for feat_j in range(model._n_feat):
+            for feat_j,key in enumerate(cont_feat_ids):
                 # add constraints to capture distances in variables
                 # _c_x_aux_pos and _c_x_aux_neg
                 model.addConstr(
                     distance_ref_point_i_for_feat_j(model, 
-                        ref_points[i_ref], i_ref, feat_j, x_means, x_stddev),
-                    name=f"std_const_feat_{feat_j}_{i_ref}"
+                        ref_points[i_ref], i_ref, feat_j, key, x_means, x_stddev),
+                    name=f"std_const_feat_{key}_{i_ref}"
                 )
                 # add sos constraints that allow only one of the +/- vars, 
                 # i.e. _c_x_aux_pos / _c_x_aux_neg to be active
                 model.addSOS(GRB.SOS_TYPE1, 
                     [
-                        model._c_x_aux_pos[i_ref, feat_j], 
-                        model._c_x_aux_neg[i_ref, feat_j]
+                        model._c_x_aux_pos[i_ref, key], 
+                        model._c_x_aux_neg[i_ref, key]
                     ]
                 )
 
             # add exploration distances as linear constraints to the model
-            model.addConstr(
-                model._alpha <= quicksum(
-                    (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
-                    for j in range(model._n_feat)
-                ),
-                name=f"alpha_sum"
-            )
+            if add_rhs is None:
+                model.addConstr(
+                    model._alpha <= quicksum(
+                        (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
+                        for j in cont_feat_ids
+                    ),
+                    name=f"alpha_sum"
+                )
+            else:
+                model.addConstr(
+                    model._alpha <= quicksum(
+                        (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
+                        for j in cont_feat_ids
+                    ) + add_rhs[i_ref],
+                    name=f"alpha_sum"
+                )            
         model.update()
 
     def add_penalty_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, model):
+        ref_points, x_means, x_stddev, model, add_rhs=None):
         """Adds penalty constraints to a gurobi optimization model.
         Incentivizes solutions close to reference points.
 
@@ -411,6 +437,7 @@ class Manhattan(DistanceMetric):
         from gurobipy import GRB, quicksum
 
         n_ref_points = len(ref_points)
+        cont_feat_ids = model._cont_var_dict.keys()
 
         # big m is required to formulate the constraints
         model._big_m = \
@@ -419,11 +446,11 @@ class Manhattan(DistanceMetric):
         # two sets of variables are used to capture positive and negative 
         # parts of manhattan distance
         model._c_x_aux_pos = \
-            model.addVars(range(n_ref_points), range(model._n_feat), 
+            model.addVars(range(n_ref_points), cont_feat_ids, 
                         name="c_x_aux_pos", vtype='C')
 
         model._c_x_aux_neg = \
-            model.addVars(range(n_ref_points), range(model._n_feat), 
+            model.addVars(range(n_ref_points), cont_feat_ids, 
                         name="c_x_aux_neg", vtype='C')
         
         # binary variables b_ref correspond to active cluster centers
@@ -438,40 +465,53 @@ class Manhattan(DistanceMetric):
                         name="alpha", vtype='C')
 
         def distance_ref_point_i_for_feat_j(
-            model, xi_ref, i_ref, feat_j, x_mean, x_stddev):
+            model, xi_ref, i_ref, feat_j, i_var, x_mean, x_stddev, add_rhs=None):
             # function returns constraints capturing the standardized
             # exploration distance
-            c_x = model._c_x
+            c_x = model._cont_var_dict
 
             diff_to_ref_point_i = \
-                ( xi_ref[feat_j] - (c_x[feat_j]-x_mean[feat_j]) / \
+                ( xi_ref[feat_j] - (c_x[i_var]-x_mean[feat_j]) / \
                     x_stddev[feat_j] ) 
-            return diff_to_ref_point_i == model._c_x_aux_pos[i_ref, feat_j] - \
-                model._c_x_aux_neg[i_ref, feat_j]
+            return diff_to_ref_point_i == model._c_x_aux_pos[i_ref, i_var] - \
+                model._c_x_aux_neg[i_ref, i_var]
 
         for i_ref in range(n_ref_points):
-            for feat_j in range(model._n_feat):
+            for feat_j,key in enumerate(cont_feat_ids):
                 # add constraints to capture distances in variables
                 # _c_x_aux_pos and _c_x_aux_neg
                 model.addConstr(
                     distance_ref_point_i_for_feat_j(
-                        model, ref_points[i_ref], i_ref, feat_j, x_means, x_stddev),
-                    name=f"std_const_feat_{feat_j}_{i_ref}"
+                        model, ref_points[i_ref], i_ref, feat_j, key, x_means, x_stddev),
+                    name=f"std_const_feat_{key}_{i_ref}"
                 )
                 # add sos constraints that allow only one of the +/- vars, 
                 # i.e. _c_x_aux_pos / _c_x_aux_neg to be active
                 model.addSOS(GRB.SOS_TYPE1, 
-                    [model._c_x_aux_pos[i_ref, feat_j], model._c_x_aux_neg[i_ref, feat_j]]
+                    [
+                        model._c_x_aux_pos[i_ref, key], 
+                        model._c_x_aux_neg[i_ref, key]
+                    ]
                 )
 
         # add penalty distances as linear constraints to the model
-            model.addConstr(
-                quicksum(
-                    (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
-                    for j in range(model._n_feat)
-                ) <= model._alpha + model._big_m*(1-model._b_ref[i_ref]),
-                name=f"alpha_sum"
-            )
+            if add_rhs is None:
+                model.addConstr(
+                    quicksum(
+                        (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
+                        for j in cont_feat_ids
+                    ) <= model._alpha + model._big_m*(1-model._b_ref[i_ref]),
+                    name=f"alpha_sum"
+                )
+            else:
+                model.addConstr(
+                    quicksum(
+                        (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
+                        for j in cont_feat_ids
+                    )  + add_rhs[i_ref] <= \
+                        model._alpha + model._big_m*(1-model._b_ref[i_ref]),
+                    name=f"alpha_sum"
+                )    
         model.update()
 
         def sum_ref_point_vars(n_ref_points, model):
@@ -483,6 +523,158 @@ class Manhattan(DistanceMetric):
             sum_ref_point_vars(n_ref_points, model),
             name="std_ref_sum"
         )
+
+class NonSimilarityMetric:
+    def __init__(self):
+        pass
+
+    def get_non_similarity(self,x_left,x_right):
+        dsim = self.get_similarity(x_left, x_right)
+        n_cat = x_left.shape[1]
+        
+        dsim = (-1) * dsim + n_cat*1
+        return dsim
+
+    def update(self, Xi_cat, cat_dims):
+        pass
+
+    def get_gurobi_model_rhs(self,cat_idx,ref_points,model):
+        if cat_idx:
+            constr_list = []
+            for X in ref_points:
+                temp_constr = 0
+
+                for cat_id in range(len(X)):
+                    for cat in range(len(self.cat_mat[cat_id])):
+                        temp_cat_mat = self.cat_mat[cat_id][cat,X[cat_id]]
+                        temp_constr += \
+                            (1 - temp_cat_mat)*model._cat_var_dict[cat_idx[cat_id]][cat]
+
+                constr_list.append(temp_constr)
+            return constr_list
+        else:
+            return None
+
+
+class Overlap(NonSimilarityMetric):
+    def __init__(self):
+        pass
+
+    def update(self,Xi_cat,cat_dims):
+
+        Xi_cat = np.asarray(Xi_cat)
+
+        # generate matrix rules
+        cat_mat_rule = \
+            lambda i,j,cat_id: 1 if i==j else 0
+
+        self.cat_mat = []
+
+        for cat_id,cat in enumerate(cat_dims):
+            temp_cat = cat.transform(cat.categories)
+            n_cat = len(temp_cat)
+
+            # populate matrix
+            temp_mat = np.fromfunction(
+                np.vectorize(cat_mat_rule,), (n_cat,n_cat), dtype=int, cat_id=cat_id
+            )
+
+            self.cat_mat.append(temp_mat)
+
+    def get_similarity(self,x_left,x_right):
+        dist_cat = np.sum(x_left == x_right, axis=1)
+        return dist_cat
+
+
+class Goodall4(NonSimilarityMetric):
+    def __init__(self):
+        pass
+
+    def update(self,Xi_cat,cat_dims):
+
+        def get_pk2(cat_rows, cat):
+            count_cat = np.sum(cat_rows == cat)
+            n_rows = len(cat_rows)
+            return ( count_cat*(count_cat-1) ) / ( n_rows*(n_rows-1) )
+
+        Xi_cat = np.asarray(Xi_cat)
+
+        # generate matrix rules
+        cat_mat_rule = \
+            lambda i,j,cat_id: get_pk2( Xi_cat[:,cat_id],i ) \
+                if i == j else 0
+
+        self.cat_mat = []
+
+        for cat_id,cat in enumerate(cat_dims):
+            temp_cat = cat.transform(cat.categories)
+            n_cat = len(temp_cat)
+
+            # populate matrix
+            temp_mat = np.fromfunction(
+                np.vectorize(cat_mat_rule,), (n_cat,n_cat), dtype=int, cat_id=cat_id
+            )
+
+            self.cat_mat.append(temp_mat)
+
+    def get_similarity(self,x_left,x_right):
+        # create zero vector that contains similarities for all data points
+        sim_vec = np.zeros(x_left.shape[0])
+
+        # iterate through cat features and populate sim_mat entries
+        for cat_id in range(x_left.shape[1]):
+
+            # compute individual similarities
+            sim_vec += \
+                self.cat_mat[cat_id][int(x_right[cat_id]),x_left[:,cat_id]]
+        return sim_vec
+
+class OF(NonSimilarityMetric):
+    def __init__(self):
+        pass
+
+    def update(self,Xi_cat,cat_dims):
+
+        def get_of_frac(cat_rows, cat_left, cat_right):
+            from math import log
+            count_cat_left = np.sum(cat_rows == cat_left)
+            count_cat_right = np.sum(cat_rows == cat_right)
+            n_rows = len(cat_rows)
+            denom = \
+                1 + log( n_rows/count_cat_left )*log( n_rows/count_cat_right )
+            return 1 / denom
+
+        Xi_cat = np.asarray(Xi_cat)
+
+        # generate matrix rules
+        cat_mat_rule = \
+            lambda i,j,cat_id: get_of_frac( Xi_cat[:,cat_id], i, j ) \
+                if i is not j else 1
+
+        self.cat_mat = []
+
+        for cat_id,cat in enumerate(cat_dims):
+            temp_cat = cat.transform(cat.categories)
+            n_cat = len(temp_cat)
+
+            # populate matrix
+            temp_mat = np.fromfunction(
+                np.vectorize(cat_mat_rule,), (n_cat,n_cat), dtype=int, cat_id=cat_id
+            )
+
+            self.cat_mat.append(temp_mat)
+
+    def get_similarity(self,x_left,x_right):
+        # create zero vector that contains similarities for all data points
+        sim_vec = np.zeros(x_left.shape[0])
+
+        # iterate through cat features and populate sim_mat entries
+        for cat_id in range(x_left.shape[1]):
+
+            # compute individual similarities
+            sim_vec += \
+                self.cat_mat[cat_id][int(x_right[cat_id]),x_left[:,cat_id]]
+        return sim_vec
 
 
 class DistanceBasedStd(ABC):
@@ -518,15 +710,45 @@ class DistanceBasedStd(ABC):
         Points to which the distance is computed to estimate model uncertainty.
         Is different for all child classes.
     """
-    def __init__(self, metric='sq_euclidean'):
-        # define the distance metric for continuous variables
-        if metric == 'sq_euclidean':
+    def __init__(self,
+        metric_cont='sq_euclidean',
+        metric_cat='overlap',
+        space=None):
+
+        # set distance metric for cont variables
+        if metric_cont == 'sq_euclidean':
             from entmoot.learning.distance_based_std import SquaredEuclidean
             self.cont_dist_metric = SquaredEuclidean()
 
-        elif metric == 'manhattan':
+        elif metric_cont == 'manhattan':
             from entmoot.learning.distance_based_std import Manhattan
             self.cont_dist_metric = Manhattan()
+
+        self.space = space
+
+        # set similarity metric for cat variables
+        if metric_cat == "overlap":
+            from entmoot.learning.distance_based_std import Overlap
+            self.cat_sim_metric = Overlap()
+            
+        elif metric_cat == "goodall4":
+            from entmoot.learning.distance_based_std import Goodall4
+            assert self.space is not None, "Space parameter is needed for goodall4."
+            self.cat_sim_metric = Goodall4()
+
+        elif metric_cat == "of":
+            from entmoot.learning.distance_based_std import OF
+            assert self.space is not None, "Space parameter is needed for of."
+            self.cat_sim_metric = OF()
+
+    def get_x_cont_vals(self, xi):
+        return [x for idx,x in enumerate(xi) \
+            if idx not in self.cat_idx]
+
+    def get_x_cat_vals(self, xi):
+        return [x for idx,x in enumerate(xi) \
+            if idx in self.cat_idx]
+
 
     def set_params(self,**kwargs):
         """Sets parameters related to distance-based standard estimator.
@@ -542,7 +764,7 @@ class DistanceBasedStd(ABC):
         """
         pass
 
-    def update(self, Xi, yi):
+    def update(self, Xi, yi, cat_column=[]):
         """Update available data points which is usually done after every
         iteration.
 
@@ -557,15 +779,37 @@ class DistanceBasedStd(ABC):
         -------
         -
         """
+
+        self.cat_idx = cat_column
+        
+        # collect cont and cat variable values
+        if self.cat_idx:
+            self.Xi_cont = []
+            self.Xi_cat = []
+            
+            for xi in Xi:
+                # collect continuous vars
+                self.Xi_cont.append( [x for idx,x in enumerate(xi) \
+                    if idx not in self.cat_idx]
+                )
+
+                # collect categorical vars
+                self.Xi_cat.append( [x for idx,x in enumerate(xi) \
+                    if idx in self.cat_idx]
+                )
+        else:
+            self.Xi_cont = Xi
+            self.Xi_cat = []
+
         # update data set attributes
         self.Xi = Xi
         self.yi = yi
 
-        self.n_features = self.Xi.shape[1]
+        self.n_features = Xi.shape[1]
 
         # compute mean and scaler of data set
         standard_scaler = StandardScaler()
-        projected_features = standard_scaler.fit_transform(self.Xi)
+        projected_features = standard_scaler.fit_transform(self.Xi_cont)
         self.x_means = standard_scaler.mean_
         self.x_scalers = standard_scaler.scale_
 
@@ -574,7 +818,11 @@ class DistanceBasedStd(ABC):
         self.std_scale_coef = abs(y_scaler / self.n_features)
 
         # standardize dataset
-        self.Xi_standard = self.standardize_with_Xi(self.Xi)
+        self.Xi_cont_standard = self.standardize_with_Xi(self.Xi_cont)
+
+        # update cat_sim_metric with new data
+        cat_dims = self.get_x_cat_vals(self.space.dimensions)
+        self.cat_sim_metric.update(self.Xi_cat, cat_dims)
 
     def standardize_with_Xi(self, X):
         """Standardize given input `X` based on attribute `Xi`.
@@ -608,14 +856,26 @@ class DistanceBasedStd(ABC):
         dist : numpy array, shape (1, )
             Returns distance to closest `ref_point`.
         """
-        ref_points = np.asarray(self.ref_points)
+        ref_points_cont = np.asarray(self.ref_points_cont)
 
-        x_standard = self.standardize_with_Xi(X)
-        x_standard = np.asarray(x_standard)
+        X_cont = self.get_x_cont_vals(X)
 
+        # standardize cont variables
+        x_cont_standard = self.standardize_with_Xi(X_cont)  
+        x_cont_standard = np.asarray(x_cont_standard)
+
+        # compute all distances for cont variables
         dist_cont = \
-            self.cont_dist_metric.get_distance(ref_points,x_standard)
-        
+            self.cont_dist_metric.get_distance(ref_points_cont,x_cont_standard)
+
+        # compute all distances for cat variables
+        if self.Xi_cat:
+            X_cat = X[self.cat_idx]
+            dist_cat = \
+                self.cat_sim_metric.get_non_similarity(
+                    self.ref_points_cat, X_cat)
+            dist_cont += dist_cat
+
         return np.min(dist_cont)
 
     def predict(self, X, scaled=True):
@@ -709,10 +969,12 @@ class DistanceBasedExploration(DistanceBasedStd):
         Bound of exploration measure to prohibit over-exploration
     """
     def __init__(self,
-        metric="sq_euclidean",
+        metric_cont='sq_euclidean',
+        metric_cat='overlap',
+        space=None,
         zeta=0.5):
 
-        super().__init__(metric)
+        super().__init__(metric_cont,metric_cat,space)
         self.zeta = zeta
 
     def set_params(self,**kwargs):
@@ -730,7 +992,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         zeta = kwargs.get("zeta", 0.5)
         self.zeta = zeta
 
-    def update(self, Xi, yi):
+    def update(self, Xi, yi, cat_column=[]):
         """Update available data points which is usually done after every
         iteration.
 
@@ -745,15 +1007,18 @@ class DistanceBasedExploration(DistanceBasedStd):
         -------
         -
         """
-        super().update(Xi, yi)
+        super().update(Xi, yi, cat_column=cat_column)
 
-        self.ref_points_unscaled = self.Xi
+        self.ref_points_unscaled = self.Xi_cont
 
-        self.ref_points = self.Xi_standard
+        #self.ref_points = self.Xi_standard
+
+        self.ref_points_cont = self.Xi_cont_standard
+        self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
         # compute upper bound of uncertainty
-        y_var = np.var(yi)
-        self.distance_bound = abs(self.zeta*y_var)
+        n_feat= Xi.shape[1]
+        self.distance_bound = self.zeta*n_feat
 
     def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`. By default `dist` is
@@ -806,12 +1071,17 @@ class DistanceBasedExploration(DistanceBasedStd):
         model : gurobipy.Model,
             Model to which the standard estimator is added.
         """
+        cat_rhs = self.cat_sim_metric.get_gurobi_model_rhs(
+            self.cat_idx, self.ref_points_cat, model
+        )
+
         self.cont_dist_metric.add_exploration_to_gurobi_model(
-            self.ref_points, 
+            self.ref_points_cont, 
             self.x_means, 
             self.x_scalers, 
             self.distance_bound, 
-            model
+            model,
+            add_rhs=cat_rhs
         )
 
 class DistanceBasedPenalty(DistanceBasedStd):
@@ -846,9 +1116,11 @@ class DistanceBasedPenalty(DistanceBasedStd):
         length of `ref_points"""
 
     def __init__(self,
-        metric="sq_euclidean"):
+        metric_cont='sq_euclidean',
+        metric_cat='overlap',
+        space=None):
 
-        super().__init__(metric)
+        super().__init__(metric_cont,metric_cat,space)
 
     def set_params(self,**kwargs):
         """Sets parameters related to distance-based standard estimator.
@@ -864,7 +1136,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         """
         pass
 
-    def update(self, Xi, yi):
+    def update(self, Xi, yi, cat_column=[]):
         """Update available data points which is usually done after every
         iteration.
 
@@ -879,11 +1151,14 @@ class DistanceBasedPenalty(DistanceBasedStd):
         -------
         -
         """
-        super().update(Xi, yi)
+        super().update(Xi, yi, cat_column=cat_column)
 
-        self.ref_points_unscaled = self.Xi
+        self.ref_points_unscaled = self.Xi_cont
 
-        self.ref_points = self.Xi_standard  
+        #self.ref_points = self.Xi_standard
+
+        self.ref_points_cont = self.Xi_cont_standard
+        self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
 
     def predict(self, X, scaled=True):
@@ -932,9 +1207,14 @@ class DistanceBasedPenalty(DistanceBasedStd):
         model : gurobipy.Model,
             Model to which the standard estimator is added.
         """
+        cat_rhs = self.cat_sim_metric.get_gurobi_model_rhs(
+            self.cat_idx, self.ref_points_cat, model
+        )
+
         self.cont_dist_metric.add_penalty_to_gurobi_model(
-            self.ref_points, 
+            self.ref_points_cont, 
             self.x_means, 
             self.x_scalers, 
-            model
+            model,
+            add_rhs=cat_rhs
         )

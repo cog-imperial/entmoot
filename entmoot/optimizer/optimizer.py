@@ -231,6 +231,26 @@ class Optimizer(object):
         self._n_initial_points = n_initial_points
         self.n_initial_points_ = n_initial_points
 
+        # Configure search space
+        
+        # initialize search space
+        import numpy as np
+        from entmoot.space.space import Space
+        from entmoot.space.space import Categorical
+
+        self.space = Space(dimensions)
+
+        self._initial_samples = None
+        self._initial_point_generator = cook_initial_point_generator(
+            initial_point_generator)
+
+        if self._initial_point_generator is not None:
+            transformer = self.space.get_transformer()
+            self._initial_samples = self._initial_point_generator.generate(
+                self.space.dimensions, n_initial_points,
+                random_state=self.rng.randint(0, np.iinfo(np.int32).max))
+            self.space.set_transformer(transformer)
+
         # Configure std estimator
 
         self.std_estimator = std_estimator
@@ -248,7 +268,7 @@ class Optimizer(object):
         est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
         self.std_estimator = cook_std_estimator(
             std_estimator,
-            space=dimensions,
+            space=self.space,
             random_state=est_random_state,
             std_estimator_params=std_estimator_kwargs)
 
@@ -266,7 +286,7 @@ class Optimizer(object):
         base_estimator = cook_estimator(
             base_estimator, 
             self.std_estimator, 
-            space=dimensions,
+            space=self.space,
             random_state=est_random_state,
             base_estimator_params=base_estimator_kwargs)
 
@@ -288,26 +308,6 @@ class Optimizer(object):
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
 
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
-
-        # Configure search space
-        
-        # initialize search space
-        import numpy as np
-        from entmoot.space.space import Space
-        from entmoot.space.space import Categorical
-
-        self.space = Space(dimensions)
-
-        self._initial_samples = None
-        self._initial_point_generator = cook_initial_point_generator(
-            initial_point_generator)
-
-        if self._initial_point_generator is not None:
-            transformer = self.space.get_transformer()
-            self._initial_samples = self._initial_point_generator.generate(
-                self.space.dimensions, n_initial_points,
-                random_state=self.rng.randint(0, np.iinfo(np.int32).max))
-            self.space.set_transformer(transformer)
 
         # Initialize storage for optimization
         if not isinstance(model_queue_size, (int, type(None))):
@@ -597,10 +597,13 @@ class Optimizer(object):
                              "not compatible." % (type(x), type(y)))
 
         if self.models:
+            scaled = self.acq_func_kwargs.get("scaled", False)
+            next_xt = self.space.transform([self._next_x])[0]
             temp_mu, temp_std = \
                 self.models[-1].predict(
-                    X=np.asarray(self._next_x).reshape(1, -1), 
-                    return_std=True)
+                    X=np.asarray(next_xt).reshape(1, -1), 
+                    return_std=True,
+                    scaled=scaled)
             self.model_mu.append(temp_mu)
             self.model_std.append(temp_std)
             
@@ -695,7 +698,9 @@ class Optimizer(object):
                 # and add to gurobi model
                 gbm_model_dict = {}
                 gbm_model_dict['first'] = est.get_gbm_model()
-                add_gbm_to_gurobi_model(gbm_model_dict, gurobi_model)
+                add_gbm_to_gurobi_model(
+                    self.space, gbm_model_dict, gurobi_model
+                )
 
                 # add std estimator to gurobi model
                 add_std_to_gurobi_model(est, gurobi_model)
@@ -722,9 +727,25 @@ class Optimizer(object):
                 # store optimality gap of gurobi computation
                 self.gurobi_mipgap.append(gurobi_model.mipgap)
 
-                next_x = np.asarray(
-                    [gurobi_model._c_x[i_x].x 
-                    for i_x in range(len(gurobi_model._c_x))])      
+                # output next_x
+                next_x = np.empty(len(self.space.dimensions))
+
+                # cont features
+                for i in gurobi_model._cont_var_dict.keys():
+                    next_x[i] = gurobi_model._cont_var_dict[i].x
+
+                # cat features
+                for i in gurobi_model._cat_var_dict.keys():
+                    cat = \
+                        [
+                            key 
+                            for key in gurobi_model._cat_var_dict[i].keys()
+                            if int(
+                                round(gurobi_model._cat_var_dict[i][key].x,1)
+                            ) == 1
+                        ]
+
+                    next_x[i] = cat[0]   
 
             # note the need for [0] at the end
             self._next_x = self.space.inverse_transform(

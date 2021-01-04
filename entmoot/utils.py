@@ -44,6 +44,18 @@ def is_supported(base_estimator):
     from entmoot.learning.tree_model import EntingRegressor
     return isinstance(base_estimator, (EntingRegressor, str, type(None)))
 
+def get_cat_idx(space):
+    from entmoot.space.space import Space, Categorical, Integer, Real, Dimension
+
+    if space is None:
+        return []
+
+    # collect indices of categorical features
+    cat_idx = []
+    for idx,dim in enumerate(space):
+        if isinstance(dim, Categorical):
+            cat_idx.append(idx)
+    return cat_idx
 
 def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None, 
         base_estimator_params=None):
@@ -73,6 +85,11 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
     from lightgbm import LGBMRegressor
     from entmoot.learning.tree_model import EntingRegressor
 
+
+    # collect indices of categorical features
+    cat_idx = get_cat_idx(space)
+
+
     if isinstance(base_estimator, str):
         base_estimator = base_estimator.upper()
         if base_estimator not in ["GBRT", "RF", "DUMMY"]:
@@ -83,7 +100,8 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
         base_estimator = \
             EntingRegressor(
                 base_estimator=base_estimator,
-                random_state=random_state
+                random_state=random_state,
+                cat_idx=cat_idx
             )
     else:
         raise ValueError("base_estimator is not supported.")
@@ -95,7 +113,8 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
                             )
         base_estimator = EntingRegressor(base_estimator=gbrt,
                                         std_estimator=std_estimator,
-                                        random_state=random_state)
+                                        random_state=random_state,
+                                        cat_idx=cat_idx)
     elif base_estimator == "RF":
         rf = LGBMRegressor(boosting_type='random_forest',
                             objective='regression',
@@ -158,25 +177,33 @@ def cook_std_estimator(std_estimator,
     if std_estimator == "BDD":
         std_estimator = \
             DistanceBasedExploration(
-                metric="sq_euclidean",
+                metric_cont="sq_euclidean",
+                metric_cat="goodall4",
+                space=space
             )
 
     elif std_estimator == "DDP":
         std_estimator = \
             DistanceBasedPenalty(
-                metric="sq_euclidean",
+                metric_cont="sq_euclidean",
+                metric_cat="goodall4",
+                space=space
             )
 
     elif std_estimator == "L1BDD":
         std_estimator = \
             DistanceBasedExploration(
-                metric="manhattan",
+                metric_cont="manhattan",
+                metric_cat="goodall4",
+                space=space
             )
 
     elif std_estimator == "L1DDP":
         std_estimator = \
             DistanceBasedPenalty(
-                metric="manhattan",
+                metric_cont="manhattan",
+                metric_cat="goodall4",
+                space=space
             )
 
     std_estimator.set_params(**std_estimator_params)
