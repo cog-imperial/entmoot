@@ -1017,8 +1017,8 @@ class DistanceBasedExploration(DistanceBasedStd):
         self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
         # compute upper bound of uncertainty
-        n_feat= Xi.shape[1]
-        self.distance_bound = self.zeta*n_feat
+        y_var = np.var(yi)
+        self.distance_bound = abs(self.zeta*y_var)
 
     def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`. By default `dist` is
