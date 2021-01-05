@@ -788,12 +788,12 @@ def test_dimension_with_invalid_names(name):
            exc.value.args[0])
 
 
-"""
+
 @pytest.mark.fast_test
 def test_purely_categorical_space():
     # Test reproduces the bug in #908, make sure it doesn't come back
     dims = [Categorical(['a', 'b', 'c']), Categorical(['A', 'B', 'C'])]
-    optimizer = Optimizer(dims, n_initial_points=2, random_state=3)
+    optimizer = Optimizer(dims, n_initial_points=2, random_state=3, acq_optimizer="sampling")
 
     for _ in range(2):
         x = optimizer.ask()
@@ -826,4 +826,3 @@ def test_normalize_bounds():
         check_limits(x[0][0], -999, 189000)
         y = space.transform(x)
         check_limits(y, 0., 1.)
-"""

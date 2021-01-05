@@ -788,10 +788,15 @@ class DistanceBasedStd(ABC):
             self.Xi_cat = []
             
             for xi in Xi:
+
+                # check if all 
+
                 # collect continuous vars
-                self.Xi_cont.append( [x for idx,x in enumerate(xi) \
-                    if idx not in self.cat_idx]
-                )
+                # check if all vars are categorical
+                if len(self.cat_idx) != len(xi):
+                    self.Xi_cont.append( [x for idx,x in enumerate(xi) \
+                        if idx not in self.cat_idx]
+                    )
 
                 # collect categorical vars
                 self.Xi_cat.append( [x for idx,x in enumerate(xi) \
@@ -808,17 +813,18 @@ class DistanceBasedStd(ABC):
         self.n_features = Xi.shape[1]
 
         # compute mean and scaler of data set
-        standard_scaler = StandardScaler()
-        projected_features = standard_scaler.fit_transform(self.Xi_cont)
-        self.x_means = standard_scaler.mean_
-        self.x_scalers = standard_scaler.scale_
+        if list(self.Xi_cont):
+            standard_scaler = StandardScaler()
+            projected_features = standard_scaler.fit_transform(self.Xi_cont)
+            self.x_means = standard_scaler.mean_
+            self.x_scalers = standard_scaler.scale_
+
+            # standardize dataset
+            self.Xi_cont_standard = self.standardize_with_Xi(self.Xi_cont)
 
         # compute scale coefficient
         y_scaler = np.std(self.yi)
         self.std_scale_coef = abs(y_scaler / self.n_features)
-
-        # standardize dataset
-        self.Xi_cont_standard = self.standardize_with_Xi(self.Xi_cont)
 
         # update cat_sim_metric with new data
         cat_dims = self.get_x_cat_vals(self.space.dimensions)
@@ -856,17 +862,18 @@ class DistanceBasedStd(ABC):
         dist : numpy array, shape (1, )
             Returns distance to closest `ref_point`.
         """
-        ref_points_cont = np.asarray(self.ref_points_cont)
+        if list(self.Xi_cont):
+            ref_points_cont = np.asarray(self.ref_points_cont)
 
-        X_cont = self.get_x_cont_vals(X)
+            X_cont = self.get_x_cont_vals(X)
 
-        # standardize cont variables
-        x_cont_standard = self.standardize_with_Xi(X_cont)  
-        x_cont_standard = np.asarray(x_cont_standard)
+            # standardize cont variables
+            x_cont_standard = self.standardize_with_Xi(X_cont)  
+            x_cont_standard = np.asarray(x_cont_standard)
 
-        # compute all distances for cont variables
-        dist_cont = \
-            self.cont_dist_metric.get_distance(ref_points_cont,x_cont_standard)
+            # compute all distances for cont variables
+            dist_cont = \
+                self.cont_dist_metric.get_distance(ref_points_cont,x_cont_standard)
 
         # compute all distances for cat variables
         if self.Xi_cat:
@@ -874,7 +881,11 @@ class DistanceBasedStd(ABC):
             dist_cat = \
                 self.cat_sim_metric.get_non_similarity(
                     self.ref_points_cat, X_cat)
-            dist_cont += dist_cat
+
+            if list(self.Xi_cont):
+                dist_cont += dist_cat
+            else:
+                dist_cont = dist_cat
 
         return np.min(dist_cont)
 
@@ -1013,7 +1024,8 @@ class DistanceBasedExploration(DistanceBasedStd):
 
         #self.ref_points = self.Xi_standard
 
-        self.ref_points_cont = self.Xi_cont_standard
+        if list(self.Xi_cont):
+            self.ref_points_cont = self.Xi_cont_standard
         self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
         # compute upper bound of uncertainty
@@ -1157,7 +1169,8 @@ class DistanceBasedPenalty(DistanceBasedStd):
 
         #self.ref_points = self.Xi_standard
 
-        self.ref_points_cont = self.Xi_cont_standard
+        if list(self.Xi_cont):
+            self.ref_points_cont = self.Xi_cont_standard
         self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
 

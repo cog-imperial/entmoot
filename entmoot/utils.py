@@ -39,6 +39,7 @@ from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
 import numbers
+from .space import Space, Dimension
 
 def is_supported(base_estimator):
     from entmoot.learning.tree_model import EntingRegressor
