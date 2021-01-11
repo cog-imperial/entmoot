@@ -170,9 +170,9 @@ variables. This only works when Gurobi is selected as the solution strategy,
  [documentation](https://www.gurobi.com/documentation/9.0/refman/py_model_addconstr.html).
 ```
 from entmoot.optimizer.entmoot_minimize import entmoot_minimize
-from entmoot.benchmarks import Rosenbrock
+from entmoot.benchmarks import SimpleCat
 
-func = Rosenbrock()
+func = SimpleCat()
 
 # initialize the search space manually
 from entmoot.space.space import Space
@@ -182,9 +182,16 @@ space = Space(func.get_bounds())
 from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
 core_model = get_core_gurobi_model(space)
 
-# access variables and define constraints accordingly
-x0 = core_model.getVarByName("c_x[0]")
-x1 = core_model.getVarByName("c_x[1]")
+# ordering of variable indices is dependent on space definition 
+
+# cont_var_dict contains all continuous variables
+x0 = core_model._cont_var_dict[0]
+x1 = core_model._cont_var_dict[1]
+
+# cat_var_dict contains all categorical variables
+x2 = core_model._cat_var_dict[2]
+
+# define constraints accordingly
 core_model.addConstr(x0 + x1 >= 2)
 core_model.addConstr(x1 == 1)
 
@@ -192,11 +199,11 @@ core_model.addConstr(x1 == 1)
 res = entmoot_minimize(
     func,
     func.get_bounds(),
-    n_calls=60,
+    n_calls=15,
     n_points=10000,
     base_estimator="GBRT",
     std_estimator="L1DDP", 
-    n_initial_points=50, 
+    n_initial_points=5, 
     initial_point_generator="random",
     acq_func="LCB", 
     acq_optimizer="global",
@@ -209,7 +216,9 @@ res = entmoot_minimize(
     },
     std_estimator_kwargs=None,
     model_queue_size=None,
-    base_estimator_kwargs=None,
+    base_estimator_kwargs={
+        "min_child_samples": 2
+    },
     verbose = True,
 )
 
