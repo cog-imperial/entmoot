@@ -43,7 +43,7 @@ from numpy.testing import assert_equal
 from numpy.testing import assert_raises
 
 from entmoot import entmoot_minimize
-from entmoot.benchmarks import Rosenbrock
+from entmoot.benchmarks import Rosenbrock, SimpleCat
 
 from entmoot.learning import EntingRegressor
 from entmoot.optimizer import Optimizer
@@ -211,7 +211,7 @@ def test_dimension_checking_2D_multiple_points():
                   [low + 1, low + 3]], 2.)
     assert "dimensions as the space" in str(e.value)
 
-@pytest.mark.fast_test
+@pytest.mark.consistent
 @pytest.mark.parametrize("acq_optimizer", ACQ_OPTIMIZER)
 def test_result_rosenbrock(acq_optimizer):
     bench1 = Rosenbrock()
@@ -235,13 +235,12 @@ def test_result_rosenbrock(acq_optimizer):
             [-0.7887945257988347, 1.843954950307714],
             [-1.5292242379168393, -1.7244656733329853],
             [-0.7726975624367143, 0.5422431772370664],
-            [-0.26851521090965313, -0.27168208839378893], # 11
-            [0.18559023118643525, -0.30091277104839054], # 12
-
-            [2.037449372031385, -0.003908949645985427], # 13
+            [-0.26851521090965313, -0.27168208839378893],
+            [0.18559023118643525, -0.30091277104839054],
+            [2.037449372031385, -0.003908949645985427],
             [0.3618262062035891, -0.886575853445807],
             [-0.70099499312817, -0.013753379624784401],
-            [0.3074119029928717, 1.3227888228213858], # 16
+            [0.3074119029928717, 1.3227888228213858],
             [0.43370695792140035, -0.5401762255031577],
             [0.060723595879015324, 2.0360116729103517],
             [-0.8891589013732526, -0.2756841022715071],
@@ -258,11 +257,10 @@ def test_result_rosenbrock(acq_optimizer):
             [0.25516550013357264, -2.0241727838227086],
             [-0.7887945257988347, 1.843954950307714],
             [-1.5292242379168393, -1.7244656733329853],
-            [-0.7726975624367143, 0.5422431772370664], #10
+            [-0.7726975624367143, 0.5422431772370664],
             [-0.27264229248767846, -0.2769176550000001],
             [0.19137509090861582, -0.31858780399999986],
-
-            [2.048, 0.0], # 13
+            [2.048, 0.0],
             [0.38217349700000014, -0.8962288678056055],
             [-0.7085115407036777, 0.0],
             [-0.8912067038309598, -0.23524750599999988],
@@ -270,6 +268,51 @@ def test_result_rosenbrock(acq_optimizer):
             [0.31866949899999986, 2.048],
             [0.43534523214208437, -0.5351559776571816],
             [-0.05614667929761541, 0.4412071169912909]]
+        )
+
+    res = opt.get_result()
+    assert_array_equal(res.x_iters, res_known)
+
+
+@pytest.mark.consistent
+@pytest.mark.parametrize("acq_optimizer", ACQ_OPTIMIZER)
+def test_result_rosenbrock(acq_optimizer):
+
+    bench1 = SimpleCat()
+
+    opt = Optimizer(bench1.get_bounds(), "GBRT", n_initial_points=5,
+                        acq_optimizer=acq_optimizer,
+                        base_estimator_kwargs={"min_child_samples":2},
+                        random_state=100)
+
+    opt.run(bench1, n_iter=10, no_progress_bar=True)
+
+    if acq_optimizer == "sampling":
+        res_known = np.array(
+            [[0.6846225344648778, -0.35181440637953276, 'pow2'],
+            [-1.4055806396985395, -1.3731556796559956, 'mult6'],
+            [-1.159569030229665, -0.18904038856307892, 'pow2'],
+            [-1.7452758285009282, 0.4972475531459488, 'pow2'],
+            [0.24918505872419194, -1.9767312342018637, 'mult6'],
+            [1.9533151312376096, 1.9911019960902978, 'mult6'],
+            [-0.30869536630063044, -0.8116308097286711, 'mult6'],
+            [1.9832830176095446, -1.6137030366593792, 'pow2'],
+            [-0.7534228429864178, -1.9474210829020842, 'mult6'],
+            [-1.9397005641914857, -1.9937770993390025, 'mult6']]
+        )
+
+    elif acq_optimizer == "global":
+        res_known = np.array(
+            [[0.6846225344648778, -0.35181440637953276, 'pow2'],
+            [-1.4055806396985395, -1.3731556796559956, 'mult6'],
+            [-1.159569030229665, -0.18904038856307892, 'pow2'],
+            [-1.7452758285009282, 0.4972475531459488, 'pow2'],
+            [0.24918505872419194, -1.9767312342018637, 'mult6'],
+            [2.0, 2.0, 'mult6'],
+            [-0.267284316831746, -0.8793390813532926, 'mult6'],
+            [2.0, -1.6258926741796051, 'pow2'],
+            [-0.7295094146491492, -2.0, 'mult6'],
+            [-2.0, -2.0, 'mult6']]
         )
 
     res = opt.get_result()
