@@ -178,7 +178,7 @@ class GbmNode(GbmType):
             "tree model based on your parameter specifications. This can "
             "usually be fixed by increasing the number of `n_initial_points` or "
             "reducing `min_child_samples` via `base_estimator_kwargs` (default "
-            "is 20). Alternatively, change `acq_optimizer='sampling'`.")
+            "is 2). Alternatively, change `acq_optimizer='sampling'`.")
             import sys
             sys.exit(1)
 

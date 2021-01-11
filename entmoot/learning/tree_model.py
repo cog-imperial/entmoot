@@ -96,6 +96,9 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         -------
         -
         """
+        if not "min_child_samples" in params.keys():
+            params.update({"min_child_samples":2})
+            
         self.base_estimator.set_params(**params)
 
     def predict(self, X, return_std=False, scaled=True):
