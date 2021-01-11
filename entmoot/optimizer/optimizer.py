@@ -38,6 +38,8 @@ import warnings
 import copy
 import inspect
 from numbers import Number
+import numpy as np
+from sklearn.base import clone
 
 from entmoot.acquisition import _gaussian_acquisition
 
@@ -262,6 +264,8 @@ class Optimizer(object):
         if self.std_estimator not in allowed_std_est:
             raise ValueError("expected std_estimator to be in %s, got %s" %
                              (",".join(allowed_std_est), self.std_estimator))
+
+        self.scaled = self.acq_func_kwargs.get("scaled", False)
 
         # build std_estimator
         import numpy as np
@@ -597,20 +601,17 @@ class Optimizer(object):
                              "not compatible." % (type(x), type(y)))
 
         if self.models:
-            scaled = self.acq_func_kwargs.get("scaled", False)
             next_xt = self.space.transform([self._next_x])[0]
             temp_mu, temp_std = \
                 self.models[-1].predict(
                     X=np.asarray(next_xt).reshape(1, -1), 
                     return_std=True,
-                    scaled=scaled)
+                    scaled=self.scaled)
             self.model_mu.append(temp_mu)
             self.model_std.append(temp_std)
             
         # optimizer learned something new - discard cache
         self.cache_ = {}
-
-        from sklearn.base import clone
 
         # after being "told" n_initial_points we switch from sampling
         # random points to using a surrogate model
@@ -834,3 +835,51 @@ class Optimizer(object):
                                gurobi_mipgap=self.gurobi_mipgap)
         result.specs = self.specs
         return result
+
+    def predict_with_est(self, x, return_std=True):
+        next_x = self.space.transform([x])[0]
+
+        if self.models:
+            temp_mu, temp_std = \
+                self.models[-1].predict(
+                    X=np.asarray(next_x).reshape(1, -1), 
+                    return_std=True,
+                    scaled=self.scaled)
+        else:
+            print("train first")
+            est = clone(self.base_estimator_)
+            est.fit(self.space.transform(self.Xi), self.yi)
+            temp_mu, temp_std = \
+                est.predict(
+                    X=np.asarray(next_x).reshape(1, -1), 
+                    return_std=True,
+                    scaled=self.scaled)
+        
+        if return_std:
+            return temp_mu[0], temp_std[0]
+        else:
+            return temp_mu[0]
+
+    def predict_with_acq(self, x):
+        next_x = self.space.transform([x])[0]
+
+        if self.models:
+            temp_val = _gaussian_acquisition(
+                X=np.asarray(next_x).reshape(1, -1), model=self.models[-1], 
+                y_opt=np.min(self.yi),
+                acq_func=self.acq_func,
+                acq_func_kwargs=self.acq_func_kwargs
+            )
+        else:
+            print("train first")
+            est = clone(self.base_estimator_)
+            est.fit(self.space.transform(self.Xi), self.yi)
+
+            temp_val = _gaussian_acquisition(
+                X=np.asarray(next_x).reshape(1, -1), model=est, 
+                y_opt=np.min(self.yi),
+                acq_func=self.acq_func,
+                acq_func_kwargs=self.acq_func_kwargs
+            )
+        
+        return temp_val[0]
