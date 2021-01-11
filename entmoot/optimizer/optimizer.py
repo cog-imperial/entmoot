@@ -871,7 +871,6 @@ class Optimizer(object):
                 acq_func_kwargs=self.acq_func_kwargs
             )
         else:
-            print("train first")
             est = clone(self.base_estimator_)
             est.fit(self.space.transform(self.Xi), self.yi)
 
