@@ -69,9 +69,6 @@ class Optimizer(object):
         - an instance of a `Dimension` object (`Real`, `Integer` or
           `Categorical`).
 
-        *NOTE: `Integer` and `Categorical` variables are not yet supported and
-        will be added in the next release.
-
     base_estimator : string, default: "GBRT",
         A default LightGBM surrogate model of the corresponding type is used  
         minimize `func`.
