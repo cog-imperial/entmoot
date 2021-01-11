@@ -125,6 +125,39 @@ class LogN(Transformer):
         return self._base ** np.asarray(Xt, dtype=np.float)
 
 
+class Logit(Transformer):
+    """uses logit transformation, see: 
+    https://github.com/uber/bayesmark/blob/master/bayesmark/space.py"""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def transform(X):
+        from scipy.special import logit
+        return logit(X)
+
+    @staticmethod
+    def inverse_transform(Xt):
+        from scipy.special import expit as logistic
+        return logistic(Xt)
+
+class Bilog(Transformer):
+    """uses bilog transformation, see: 
+    https://github.com/uber/bayesmark/blob/master/bayesmark/space.py"""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def transform(X):
+        return np.sign(X) * np.log(1.0 + np.abs(X))
+
+    @staticmethod
+    def inverse_transform(Xt):
+        return np.sign(Xt) * (np.exp(np.abs(Xt)) - 1.0)
+
+
 class CategoricalEncoder(Transformer):
     """OneHotEncoder that can handle categorical variables."""
 

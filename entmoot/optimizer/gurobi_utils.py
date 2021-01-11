@@ -15,19 +15,41 @@ def get_core_gurobi_model(space, add_model_core=None):
     -------
     -
     """
+    from entmoot.utils import get_cat_idx
+    from entmoot.space.space import Integer
+
     if add_model_core is None:
         model = gp.Model()
-        x_lb = [bound[0] for bound in space.bounds]
-        x_ub = [bound[1] for bound in space.bounds]
-        model._c_x_lb = x_lb
-        model._c_x_ub = x_ub
-        n_features = len(x_lb)
-        feature_numbers = range(n_features)
-        model._n_feat = n_features
-        model._c_x = \
-            model.addVars(feature_numbers, 
-                        lb=x_lb, 
-                        ub=x_ub, name="c_x", vtype='C')
+        cat_idx = get_cat_idx(space)
+
+        x_lb = {}
+        x_ub = {}
+
+        model._cont_var_dict = {}
+        model._cat_var_dict = {}
+
+        for idx,dim in enumerate(space.dimensions):
+            if idx not in cat_idx:
+                # store bounds of numerical vars
+                x_lb[idx] = dim.transformed_bounds[0]
+                x_ub[idx] = dim.transformed_bounds[1]
+
+                if isinstance(dim, Integer) and dim.prior in ["uniform"]:
+                    model._cont_var_dict[idx] = \
+                        model.addVar(lb=x_lb[idx], ub=x_ub[idx], 
+                            name=f"x_{idx}", vtype='I')
+                else:
+                    model._cont_var_dict[idx] = \
+                        model.addVar(lb=x_lb[idx], ub=x_ub[idx], 
+                            name=f"x_{idx}", vtype='C')
+            else:
+                # store categories of categorical vars
+                model._cat_var_dict[idx] = {}
+                for cat in dim.transform(dim.bounds):
+                    model._cat_var_dict[idx][cat] = \
+                        model.addVar(name=f"x_{idx}_{cat}", vtype=GRB.BINARY)
+            
+        model._n_feat = len(model._cont_var_dict) + len(model._cat_var_dict)
         model.update()
         return model
     else:
@@ -37,10 +59,9 @@ def get_core_gurobi_model(space, add_model_core=None):
                 "entmoot.optimizer.gurobi_utils.add_core_to_gurobi_model(..."
 
         check_attributes = \
-            hasattr(add_model_core,"_c_x_lb") and \
-            hasattr(add_model_core,"_c_x_ub") and \
-            hasattr(add_model_core,"_n_feat") and \
-            hasattr(add_model_core,"_c_x")
+            hasattr(add_model_core,"_cont_var_dict") and \
+            hasattr(add_model_core,"_cat_var_dict") and \
+            hasattr(add_model_core,"_n_feat")
 
         assert check_attributes, \
             "model core was not configured correctly, please create model core using: " + \
@@ -80,7 +101,7 @@ def set_gurobi_init_to_ref(est, model):
     -
     """
     ref_points_unscaled = \
-        est.std_estimator.ref_points_unscaled
+        est.std_estimator.Xi
 
     best_val = est.predict(ref_points_unscaled[0].reshape(1, -1))
     best_ref = ref_points_unscaled[0]
@@ -92,10 +113,12 @@ def set_gurobi_init_to_ref(est, model):
             best_val = temp_val
             best_ref = ref_point
 
-    n_features = len(model._c_x)
-    
-    for i in range (n_features):
-        model._c_x[i].start = best_ref[i]
+    for i in model._cont_var_dict.keys():
+        model._cont_var_dict[i].start = best_ref[i]
+
+    for i in model._cat_var_dict.keys():
+        model._cat_var_dict[i][int(best_ref[i])].start = 1
+
     model._alpha.start = 0.0
     model.update()
 
@@ -227,12 +250,15 @@ def alt_interval_index(model):
 
 alt_interval_index.dimen = 2
 
-def add_gbm_to_gurobi_model(gbm_model_dict, model):
-    add_gbm_parameters(gbm_model_dict, model)
-    add_gbm_variables(model)
-    add_gbm_constraints(model)
+def add_gbm_to_gurobi_model(space, gbm_model_dict, model):
+    from entmoot.utils import get_cat_idx
+    cat_idx = get_cat_idx(space)
 
-def add_gbm_parameters(gbm_model_dict, model):
+    add_gbm_parameters(cat_idx, gbm_model_dict, model)
+    add_gbm_variables(model)
+    add_gbm_constraints(cat_idx, model)
+
+def add_gbm_parameters(cat_idx, gbm_model_dict, model):
     model._gbm_models = gbm_model_dict
 
     model._gbm_set = set(gbm_model_dict.keys())
@@ -249,14 +275,17 @@ def add_gbm_parameters(gbm_model_dict, model):
 
     all_breakpoints = {}
     for i in range(model._n_feat):
-        s = set()
-        for vb in vbs:
-            try:
-                s = s.union(set(vb[i]))
-            except KeyError:
-                pass
-        if s:
-            all_breakpoints[i] = sorted(s)
+        if i in cat_idx:
+            continue
+        else:
+            s = set()
+            for vb in vbs:
+                try:
+                    s = s.union(set(vb[i]))
+                except KeyError:
+                    pass
+            if s:
+                all_breakpoints[i] = sorted(s)
 
     model._breakpoint_index = list(all_breakpoints.keys())
 
@@ -282,7 +311,7 @@ def add_gbm_variables(model):
                 )
     model.update()
 
-def add_gbm_constraints(model):
+def add_gbm_constraints(cat_idx, model):
 
     def single_leaf_rule(model_, label, tree):
         z_l, leaves = model_._z_l, model_._leaves
@@ -303,11 +332,27 @@ def add_gbm_constraints(model):
             split_enc
         )
         y_var = split_var
-        y_val = model_._breakpoints(y_var).index(split_val)
-        return quicksum(
-            model_._z_l[label, tree, leaf]
-            for leaf in gbt.get_left_leaves(tree, split_enc)
-        ) <= model_._y[y_var, y_val]
+
+        if not isinstance(split_val, list):
+            # for conti vars
+            y_val = model_._breakpoints(y_var).index(split_val)
+            return \
+                quicksum(
+                    model_._z_l[label, tree, leaf]
+                    for leaf in gbt.get_left_leaves(tree, split_enc)
+                ) <= \
+                    model_._y[y_var, y_val]
+        else:
+            # for cat vars
+            return \
+                quicksum(
+                    model_._z_l[label, tree, leaf]
+                    for leaf in gbt.get_left_leaves(tree, split_enc)
+                ) <= \
+                    quicksum(
+                        model_._cat_var_dict[split_var][cat]
+                        for cat in split_val
+                    )
 
     def right_split_r(model_, label, tree, split_enc):
         gbt = model_._gbm_models[label]
@@ -316,27 +361,48 @@ def add_gbm_constraints(model):
             split_enc
         )
         y_var = split_var
-        y_val = model_._breakpoints(y_var).index(split_val)
-        return quicksum(
-            model_._z_l[label, tree, leaf]
-            for leaf in gbt.get_right_leaves(tree, split_enc)
-        ) <= 1 - model_._y[y_var, y_val]
+        if not isinstance(split_val, list):
+            # for conti vars
+            y_val = model_._breakpoints(y_var).index(split_val)
+            return \
+                quicksum(
+                    model_._z_l[label, tree, leaf]
+                    for leaf in gbt.get_right_leaves(tree, split_enc)
+            ) <= \
+                1 - model_._y[y_var, y_val]
+        else:
+            # for cat vars
+            return \
+                quicksum(
+                    model_._z_l[label, tree, leaf]
+                    for leaf in gbt.get_right_leaves(tree, split_enc)
+            ) <= 1 - \
+                quicksum(
+                    model_._cat_var_dict[split_var][cat]
+                    for cat in split_val
+                )
 
     def y_order_r(model_, i, j):
         if j == len(model_._breakpoints(i)):
             return Constraint.Skip
         return model_._y[i, j] <= model_._y[i, j+1]
 
+    def cat_sums(model_, i):
+        return quicksum(
+            model_._cat_var_dict[i][cat]
+            for cat in model_._cat_var_dict[i].keys()
+        ) == 1
+
     def var_lower_r(model_, i, j):
-        lb = model_._c_x[i].lb
+        lb = model_._cont_var_dict[i].lb
         j_bound = model_._breakpoints(i)[j]
-        return model_._c_x[i] >= lb + (j_bound - lb)*(1-model_._y[i, j])
+        return model_._cont_var_dict[i] >= lb + (j_bound - lb)*(1-model_._y[i, j])
 
     def var_upper_r(model_, i, j):
-        ub = model_._c_x[i].ub
+        ub = model_._cont_var_dict[i].ub
         j_bound = model_._breakpoints(i)[j]
-        return model_._c_x[i] <= ub + (j_bound - ub)*(model_._y[i, j])
-
+        return model_._cont_var_dict[i] <= ub + (j_bound - ub)*(model_._y[i, j])
+    
     model.addConstrs(
         (left_split_r(model, label, tree, encoding)
         for (label, tree, encoding) in misic_split_index(model)),
@@ -349,12 +415,21 @@ def add_gbm_constraints(model):
         name="right_split"
     )
 
+    # for conti vars
     model.addConstrs(
         (y_order_r(model, var, j)
         for (var, j) in misic_interval_index(model)
         if j != len(model._breakpoints(var))-1),
         name="y_order"
     )
+
+    # for cat vars
+    model.addConstrs(
+        (cat_sums(model, var)
+        for var in cat_idx),
+        name="cat_sums"
+    )    
+
 
     model.addConstrs(
         (var_lower_r(model, var, j)
