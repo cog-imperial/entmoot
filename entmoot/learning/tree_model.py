@@ -143,8 +143,6 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
         from entmoot.learning.gbm_model import GbmModel
 
         original_tree_model_dict = self.regressor_._Booster.dump_model()
-        ordered_tree_model_dict = \
-            order_tree_model_dict(original_tree_model_dict)
 
         ordered_tree_model_dict = \
             order_tree_model_dict(
