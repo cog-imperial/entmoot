@@ -1,7 +1,7 @@
 from gurobipy import GRB, quicksum
 import gurobipy as gp
 
-def get_core_gurobi_model(space, add_model_core=None):
+def get_core_gurobi_model(space, add_model_core=None, env=None):
     """Add core to gurobi model, i.e. bounds, variables and parameters.
 
     Parameters
@@ -19,7 +19,11 @@ def get_core_gurobi_model(space, add_model_core=None):
     from entmoot.space.space import Integer
 
     if add_model_core is None:
-        model = gp.Model()
+        if env is None:
+            model = gp.Model()
+        else:
+            model = gp.Model(env=env)
+            
         cat_idx = get_cat_idx(space)
 
         x_lb = {}
