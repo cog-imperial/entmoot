@@ -52,3 +52,14 @@
 
 ### Fixed
 - 
+
+## [0.2.1] - 2021-01-18
+ 
+### Added
+- support for gurobi environments for integration with server license
+
+### Changed
+-
+
+### Fixed
+- 

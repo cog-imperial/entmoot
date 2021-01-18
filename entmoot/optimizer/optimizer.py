@@ -308,6 +308,8 @@ class Optimizer(object):
 
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
 
+        self.gurobi_env = acq_optimizer_kwargs.get("env", None)
+
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
 
         # Initialize storage for optimization
@@ -681,7 +683,9 @@ class Optimizer(object):
                 add_model_core = \
                     self.acq_optimizer_kwargs.get("add_model_core", None)
                 gurobi_model = \
-                    get_core_gurobi_model(self.space, add_model_core)
+                    get_core_gurobi_model(
+                        self.space, add_model_core, env=self.gurobi_env
+                    )
 
                 if self.verbose == 2:
                     print("")
