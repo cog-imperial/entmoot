@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+markers = [
+    "fast_test: marks tests as slow (deselect with '-m \"not fast_test\"')",
+    "consistent: marks tests that check consistency of results, i.e. may vary for different machines (deselect with '-m \"not consistent\"')"
+]

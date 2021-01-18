@@ -38,3 +38,28 @@
 
 ### Fixed
 - fix installation process
+
+## [0.2.0] - 2021-01-11
+ 
+### Added
+- support for categorical features
+- uncertainty quantification for categorical features
+- added testing for inputs and consistency
+
+### Changed
+- variable handling in optimization model, i.e. dictionaries for continuous and categorical variables
+- default parameters values of LGBM model changed
+
+### Fixed
+- 
+
+## [0.2.1] - 2021-01-18
+ 
+### Added
+- support for gurobi environments for integration with server license
+
+### Changed
+-
+
+### Fixed
+- 

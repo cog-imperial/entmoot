@@ -56,3 +56,38 @@ class Rosenbrock(BenchmarkFunction):
         add1 = sum( (1.0 - X0)**2.0 )
         add2 = 100.0 * sum( (X1 - X0**2.0)**2.0 )
         return add1 + add2
+
+class SimpleCat(BenchmarkFunction):
+
+    def __init__(self, func_config={}):
+        from entmoot.space.space import Categorical
+        self.cat_dims = [
+            Categorical(['mult6','pow2'])
+        ]
+        self.name = 'benchmark_function'
+        self.func_config = func_config
+        self.y_opt = 0.0
+
+    def get_bounds(self, n_dim=2):
+        temp_bounds = [(-2.0,2.0) for _ in range(n_dim)]
+        temp_bounds.extend(self.cat_dims)
+        return temp_bounds
+
+    def get_X_opt(self, n_dim=2):
+        pass
+
+    def _eval_point(self, X):
+        cat = X[-1]
+        X = np.asarray_chkfinite(X[:-1])
+        X0 = X[:-1]
+        X1 = X[1:]
+
+        add1 = X0[0]
+        add2 = X1[0]
+        
+        if cat == 'mult6':
+            return 6*(add1 + add2)
+        elif cat == 'pow2':
+            return (add1 + add2)**2
+        else:
+            raise ValueError("Please pick a category from '['mult2','pow2']' for X[-1].")

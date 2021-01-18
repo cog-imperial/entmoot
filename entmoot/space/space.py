@@ -46,7 +46,8 @@ from entmoot.space.transformers import Normalize
 from entmoot.space.transformers import Identity
 from entmoot.space.transformers import LogN
 from entmoot.space.transformers import Pipeline
-
+from entmoot.space.transformers import Logit
+from entmoot.space.transformers import Bilog
 
 # helper class to be able to print [1, ..., 4] instead of [1, '...', 4]
 class _Ellipsis:
@@ -142,15 +143,16 @@ def check_dimension(dimension, transform=None):
 
     if len(dimension) == 3:
         if (any([isinstance(dim, int) for dim in dimension[:2]]) and
-                dimension[2] in ["uniform", "log-uniform"]):
+                dimension[2] in ["uniform", "log-uniform", "bilog-uniform"]):
             return Integer(*dimension, transform=transform)
         elif (any([isinstance(dim, (float, int)) for dim in dimension[:2]]) and
-              dimension[2] in ["uniform", "log-uniform"]):
+              dimension[2] in ["uniform", "log-uniform", "logit-uniform", "bilog-uniform"]):
             return Real(*dimension, transform=transform)
         else:
             return Categorical(dimension, transform=transform)
 
     if len(dimension) == 4:
+        # covers the case if log-uniform is picked and base provided
         if (any([isinstance(dim, int) for dim in dimension[:2]]) and
                 dimension[2] == "log-uniform" and isinstance(dimension[3],
                                                              int)):
@@ -333,22 +335,52 @@ class Real(Dimension):
             if self.prior == "uniform":
                 self.transformer = Pipeline(
                     [Identity(), Normalize(self.low, self.high)])
-            else:
+            elif self.prior == "log-uniform":
                 self.transformer = Pipeline(
                     [LogN(self.base),
                      Normalize(np.log10(self.low) / self.log_base,
                                np.log10(self.high) / self.log_base)]
                 )
+            elif self.prior == "logit-uniform":
+                self.transformer = \
+                    [
+                        Logit(), 
+                        Normalize(
+                            Logit.transform(self.low), 
+                            Logit.transform(self.high)
+                        )
+                    ]
+            elif self.prior == "bilog-uniform":
+                self.transformer = \
+                    [
+                        Bilog(), 
+                        Normalize(
+                            Bilog.transform(self.low), 
+                            Bilog.transform(self.high)
+                        )
+                    ]
         else:
             if self.prior == "uniform":
                 self._rvs = _uniform_inclusive(self.low, self.high - self.low)
                 self.transformer = Identity()
-            else:
+            elif self.prior == "log-uniform":
                 self._rvs = _uniform_inclusive(
                     np.log10(self.low) / self.log_base,
                     np.log10(self.high) / self.log_base -
                     np.log10(self.low) / self.log_base)
                 self.transformer = LogN(self.base)
+            elif self.prior == "logit-uniform":
+                self._rvs = _uniform_inclusive(
+                    Logit.transform(self.low),
+                    Logit.transform(self.high) -
+                    Logit.transform(self.low))
+                self.transformer = Logit()
+            elif self.prior == "bilog-uniform":
+                self._rvs = _uniform_inclusive(
+                    Bilog.transform(self.low),
+                    Bilog.transform(self.high) -
+                    Bilog.transform(self.low))
+                self.transformer = Bilog()  
 
     def __eq__(self, other):
         return (type(self) is type(other) and
@@ -397,8 +429,12 @@ class Real(Dimension):
         else:
             if self.prior == "uniform":
                 return self.low, self.high
-            else:
+            elif self.prior == "log-uniform":
                 return np.log10(self.low), np.log10(self.high)
+            elif self.prior == "logit-uniform":
+                return Logit.transform(self.low), Logit.transform(self.high)
+            elif self.prior == "bilog-uniform":
+                return Bilog.transform(self.low), Bilog.transform(self.high) 
 
     def distance(self, a, b):
         """Compute distance between point `a` and `b`.
@@ -516,23 +552,37 @@ class Integer(Dimension):
             if self.prior == "uniform":
                 self.transformer = Pipeline(
                     [Identity(), Normalize(self.low, self.high, is_int=True)])
-            else:
-
+            elif self.prior == "log-uniform":
                 self.transformer = Pipeline(
                     [LogN(self.base),
                      Normalize(np.log10(self.low) / self.log_base,
                                np.log10(self.high) / self.log_base)]
                 )
+            elif self.prior == "bilog-uniform":
+                self.transformer = \
+                    [
+                        Bilog(), 
+                        Normalize(
+                            Bilog.transform(self.low), 
+                            Bilog.transform(self.high)
+                        )
+                    ]
         else:
             if self.prior == "uniform":
                 self._rvs = randint(self.low, self.high + 1)
                 self.transformer = Identity()
-            else:
+            elif self.prior == "log-uniform":
                 self._rvs = _uniform_inclusive(
                     np.log10(self.low) / self.log_base,
                     np.log10(self.high) / self.log_base -
                     np.log10(self.low) / self.log_base)
                 self.transformer = LogN(self.base)
+            elif self.prior == "bilog-uniform":
+                self._rvs = _uniform_inclusive(
+                    Bilog.transform(self.low),
+                    Bilog.transform(self.high) -
+                    Bilog.transform(self.low))
+                self.transformer = Bilog()  
 
     def __eq__(self, other):
         return (type(self) is type(other) and
@@ -579,7 +629,12 @@ class Integer(Dimension):
         if self.transform_ == "normalize":
             return 0., 1.
         else:
-            return (self.low, self.high)
+            if self.prior == "uniform":
+                return self.low, self.high
+            elif self.prior == "log-uniform":
+                return np.log10(self.low), np.log10(self.high)
+            elif self.prior == "bilog-uniform":
+                return Bilog.transform(self.low), Bilog.transform(self.high) 
 
     def distance(self, a, b):
         """Compute distance between point `a` and `b`.
@@ -631,7 +686,7 @@ class Categorical(Dimension):
         self.name = name
 
         if transform is None:
-            transform = "onehot"
+            transform = "label"
         self.transform_ = transform
         self.transformer = None
         self._rvs = None
@@ -644,7 +699,7 @@ class Categorical(Dimension):
             self.prior_ = prior
         self.set_transformer(transform)
 
-    def set_transformer(self, transform="onehot"):
+    def set_transformer(self, transform="label"):
         """Define _rvs and transformer spaces.
 
         Parameters

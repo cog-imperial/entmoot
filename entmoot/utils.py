@@ -38,11 +38,26 @@ import numpy as np
 from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
+import numbers
+from .space import Space, Dimension
+from sklearn.utils import check_random_state
 
 def is_supported(base_estimator):
     from entmoot.learning.tree_model import EntingRegressor
     return isinstance(base_estimator, (EntingRegressor, str, type(None)))
 
+def get_cat_idx(space):
+    from entmoot.space.space import Space, Categorical, Integer, Real, Dimension
+
+    if space is None:
+        return []
+
+    # collect indices of categorical features
+    cat_idx = []
+    for idx,dim in enumerate(space):
+        if isinstance(dim, Categorical):
+            cat_idx.append(idx)
+    return cat_idx
 
 def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None, 
         base_estimator_params=None):
@@ -72,6 +87,11 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
     from lightgbm import LGBMRegressor
     from entmoot.learning.tree_model import EntingRegressor
 
+
+    # collect indices of categorical features
+    cat_idx = get_cat_idx(space)
+
+
     if isinstance(base_estimator, str):
         base_estimator = base_estimator.upper()
         if base_estimator not in ["GBRT", "RF", "DUMMY"]:
@@ -82,7 +102,8 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
         base_estimator = \
             EntingRegressor(
                 base_estimator=base_estimator,
-                random_state=random_state
+                random_state=random_state,
+                cat_idx=cat_idx
             )
     else:
         raise ValueError("base_estimator is not supported.")
@@ -94,7 +115,8 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
                             )
         base_estimator = EntingRegressor(base_estimator=gbrt,
                                         std_estimator=std_estimator,
-                                        random_state=random_state)
+                                        random_state=random_state,
+                                        cat_idx=cat_idx)
     elif base_estimator == "RF":
         rf = LGBMRegressor(boosting_type='random_forest',
                             objective='regression',
@@ -135,8 +157,6 @@ def cook_std_estimator(std_estimator,
               distance to standardized data points
             - "L1BDD" for bounded-data distance, which uses manhattan
               distance to standardized data points
-            - "MP" for Misic proximity, which uses the number of trees
-              which match leaves with reference data points
         
         - penalty:
             - "DDP" for data distance, which uses squared euclidean
@@ -155,39 +175,38 @@ def cook_std_estimator(std_estimator,
     """
     from entmoot.learning.distance_based_std import \
         DistanceBasedExploration, DistanceBasedPenalty
-   
-    from entmoot.learning.proximity_std import \
-        MisicProximityStd
-
 
     if std_estimator == "BDD":
         std_estimator = \
             DistanceBasedExploration(
-                metric="sq_euclidean",
+                metric_cont="sq_euclidean",
+                metric_cat="goodall4",
+                space=space
             )
 
     elif std_estimator == "DDP":
         std_estimator = \
             DistanceBasedPenalty(
-                metric="sq_euclidean",
+                metric_cont="sq_euclidean",
+                metric_cat="goodall4",
+                space=space
             )
 
     elif std_estimator == "L1BDD":
         std_estimator = \
             DistanceBasedExploration(
-                metric="manhattan",
+                metric_cont="manhattan",
+                metric_cat="goodall4",
+                space=space
             )
 
     elif std_estimator == "L1DDP":
         std_estimator = \
             DistanceBasedPenalty(
-                metric="manhattan",
+                metric_cont="manhattan",
+                metric_cat="goodall4",
+                space=space
             )
-    
-    elif std_estimator == "MP":
-         std_estimator = MisicProximityStd(
-            threshold = 0.8
-         )
 
     std_estimator.set_params(**std_estimator_params)
     return std_estimator
@@ -383,3 +402,39 @@ def load(filename, **kwargs):
         Reconstructed OptimizeResult instance.
     """
     return load_(filename, **kwargs)
+
+def normalize_dimensions(dimensions):
+    """Create a ``Space`` where all dimensions are normalized to unit range.
+    This is particularly useful for Gaussian process based regressors and is
+    used internally by ``gp_minimize``.
+    Parameters
+    ----------
+    dimensions : list, shape (n_dims,)
+        List of search space dimensions.
+        Each search dimension can be defined either as
+        - a `(lower_bound, upper_bound)` tuple (for `Real` or `Integer`
+          dimensions),
+        - a `(lower_bound, upper_bound, "prior")` tuple (for `Real`
+          dimensions),
+        - as a list of categories (for `Categorical` dimensions), or
+        - an instance of a `Dimension` object (`Real`, `Integer` or
+          `Categorical`).
+         NOTE: The upper and lower bounds are inclusive for `Integer`
+         dimensions.
+    """
+    space = Space(dimensions)
+    transformed_dimensions = []
+    for dimension in space.dimensions:
+        # check if dimension is of a Dimension instance
+        if isinstance(dimension, Dimension):
+            # Change the transformer to normalize
+            # and add it to the new transformed dimensions
+            dimension.set_transformer("normalize")
+            transformed_dimensions.append(
+                dimension
+            )
+        else:
+            raise RuntimeError("Unknown dimension type "
+                               "(%s)" % type(dimension))
+
+    return Space(transformed_dimensions)
