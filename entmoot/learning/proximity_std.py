@@ -104,13 +104,26 @@ class MisicProximityStd(ABC):
                 # If the point is less than the split, go left.
                 if np.round(X[var],9) < np.round(split,9):
                     encoding = encoding + '0'
-                # If the point is greater than or equal to the split value, go right.
-                else:
+                # If the point is greater than the split value, go right.
+                elif np.round(X[var],9) > np.round(split,9):
                     encoding = encoding + '1'
+                # If the point is on the split value, see which side has the 
+                # smallest leaf under it.
+                else:
+                    # identify leaves below this branch point
+                    possible_leaves = [
+                        leaves[i] for i in range(len(leaves)) if leaves[i].startswith(encoding)]
+                    # get weights for the leaves below this branch point
+                    weights = list(gbm_model.get_leaf_weights(tree))
+                    possible_weights = [
+                        weights[i] for i in range(len(leaves)) if leaves[i].startswith(encoding)]
+                    # Determine which of these is the smallest
+                    best_leaf = possible_leaves[np.argmin(possible_weights)]
+                    # Move one step down that branch of the tree
+                    encoding = encoding + best_leaf[len(encoding)]                
             # Add this leaf to the set and move onto the next tree.
             X_leaves[tree] = encoding
         return X_leaves
-
 
     def get_closest_point_proximity(self, X):
         """Get distance to point of attribute `ref_points` which is closest to 
