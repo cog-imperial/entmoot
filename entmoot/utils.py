@@ -178,6 +178,9 @@ def cook_std_estimator(std_estimator,
     from entmoot.learning.distance_based_std import \
         DistanceBasedExploration, DistanceBasedPenalty
 
+    from entmoot.learning.proximity_std import \
+        MisicProximityStd
+   
     if std_estimator == "BDD":
         std_estimator = \
             DistanceBasedExploration(
