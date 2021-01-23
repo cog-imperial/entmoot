@@ -134,6 +134,7 @@ class MisicProximityStd(ABC):
             print(encoding)
             # Add this leaf to the set and move onto the next tree.
             X_leaves[tree] = encoding
+            print(X_leaves)
         return X_leaves
 
     def get_closest_point_proximity(self, X):
