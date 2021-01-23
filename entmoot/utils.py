@@ -59,7 +59,7 @@ def get_cat_idx(space):
             cat_idx.append(idx)
     return cat_idx
 
-def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None, 
+def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None,
         base_estimator_params=None):
     """Cook a default estimator.
 
@@ -69,9 +69,9 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
 
     Parameters
     ----------
-    base_estimator : "GBRT", creates LightGBM tree model based on base_estimator 
+    base_estimator : "GBRT", creates LightGBM tree model based on base_estimator
 
-    std_estimator : DistandBasedStd instance, 
+    std_estimator : DistandBasedStd instance or MisicProximityStd instance,
         Estimates model uncertainty of base_estimator
 
     space : Space instance
@@ -134,12 +134,12 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
 
     if base_estimator_params is not None:
         base_estimator.set_params(**base_estimator_params)
-        
+
     return base_estimator
 
-def cook_std_estimator(std_estimator, 
-                    space=None, 
-                    random_state=None, 
+def cook_std_estimator(std_estimator,
+                    space=None,
+                    random_state=None,
                     std_estimator_params=None):
     """Cook a default uncertainty estimator.
 
@@ -149,15 +149,17 @@ def cook_std_estimator(std_estimator,
         A model is used to estimate uncertainty of `base_estimator`.
         Different types can be classified as exploration measures, i.e. move
         as far as possible from reference points, and penalty measures, i.e.
-        stay as close as possible to reference points. Within these types, the 
+        stay as close as possible to reference points. Within these types, the
         following uncertainty estimators are available:
-        
+
         - exploration:
             - "BDD" for bounded-data distance, which uses squared euclidean
               distance to standardized data points
             - "L1BDD" for bounded-data distance, which uses manhattan
               distance to standardized data points
-        
+            - "MP" for Misic proximity, which uses the number of trees
+              which match leaves with reference data points
+
         - penalty:
             - "DDP" for data distance, which uses squared euclidean
               distance to standardized data points
@@ -207,6 +209,11 @@ def cook_std_estimator(std_estimator,
                 metric_cat="goodall4",
                 space=space
             )
+
+    elif std_estimator == "MP":
+         std_estimator = MisicProximityStd(
+            threshold = 0.8
+         )
 
     std_estimator.set_params(**std_estimator_params)
     return std_estimator
