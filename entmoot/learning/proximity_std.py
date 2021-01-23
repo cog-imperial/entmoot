@@ -129,7 +129,8 @@ class MisicProximityStd(ABC):
                     # Determine which of these is the smallest
                     best_leaf = possible_leaves[np.argmin(possible_weights)]
                     # Move one step down that branch of the tree
-                    encoding = encoding + best_leaf[len(encoding)]                
+                    encoding = encoding + best_leaf[len(encoding)] 
+                print(encoding)
             # Add this leaf to the set and move onto the next tree.
             X_leaves[tree] = encoding
         return X_leaves
