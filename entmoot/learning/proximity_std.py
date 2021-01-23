@@ -103,6 +103,7 @@ class MisicProximityStd(ABC):
         """
         X_leaves = np.empty(gbm_model.n_trees,dtype='str')
         for tree in range(gbm_model.n_trees):
+            print("Tree:",str(tree))
             # Identify which nodes are leaves.
             leaves = list(gbm_model.get_leaf_encodings(tree))
             encoding = '' # Start at the root, walk until we reach a leaf.
