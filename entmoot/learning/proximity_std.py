@@ -26,7 +26,7 @@ class MisicProximityStd(ABC):
     """
     def __init__(self,threshold=0.9):
         self.threshold = threshold
-        
+        print("Boop")
         # define the distance metric for continuous variables
 
     def set_params(self,**kwargs):
@@ -212,7 +212,9 @@ class MisicProximityStd(ABC):
                 for j in range(n_trees):
                     # Construct the leaf variable name
                     leafvar_name = "z_l[" + label + "," + str(j) + "," + str(self.ref_leaves[observation][j])+"]"
+                    print(leafvar_name)
                     leafvar = model.getVarByName(leafvar_name)
+                    print(leafvar)
                     prox_obs.addTerms([1],[leafvar])
                 
                 # Add constraint to model.
