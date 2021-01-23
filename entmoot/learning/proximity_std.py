@@ -42,7 +42,7 @@ class MisicProximityStd(ABC):
         """
         self.threshold = kwargs.get("threshold",0.9)
 
-    def update(self, Xi, yi):
+    def update(self, Xi, yi,cat_column=[]):
         """Update available data points which is usually done after every
         iteration.
         Parameters
@@ -51,10 +51,19 @@ class MisicProximityStd(ABC):
             Points at which objective has been evaluated.
         yi : scalar
             Values of objective at corresponding points in `Xi`.
+        cat_column : 
+            Currently categorical variables are not supported, but putting 
+            this in for compatibility.
+            
         Returns
         -------
         -
         """
+        if cat_column != []:
+            raise ValueError(
+                "Categorical variables are currently unsupported with the "
+                "Misic Proximity standard estimator."
+                )
         # update data set attributes
         self.Xi = Xi
         self.yi = yi
