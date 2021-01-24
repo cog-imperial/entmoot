@@ -157,12 +157,13 @@ class MisicProximityStd(ABC):
              ]
         return np.max(prox_list)
 
-    def predict(self, X):
+    def predict(self, X, scaled=True):
         """Predict standard estimate at location `X`.
         Parameters
         ----------
         X : numpy array, shape (n_rows, n_dims)
             Points at which the standard estimator is evaluated.
+        scaled : not relevant here, but included for compatibility.
         Returns
         -------
         prox : numpy array, shape (n_rows,)
