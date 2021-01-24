@@ -26,7 +26,6 @@ class MisicProximityStd(ABC):
     """
     def __init__(self,threshold=0.9):
         self.threshold = threshold
-        print("Boop")
         # define the distance metric for continuous variables
 
     def set_params(self,**kwargs):
@@ -101,9 +100,8 @@ class MisicProximityStd(ABC):
             each branch point of the tree.
             
         """
-        X_leaves = np.empty(gbm_model.n_trees,dtype='U32')
+        X_leaves = np.empty(gbm_model.n_trees,dtype='U32') # Assuming no regressors go deeper than 32 branches
         for tree in range(gbm_model.n_trees):
-            print("Tree:",str(tree))
             # Identify which nodes are leaves.
             leaves = list(gbm_model.get_leaf_encodings(tree))
             encoding = '' # Start at the root, walk until we reach a leaf.
@@ -131,10 +129,8 @@ class MisicProximityStd(ABC):
                     best_leaf = possible_leaves[np.argmin(possible_weights)]
                     # Move one step down that branch of the tree
                     encoding = encoding + best_leaf[len(encoding)] 
-            print(encoding)
             # Add this leaf to the set and move onto the next tree.
             X_leaves[tree] = encoding
-            print(X_leaves)
         return X_leaves
 
     def get_closest_point_proximity(self, X):
