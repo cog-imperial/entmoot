@@ -101,7 +101,7 @@ class MisicProximityStd(ABC):
             each branch point of the tree.
             
         """
-        X_leaves = np.empty(gbm_model.n_trees,dtype='str')
+        X_leaves = np.empty(gbm_model.n_trees,dtype='U')
         for tree in range(gbm_model.n_trees):
             print("Tree:",str(tree))
             # Identify which nodes are leaves.
