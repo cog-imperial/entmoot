@@ -211,9 +211,7 @@ class MisicProximityStd(ABC):
                 for j in range(n_trees):
                     # Construct the leaf variable name
                     leafvar_name = "z_l[" + label + "," + str(j) + "," + str(self.ref_leaves[observation][j])+"]"
-                    print(leafvar_name)
                     leafvar = model.getVarByName(leafvar_name)
-                    print(leafvar)
                     prox_obs.addTerms([1],[leafvar])
                 
                 # Add constraint to model.
