@@ -88,7 +88,7 @@ def add_next_nodes(ordered_node_list, node, cat_column=[]):
             if not new_node['split_var'] in cat_column:
                 # read numerical variables
                 temp_node_val = node[-1]['threshold']
-                new_node['split_code_pred'] = round(temp_node_val,9)
+                new_node['split_code_pred'] = round(temp_node_val,5)
             else:
                 # read categorical variables
                 cat_set = node[-1]['threshold'].split("||")
@@ -98,7 +98,7 @@ def add_next_nodes(ordered_node_list, node, cat_column=[]):
         except KeyError:
             new_node['split_var'] = -1
             temp_node_val = node[-1]['leaf_value']
-            new_node['split_code_pred'] = round(temp_node_val,9)
+            new_node['split_code_pred'] = round(temp_node_val,5)
 
         ordered_node_list.append(new_node)
 
