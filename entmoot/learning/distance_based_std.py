@@ -715,6 +715,8 @@ class DistanceBasedStd(ABC):
         metric_cat='overlap',
         space=None):
 
+        self.std_type = 'distance'
+
         # set distance metric for cont variables
         if metric_cont == 'sq_euclidean':
             from entmoot.learning.distance_based_std import SquaredEuclidean
