@@ -159,17 +159,23 @@ def add_acq_to_gurobi_model(model, est, acq_func="LCB", acq_func_kwargs=None):
     if acq_func_kwargs is None:
         acq_func_kwargs = dict()
 
-    # read kappa parameter
-    kappa = acq_func_kwargs.get("kappa", 1.96)
-
     # collect objective contribution for tree model and std estimator
     mu, std = get_gurobi_obj(
         model, est, return_std=True, acq_func_kwargs=acq_func_kwargs
     )
-    ob_expr = quicksum((mu, kappa*std))
+    
+    if acq_func=="LCB":
+        kappa = acq_func_kwargs.get("kappa", 1.96)
+        ob_expr = quicksum((mu, kappa*std))
+        model.setObjective(ob_expr,GRB.MINIMIZE)
+        model.update()
 
-    model.setObjective(ob_expr,GRB.MINIMIZE)
+    elif acq_func=="HLCB":
+        obj_cost = acq_func_kwargs.get("obj_cost", 0.5)
+        model.setObjectiveN(mu,0,1, reltol=obj_cost)
+        model.setObjectiveN(std,1,0)
 
+        model.update()
 
 def get_gurobi_obj(model, est, return_std=False, acq_func_kwargs=None):
     """Returns gurobi model objective contribution of tree model and std
@@ -226,6 +232,13 @@ def get_gbm_obj(model):
     )
     ob_expr = weighted_sum
     return ob_expr
+
+def get_gbm_obj_from_model(model, label):
+    temp_sum = sum(model._leaf_weight(label, tree, leaf) * \
+        round(model._z_l[label, tree, leaf].x,1)
+        for temp_label, tree, leaf in leaf_index(model) if temp_label == label)
+    return temp_sum
+
 
 ### GBT HANDLER
 ## gbt model helper functions
