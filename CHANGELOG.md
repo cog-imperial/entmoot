@@ -63,3 +63,14 @@
 
 ### Fixed
 - 
+
+## [0.2.2] - 2021-02-01
+ 
+### Added
+- allow consistent variable names for gurobi model and dimensions
+
+### Changed
+-
+
+### Fixed
+- 

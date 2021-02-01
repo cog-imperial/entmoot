@@ -32,7 +32,17 @@ def get_core_gurobi_model(space, add_model_core=None, env=None):
         model._cont_var_dict = {}
         model._cat_var_dict = {}
 
+        all_names = [dim.name for dim in space.dimensions]
+
         for idx,dim in enumerate(space.dimensions):
+            if dim.name:
+                temp_var_name = str(dim.name)
+            else:
+                temp_var_name = '_'.join(['x', str(idx)])
+
+            assert all_names.count(temp_var_name) <= 1,\
+                f"please pick unique names for dimensions, i.e. '{temp_var_name}' appears multiple times"
+
             if idx not in cat_idx:
                 # store bounds of numerical vars
                 x_lb[idx] = dim.transformed_bounds[0]
@@ -41,20 +51,21 @@ def get_core_gurobi_model(space, add_model_core=None, env=None):
                 if isinstance(dim, Integer) and dim.prior in ["uniform"]:
                     model._cont_var_dict[idx] = \
                         model.addVar(lb=x_lb[idx], ub=x_ub[idx], 
-                            name=f"x_{idx}", vtype='I')
+                            name=temp_var_name, vtype='I')
                 else:
                     model._cont_var_dict[idx] = \
                         model.addVar(lb=x_lb[idx], ub=x_ub[idx], 
-                            name=f"x_{idx}", vtype='C')
+                            name=temp_var_name, vtype='C')
             else:
                 # store categories of categorical vars
                 model._cat_var_dict[idx] = {}
                 for cat in dim.transform(dim.bounds):
                     model._cat_var_dict[idx][cat] = \
-                        model.addVar(name=f"x_{idx}_{cat}", vtype=GRB.BINARY)
+                        model.addVar(name=f"{temp_var_name}_{cat}", vtype=GRB.BINARY)
             
         model._n_feat = len(model._cont_var_dict) + len(model._cat_var_dict)
         model.update()
+
         return model
     else:
         # validate model core input
