@@ -913,11 +913,20 @@ class Optimizer(object):
                 return temp_mu[0]
 
     def predict_with_acq(self, x):
-        next_x = self.space.transform([x])[0]
+        from entmoot.utils import is_2Dlistlike
+
+        if is_2Dlistlike(x):
+            next_x = np.asarray(
+                self.space.transform(x)
+            )
+        else:
+            next_x = np.asarray(
+                self.space.transform([x])[0]
+            ).reshape(1, -1)
 
         if self.models:
             temp_val = _gaussian_acquisition(
-                X=np.asarray(next_x).reshape(1, -1), model=self.models[-1], 
+                X=next_x, model=self.models[-1], 
                 y_opt=np.min(self.yi),
                 acq_func=self.acq_func,
                 acq_func_kwargs=self.acq_func_kwargs
@@ -927,10 +936,13 @@ class Optimizer(object):
             est.fit(self.space.transform(self.Xi), self.yi)
 
             temp_val = _gaussian_acquisition(
-                X=np.asarray(next_x).reshape(1, -1), model=est, 
+                X=next_x, model=est, 
                 y_opt=np.min(self.yi),
                 acq_func=self.acq_func,
                 acq_func_kwargs=self.acq_func_kwargs
             )
-        
-        return temp_val[0]
+            
+        if is_2Dlistlike(x):
+            return temp_val
+        else:
+            return temp_val[0]
