@@ -875,28 +875,42 @@ class Optimizer(object):
         return result
 
     def predict_with_est(self, x, return_std=True):
-        next_x = self.space.transform([x])[0]
+        from entmoot.utils import is_2Dlistlike
 
+        if is_2Dlistlike(x):
+            next_x = np.asarray(
+                self.space.transform(x)
+            )
+        else:
+            next_x = np.asarray(
+                self.space.transform([x])[0]
+            ).reshape(1, -1)
+            
         if self.models:
             temp_mu, temp_std = \
                 self.models[-1].predict(
-                    X=np.asarray(next_x).reshape(1, -1), 
+                    X=next_x, 
                     return_std=True,
                     scaled=self.scaled)
         else:
-            print("train first")
             est = clone(self.base_estimator_)
             est.fit(self.space.transform(self.Xi), self.yi)
             temp_mu, temp_std = \
                 est.predict(
-                    X=np.asarray(next_x).reshape(1, -1), 
+                    X=next_x, 
                     return_std=True,
                     scaled=self.scaled)
         
-        if return_std:
-            return temp_mu[0], temp_std[0]
+        if is_2Dlistlike(x):
+            if return_std:
+                return temp_mu, temp_std
+            else:
+                return temp_mu
         else:
-            return temp_mu[0]
+            if return_std:
+                return temp_mu[0], temp_std[0]
+            else:
+                return temp_mu[0]
 
     def predict_with_acq(self, x):
         next_x = self.space.transform([x])[0]
