@@ -27,7 +27,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-NOTE: Changes were made to the scikit-optimize source code included here. 
+NOTE: Changes were made to the scikit-optimize source code included here.
 For the most recent version of scikit-optimize we refer to:
 https://github.com/scikit-optimize/scikit-optimize/
 
@@ -70,10 +70,10 @@ class Optimizer(object):
           `Categorical`).
 
     base_estimator : string, default: "GBRT",
-        A default LightGBM surrogate model of the corresponding type is used  
+        A default LightGBM surrogate model of the corresponding type is used
         minimize `func`.
         The following model types are available:
-        
+
         - "GBRT" for gradient-boosted trees
 
         - "RF" for random forests
@@ -85,14 +85,18 @@ class Optimizer(object):
         Different types can be classified as exploration measures, i.e. move
         as far as possible from reference points, and penalty measures, i.e.
         stay as close as possible to reference points. Within these types, the 
+        stay as close as possible to reference points. Within these types, the
         following uncertainty estimators are available:
-        
+
         - exploration:
             - "BDD" for bounded-data distance, which uses squared euclidean
               distance to standardized data points
             - "L1BDD" for bounded-data distance, which uses manhattan
               distance to standardized data points
-        
+            - "MP" for Misic proximity, which uses the number of trees
+              which match leaves with reference data points
+
+
         - penalty:
             - "DDP" for data distance, which uses squared euclidean
               distance to standardized data points
@@ -104,8 +108,8 @@ class Optimizer(object):
     n_initial_points : int, default: 50
         Number of evaluations of `func` with initialization points
         before approximating it with `base_estimator`. Initial point
-        generator can be changed by setting `initial_point_generator`. For 
-        `n_initial_points` <= 20 we need to set `min_child_samples` <= 20 in 
+        generator can be changed by setting `initial_point_generator`. For
+        `n_initial_points` <= 20 we need to set `min_child_samples` <= 20 in
         `base_estimator_kwargs` so LightGBM can train tree models based on small
         data sets.
 
@@ -156,7 +160,7 @@ class Optimizer(object):
         case of None, the list has no capped length.
 
     verbose : bool or int:
-        - If it is `True`, general solver information is printed at every 
+        - If it is `True`, general solver information is printed at every
           iteration
         - If it is `False`, no output is printed
 
@@ -178,16 +182,16 @@ class Optimizer(object):
         An instance of :class:`skopt.space.Space`. Stores parameter search
         space used to sample points, bounds, and type of parameters.
     """
-    def __init__(self, 
-                dimensions, 
+    def __init__(self,
+                dimensions,
                 base_estimator="GBRT",
-                std_estimator="BDD", 
-                n_initial_points=50, 
+                std_estimator="BDD",
+                n_initial_points=50,
                 initial_point_generator="random",
-                acq_func="LCB", 
-                acq_optimizer="global", 
-                random_state=None, 
-                acq_func_kwargs=None, 
+                acq_func="LCB",
+                acq_optimizer="global",
+                random_state=None,
+                acq_func_kwargs=None,
                 acq_optimizer_kwargs=None,
                 base_estimator_kwargs=None,
                 std_estimator_kwargs=None,
@@ -199,7 +203,7 @@ class Optimizer(object):
         from entmoot.utils import cook_estimator
         from entmoot.utils import cook_initial_point_generator
         from entmoot.utils import cook_std_estimator
-        
+
 
         self.specs = {"args": copy.copy(inspect.currentframe().f_locals),
                       "function": "Optimizer"}
@@ -207,7 +211,7 @@ class Optimizer(object):
         from sklearn.utils import check_random_state
 
         self.rng = check_random_state(random_state)
-        
+
         # Configure acquisition function
 
         # Store and create acquisition function set
@@ -231,7 +235,7 @@ class Optimizer(object):
         self.n_initial_points_ = n_initial_points
 
         # Configure search space
-        
+
         # initialize search space
         import numpy as np
         from entmoot.space.space import Space
@@ -256,8 +260,8 @@ class Optimizer(object):
 
         if std_estimator_kwargs is None:
             std_estimator_kwargs = dict()
-        
-        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP"]
+
+        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP","MP"]
         if self.std_estimator not in allowed_std_est:
             raise ValueError("expected std_estimator to be in %s, got %s" %
                              (",".join(allowed_std_est), self.std_estimator))
@@ -285,8 +289,8 @@ class Optimizer(object):
 
         # build base_estimator
         base_estimator = cook_estimator(
-            base_estimator, 
-            self.std_estimator, 
+            base_estimator,
+            self.std_estimator,
             space=self.space,
             random_state=est_random_state,
             base_estimator_params=base_estimator_kwargs)
@@ -347,7 +351,7 @@ class Optimizer(object):
             else:
                 self.verbose = verbose
 
-        # printed_switch_to_model defines if notification of switch from 
+        # printed_switch_to_model defines if notification of switch from
         # intitial point generation to model-based point generation has been
         # printed yet
         if self.verbose > 0:
@@ -456,7 +460,7 @@ class Optimizer(object):
 
         X = []
         for i in range(n_points):
-            
+
             x = opt.ask()
             X.append(x)
 
@@ -603,12 +607,12 @@ class Optimizer(object):
             next_xt = self.space.transform([self._next_x])[0]
             temp_mu, temp_std = \
                 self.models[-1].predict(
-                    X=np.asarray(next_xt).reshape(1, -1), 
+                    X=np.asarray(next_xt).reshape(1, -1),
                     return_std=True,
                     scaled=self.scaled)
             self.model_mu.append(temp_mu)
             self.model_std.append(temp_std)
-            
+
         # optimizer learned something new - discard cache
         self.cache_ = {}
 
@@ -639,13 +643,13 @@ class Optimizer(object):
                 self.printed_switch_to_model = True
 
             if self.acq_optimizer == "sampling":
-                # sample a large number of points and then pick the best ones as 
+                # sample a large number of points and then pick the best ones as
                 # starting points
                 X = self.space.transform(self.space.rvs(
                     n_samples=self.n_points, random_state=self.rng))
 
                 values = _gaussian_acquisition(
-                    X=X, model=est, 
+                    X=X, model=est,
                     y_opt=np.min(self.yi),
                     acq_func=self.acq_func,
                     acq_func_kwargs=self.acq_func_kwargs)
@@ -664,7 +668,7 @@ class Optimizer(object):
                         "please install the Gurobi solver "
                         "(https://www.gurobi.com/) and its interface "
                         "gurobipy. "
-                        "Alternatively, change `aqu_optimizer='sampling'`.")
+                        "Alternatively, change `acq_optimizer='sampling'`.")
                     import sys
                     sys.exit(1)
 
@@ -718,7 +722,7 @@ class Optimizer(object):
                 if self.gurobi_timelimit is not None:
                     gurobi_model.Params.TimeLimit= self.gurobi_timelimit
                 gurobi_model.Params.OutputFlag=1
-                
+
                 gurobi_model.optimize()
 
                 assert gurobi_model.SolCount >= 1, "gurobi couldn't find a feasible " + \
@@ -740,14 +744,14 @@ class Optimizer(object):
                 for i in gurobi_model._cat_var_dict.keys():
                     cat = \
                         [
-                            key 
+                            key
                             for key in gurobi_model._cat_var_dict[i].keys()
                             if int(
                                 round(gurobi_model._cat_var_dict[i][key].x,1)
                             ) == 1
                         ]
 
-                    next_x[i] = cat[0]   
+                    next_x[i] = cat[0]
 
             # note the need for [0] at the end
             self._next_x = self.space.inverse_transform(
@@ -761,7 +765,7 @@ class Optimizer(object):
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
-    
+
         result.specs = self.specs
         return result
 
@@ -796,7 +800,7 @@ class Optimizer(object):
         from entmoot.utils import create_result
 
         result = create_result(self.Xi, self.yi, self.space, self.rng,
-                               models=self.models, 
+                               models=self.models,
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
@@ -830,7 +834,7 @@ class Optimizer(object):
         from entmoot.utils import create_result
 
         result = create_result(self.Xi, self.yi, self.space, self.rng,
-                               models=self.models, 
+                               models=self.models,
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
@@ -843,7 +847,7 @@ class Optimizer(object):
         if self.models:
             temp_mu, temp_std = \
                 self.models[-1].predict(
-                    X=np.asarray(next_x).reshape(1, -1), 
+                    X=np.asarray(next_x).reshape(1, -1),
                     return_std=True,
                     scaled=self.scaled)
         else:
@@ -852,10 +856,10 @@ class Optimizer(object):
             est.fit(self.space.transform(self.Xi), self.yi)
             temp_mu, temp_std = \
                 est.predict(
-                    X=np.asarray(next_x).reshape(1, -1), 
+                    X=np.asarray(next_x).reshape(1, -1),
                     return_std=True,
                     scaled=self.scaled)
-        
+
         if return_std:
             return temp_mu[0], temp_std[0]
         else:
@@ -866,7 +870,7 @@ class Optimizer(object):
 
         if self.models:
             temp_val = _gaussian_acquisition(
-                X=np.asarray(next_x).reshape(1, -1), model=self.models[-1], 
+                X=np.asarray(next_x).reshape(1, -1), model=self.models[-1],
                 y_opt=np.min(self.yi),
                 acq_func=self.acq_func,
                 acq_func_kwargs=self.acq_func_kwargs
@@ -876,10 +880,10 @@ class Optimizer(object):
             est.fit(self.space.transform(self.Xi), self.yi)
 
             temp_val = _gaussian_acquisition(
-                X=np.asarray(next_x).reshape(1, -1), model=est, 
+                X=np.asarray(next_x).reshape(1, -1), model=est,
                 y_opt=np.min(self.yi),
                 acq_func=self.acq_func,
                 acq_func_kwargs=self.acq_func_kwargs
             )
-        
+
         return temp_val[0]
