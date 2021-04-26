@@ -645,13 +645,16 @@ class Optimizer(object):
                 # sampling points from the space
                 next_x = X[np.argmin(values)]
 
-                # derive model mu and std 
-                next_xt = self.space.transform([next_x])[0]
+                # derive model mu and std
+                #next_xt = self.space.transform([next_x])[0]
                 next_model_mu, next_model_std = \
                     self.models[-1].predict(
-                        X=np.asarray(next_xt).reshape(1, -1), 
+                        X=np.asarray(next_x).reshape(1, -1),
                         return_std=True,
                         scaled=self.scaled)
+                
+                model_mu = next_model_mu[0]
+                model_std = next_model_std[0]
 
             # acquisition function is optimized globally
             elif self.acq_optimizer == "global":
@@ -777,7 +780,18 @@ class Optimizer(object):
             # note the need for [0] at the end
             self._next_x = self.space.inverse_transform(
                 next_x.reshape((1, -1)))[0]
-            self._next_x = [round( _ , 5) for _ in self._next_x]
+
+            from entmoot.utils import get_cat_idx
+
+            for idx,xi in enumerate(self._next_x):
+                if idx not in get_cat_idx(self.space):
+                    self._next_x[idx] = round(xi, 5)
+
+                    # enforce variable bounds
+                    if self._next_x[idx] > self.space.transformed_bounds[idx][1]:
+                        self._next_x[idx] = self.space.transformed_bounds[idx][1]
+                    elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
+                        self._next_x[idx] = self.space.transformed_bounds[idx][0]
 
             self._model_mu = round(model_mu,5)
 
