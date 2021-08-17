@@ -1,7 +1,7 @@
 import mopti as opti
 import pandas as pd
 
-# Idea: Create Entmoot class based on Algorithm class from BO
+# Idea: Create Entmoot class that inherits from Algorithm class in BO.
 
 
 def test_api():
