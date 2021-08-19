@@ -1,9 +1,11 @@
+from entmoot.learning import EntingRegressor
+from tqdm import tqdm
 from typing import Optional, Tuple
 
 import numpy as np
 import opti
 import pandas as pd
-from tqdm import tqdm
+
 
 
 class Algorithm:
@@ -106,7 +108,15 @@ class Algorithm:
 
 
 class Entmoot(Algorithm):
+
     """Class for Entmoot objects"""
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
+        # TODO: Identify categorical variables in problem object
+        cat_idx = []
+        self.model = EntingRegressor(cat_idx=cat_idx)
+        # TODO: Extract labeled training data
+        X = []
+        y = []
+        self.model.fit(X=X, y=y)
         raise NotImplementedError
