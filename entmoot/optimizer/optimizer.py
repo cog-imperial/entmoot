@@ -43,7 +43,6 @@ from sklearn.base import clone
 
 from entmoot.acquisition import _gaussian_acquisition
 
-import sys
 
 class Optimizer(object):
     """Run bayesian optimisation loop.
