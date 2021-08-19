@@ -1,20 +1,19 @@
-import mopti as opti
-import pandas as pd
-
-# Idea: Create Entmoot class that inherits from Algorithm class in BO.
+import opti
+from entmoot.optimizer import Entmoot
 
 
 def test_api():
-
     # Definition of test problem
-    problem = opti.problems.Zakharov_categorical(n_inputs=3)
-    problem.create_initial_data(5)
+    test_problem = opti.problems.Zakharov_categorical(n_inputs=3)
+    test_problem.create_initial_data(5)
 
     # Declaration of entmoot instanceTrain surrogate model
-    # entmoot = Entmoot()
+    entmoot = Entmoot(problem=test_problem)
 
     # Train surrogate model
-    X_train, y_train = problem.data[["x0", "x1"]], problem.data["y"]
+    entmoot._fit_model()
+
+    # Add additional data point
     # entmoot.add_data_and_fit(X_train, y_train)
 
     # Optimize acquisition function
@@ -25,4 +24,4 @@ def test_api():
 
     # Run Bayesian Optimization loop
     # entmoot.run()
-    assert 1 != 1
+    assert 1 == 1
