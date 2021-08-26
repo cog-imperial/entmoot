@@ -1,5 +1,5 @@
 import opti
-from entmoot.optimizer import Entmoot
+from entmoot.optimizer import EntmootOpti
 
 
 def test_api():
@@ -8,7 +8,7 @@ def test_api():
     test_problem.create_initial_data(5)
 
     # Declaration of entmoot instanceTrain surrogate model
-    entmoot = Entmoot(problem=test_problem)
+    entmoot = EntmootOpti(problem=test_problem)
 
     # Train surrogate model
     entmoot._fit_model()
