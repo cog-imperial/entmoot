@@ -8,7 +8,8 @@ def test_api():
     test_problem.create_initial_data(5)
 
     # Declaration of entmoot instanceTrain surrogate model
-    entmoot = EntmootOpti(problem=test_problem)
+    surrogat_params = {"std_est": "L1"}
+    entmoot = EntmootOpti(problem=test_problem, surrogat_params=surrogat_params)
 
     # Train surrogate model
     entmoot._fit_model()

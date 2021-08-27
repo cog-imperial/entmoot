@@ -108,15 +108,20 @@ class Algorithm:
 
 
 class EntmootOpti(Algorithm):
+    """Class for Entmoot objects in opti interface"""
 
-    """Class for Entmoot objects"""
+    def __init__(self, problem: opti.Problem, surrogat_params: dict = None):
+        self._problem = problem
+        self._surrogat_params = surrogat_params
+        self.model = None
+
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
 
         cat_idx = [i for i, j in enumerate(self.inputs.parameters.values()) if type(j) is opti.Categorical]
 
         self.model = EntingRegressor(cat_idx=cat_idx)
-        # TODO: Extract labeled training data
+
         X = self.data[self.inputs.names]
         y = self.data[self.outputs.names]
         self.model.fit(X=X, y=y)
