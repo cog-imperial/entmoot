@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import numpy as np
 import opti
 import pandas as pd
+import lightgbm as lgb
 
 
 
@@ -118,11 +119,15 @@ class EntmootOpti(Algorithm):
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
 
-        cat_idx = [i for i, j in enumerate(self.inputs.parameters.values()) if type(j) is opti.Categorical]
-
-        self.model = EntingRegressor(cat_idx=cat_idx)
-
         X = self.data[self.inputs.names]
         y = self.data[self.outputs.names]
-        self.model.fit(X=X, y=y)
-        raise NotImplementedError
+
+        # Extract names of categorical columns and mark them as categorical variables in Pandas. Pandas will tell this
+        # light gbm, such that there is no need for the categorical_feature parameter in light gbm.
+        cat_name = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
+        X[cat_name] = X[cat_name].astype("category")
+
+        param = self._surrogat_params
+        train_data = lgb.Dataset(X, label=y)
+
+        self.model = lgb.train(param, train_data)
