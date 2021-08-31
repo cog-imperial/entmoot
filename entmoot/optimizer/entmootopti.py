@@ -114,7 +114,8 @@ class EntmootOpti(Algorithm):
     def __init__(self, problem: opti.Problem, surrogat_params: dict = None):
         self._problem = problem
         self._surrogat_params = surrogat_params
-        self.model = None
+        self.model: lgb.Booster = None
+        self.cat_names: list[str] = None
 
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
@@ -123,11 +124,16 @@ class EntmootOpti(Algorithm):
         y = self.data[self.outputs.names]
 
         # Extract names of categorical columns and mark them as categorical variables in Pandas. Pandas will tell this
-        # light gbm, such that there is no need for the categorical_feature parameter in light gbm.
-        cat_name = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
-        X[cat_name] = X[cat_name].astype("category")
+        # light gbm, such that there is no need for the categorical_feature parameter in light gbm and therefore we
+        # don't need to do an categorical encoding.
+        self.cat_names = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
+        X[self.cat_names] = X[self.cat_names].astype("category")
 
         param = self._surrogat_params
         train_data = lgb.Dataset(X, label=y)
 
         self.model = lgb.train(param, train_data)
+
+    def predict(self, X: pd.DataFrame) -> pd.DataFrame:
+        X[self.cat_names] = X[self.cat_names].astype("category")
+        return self.model.predict(X)

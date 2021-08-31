@@ -1,4 +1,6 @@
 import opti
+import pandas as pd
+
 from entmoot.optimizer import EntmootOpti
 
 
@@ -11,18 +13,25 @@ def test_api():
     surrogat_params = {"std_est": "L1"}
     entmoot = EntmootOpti(problem=test_problem, surrogat_params=surrogat_params)
 
+    assert entmoot.model is None
+
     # Train surrogate model
     entmoot._fit_model()
 
-    # Add additional data point
-    # entmoot.add_data_and_fit(X_train, y_train)
+    assert entmoot.model is not None
+
+    X_pred = pd.DataFrame([
+        {"x0": 5, "x1": 5, "expon_switch": "one"},
+        {"x0": 0, "x1": 0, "expon_switch": "two"}
+    ])
+
+    # Prediction based on surrogate model
+    y_pred = entmoot.predict(X_pred)
+
+    assert len(y_pred) == 2
 
     # Optimize acquisition function
     # X_next = entmoot.propose(n_proposals=3)
 
-    # Prediction based on surrogate model
-    # y_pred = entmoot.predict(X_next)
-
     # Run Bayesian Optimization loop
     # entmoot.run()
-    assert 1 == 1
