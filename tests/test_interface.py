@@ -1,5 +1,6 @@
 import opti
 import pandas as pd
+from lightgbm import Booster
 
 from entmoot.optimizer import EntmootOpti
 
@@ -10,7 +11,7 @@ def test_api():
     test_problem.create_initial_data(5)
 
     # Declaration of entmoot instanceTrain surrogate model
-    surrogat_params = {"std_est": "L1"}
+    surrogat_params = {"verbose": -1}
     entmoot = EntmootOpti(problem=test_problem, surrogat_params=surrogat_params)
 
     assert entmoot.model is None
@@ -18,7 +19,7 @@ def test_api():
     # Train surrogate model
     entmoot._fit_model()
 
-    assert entmoot.model is not None
+    assert type(entmoot.model) == Booster
 
     X_pred = pd.DataFrame([
         {"x0": 5, "x1": 5, "expon_switch": "one"},
@@ -31,7 +32,7 @@ def test_api():
     assert len(y_pred) == 2
 
     # Optimize acquisition function
-    # X_next = entmoot.propose(n_proposals=3)
+    X_next = entmoot.propose(n_proposals=3)
 
     # Run Bayesian Optimization loop
     # entmoot.run()

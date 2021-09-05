@@ -1,4 +1,4 @@
-from entmoot.learning import EntingRegressor
+from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
 from tqdm import tqdm
 from typing import Optional, Tuple
 
@@ -129,11 +129,19 @@ class EntmootOpti(Algorithm):
         self.cat_names = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
         X[self.cat_names] = X[self.cat_names].astype("category")
 
-        param = self._surrogat_params
-        train_data = lgb.Dataset(X, label=y)
+        train_data = lgb.Dataset(X, label=y, params=self._surrogat_params)
 
-        self.model = lgb.train(param, train_data)
+        self.model = lgb.train(self._surrogat_params, train_data)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         X[self.cat_names] = X[self.cat_names].astype("category")
         return self.model.predict(X)
+
+    def propose(self, n_proposals: int = 1) -> pd.DataFrame:
+
+        # TODO: Construct space object
+        space = {}
+
+        gurobi_model = get_core_gurobi_model(space)
+
+        raise NotImplementedError
