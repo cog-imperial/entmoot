@@ -1,4 +1,5 @@
 from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
+from entmoot.space.space import Space, Real, Categorical
 from tqdm import tqdm
 from typing import Optional, Tuple
 
@@ -112,10 +113,16 @@ class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
     def __init__(self, problem: opti.Problem, surrogat_params: dict = None):
-        self._problem = problem
-        self._surrogat_params = surrogat_params
+        self._problem: opti.Problem = problem
+        self._surrogat_params: dict = surrogat_params
         self.model: lgb.Booster = None
         self.cat_names: list[str] = None
+
+        self._space: Space = self._build_space_object()
+
+    def _build_space_object(self):
+        dimensions = []
+        space = Space(dimensions)
 
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
@@ -137,11 +144,9 @@ class EntmootOpti(Algorithm):
         X[self.cat_names] = X[self.cat_names].astype("category")
         return self.model.predict(X)
 
+
     def propose(self, n_proposals: int = 1) -> pd.DataFrame:
 
-        # TODO: Construct space object
-        space = {}
-
-        gurobi_model = get_core_gurobi_model(space)
+        gurobi_model = get_core_gurobi_model(self._space)
 
         raise NotImplementedError
