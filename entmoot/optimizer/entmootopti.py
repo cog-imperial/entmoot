@@ -1,8 +1,11 @@
-from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
-from entmoot.space.space import Space, Real, Categorical
+from entmoot.optimizer.gurobi_utils import get_core_gurobi_model, add_gbm_to_gurobi_model
+from entmoot.learning.lgbm_processing import order_tree_model_dict
+from entmoot.space.space import Space, Real, Categorical, Integer
+from entmoot.learning.gbm_model import GbmModel
+
+import gurobipy
 from tqdm import tqdm
 from typing import Optional, Tuple
-
 import numpy as np
 import opti
 import pandas as pd
@@ -117,12 +120,23 @@ class EntmootOpti(Algorithm):
         self._surrogat_params: dict = surrogat_params
         self.model: lgb.Booster = None
         self.cat_names: list[str] = None
+        self.cat_idx: list[int] = None
 
         self._space: Space = self._build_space_object()
 
     def _build_space_object(self):
         dimensions = []
-        space = Space(dimensions)
+        for parameter in self._problem.inputs:
+            if isinstance(parameter, opti.Continuous):
+                dimensions.append(Real(*parameter.bounds, name=parameter.name))
+            elif isinstance(parameter, opti.Categorical):
+                dimensions.append(Categorical(parameter.domain, name=parameter.name))
+            elif isinstance(parameter, opti.Discrete):
+                # skopt only supports integer variables [1, 2, 3, 4], not discrete ones [1, 2, 4]
+                # We handle this by rounding the proposals
+                dimensions.append(Integer(*parameter.bounds, name=parameter.name))
+
+        return Space(dimensions)
 
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
@@ -133,7 +147,9 @@ class EntmootOpti(Algorithm):
         # Extract names of categorical columns and mark them as categorical variables in Pandas. Pandas will tell this
         # light gbm, such that there is no need for the categorical_feature parameter in light gbm and therefore we
         # don't need to do an categorical encoding.
+
         self.cat_names = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
+        self.cat_idx = [i for i, j in enumerate(self.inputs.parameters.values()) if type(j) is Categorical]
         X[self.cat_names] = X[self.cat_names].astype("category")
 
         train_data = lgb.Dataset(X, label=y, params=self._surrogat_params)
@@ -144,9 +160,34 @@ class EntmootOpti(Algorithm):
         X[self.cat_names] = X[self.cat_names].astype("category")
         return self.model.predict(X)
 
+    def _get_gbm_model(self):
+        original_tree_model_dict = self.model.dump_model()
+        import json
+        with open('tree_dict_next.json', 'w') as f:
+            json.dump(
+                original_tree_model_dict,
+                f,
+                indent=4,
+                sort_keys=False
+            )
+
+        ordered_tree_model_dict = \
+            order_tree_model_dict(
+                original_tree_model_dict,
+                cat_column=self.cat_idx
+            )
+
+        gbm_model = GbmModel(ordered_tree_model_dict)
+        return gbm_model
 
     def propose(self, n_proposals: int = 1) -> pd.DataFrame:
 
-        gurobi_model = get_core_gurobi_model(self._space)
+        gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
+
+        gbm_model_dict = {}
+        gbm_model_dict['first'] = self._get_gbm_model()
+        add_gbm_to_gurobi_model(
+            self._space, gbm_model_dict, gurobi_model
+        )
 
         raise NotImplementedError
