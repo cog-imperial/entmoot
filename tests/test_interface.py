@@ -8,7 +8,7 @@ from entmoot.optimizer import EntmootOpti
 def test_api():
     # Definition of test problem
     test_problem = opti.problems.Zakharov_categorical(n_inputs=3)
-    test_problem.create_initial_data(5)
+    test_problem.create_initial_data(100)
 
     # Declaration of entmoot instanceTrain surrogate model
     surrogat_params = {"verbose": -1}
