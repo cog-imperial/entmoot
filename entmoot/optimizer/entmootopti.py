@@ -198,8 +198,6 @@ class EntmootOpti(Algorithm):
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
 
-        # TODO: Change type to string with four possible values
-
         gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
 
         gbm_model_dict = {}
@@ -211,7 +209,12 @@ class EntmootOpti(Algorithm):
         std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
         std_est.cat_idx = self.cat_idx
 
-        # TODO: Hier weitermachen!
+        Xi = self.data[self.inputs.names].values
+        yi = self.data[self.outputs.names]
+
+        #TODO: Do encoding of categorical features!!
+
+        std_est.update(Xi, yi, cat_column=self.cat_idx)
 
         std_est.add_to_gurobi_model(gurobi_model)
         gurobi_model.update()
