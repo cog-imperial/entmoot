@@ -1,8 +1,10 @@
 from entmoot.optimizer.gurobi_utils import get_core_gurobi_model, add_gbm_to_gurobi_model
+from entmoot.utils import cook_std_estimator
 from entmoot.learning.lgbm_processing import order_tree_model_dict
 from entmoot.space.space import Space, Real, Categorical, Integer
 from entmoot.learning.gbm_model import GbmModel
 
+import enum
 import gurobipy
 from tqdm import tqdm
 from typing import Optional, Tuple
@@ -112,6 +114,20 @@ class Algorithm:
         return cls(problem, **parameters)
 
 
+class UncertaintyType(enum.Enum):
+    # Exploration
+    # for bounded - data distance, which uses squared euclidean distance
+    BDD = "BDD"
+    # for bounded - data distance, which uses manhattan distance
+    L1BDD = "L1BDD"
+
+    # Exploitation
+    # for data distance, which uses squared euclidean distance
+    DDP = "DDP"
+    # for data distance, which uses manhattan distance
+    L1DDP = "L1DDP"
+
+
 class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
@@ -180,7 +196,9 @@ class EntmootOpti(Algorithm):
         gbm_model = GbmModel(ordered_tree_model_dict)
         return gbm_model
 
-    def propose(self, n_proposals: int = 1) -> pd.DataFrame:
+    def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
+
+        # TODO: Change type to string with four possible values
 
         gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
 
@@ -189,5 +207,13 @@ class EntmootOpti(Algorithm):
         add_gbm_to_gurobi_model(
             self._space, gbm_model_dict, gurobi_model
         )
+        std_estimator_params = {}
+        std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
+        std_est.cat_idx = self.cat_idx
+
+        # TODO: Hier weitermachen!
+
+        std_est.add_to_gurobi_model(gurobi_model)
+        gurobi_model.update()
 
         assert 1 == 1
