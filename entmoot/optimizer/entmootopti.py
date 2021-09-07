@@ -135,10 +135,12 @@ class EntmootOpti(Algorithm):
         self._problem: opti.Problem = problem
         self._surrogat_params: dict = surrogat_params
         self.model: lgb.Booster = None
+        self._space: Space = self._build_space_object()
+
+        # Handling of categorical features
         self.cat_names: list[str] = None
         self.cat_idx: list[int] = None
-
-        self._space: Space = self._build_space_object()
+        self.cat_encode_mapping: dict = {}
 
     def _build_space_object(self):
         dimensions = []
@@ -154,27 +156,38 @@ class EntmootOpti(Algorithm):
 
         return Space(dimensions)
 
+    def _encode_cat_vars(self, X: pd.DataFrame) -> pd.DataFrame:
+        X_enc = X.copy()
+        X_enc[self.cat_names] = X_enc[self.cat_names].astype("category")
+        for cat in self.cat_names:
+            X_enc[cat] = X_enc[cat].cat.codes
+        return X_enc
+
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
 
         X = self.data[self.inputs.names]
         y = self.data[self.outputs.names]
 
-        # Extract names of categorical columns and mark them as categorical variables in Pandas. Pandas will tell this
-        # light gbm, such that there is no need for the categorical_feature parameter in light gbm and therefore we
-        # don't need to do an categorical encoding.
+        # Extract names of categorical columns and mark them as categorical variables in Pandas.
 
         self.cat_names = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
         self.cat_idx = [i for i, j in enumerate(self.inputs.parameters.values()) if type(j) is opti.Categorical]
-        X[self.cat_names] = X[self.cat_names].astype("category")
 
-        train_data = lgb.Dataset(X, label=y, params=self._surrogat_params)
+        X_enc = self._encode_cat_vars(X)
+
+        for cat in self.cat_names:
+            self.cat_encode_mapping[cat] = {var: enc for (var, enc) in set(zip(X[cat], X_enc[cat]))}
+
+        train_data = lgb.Dataset(X_enc, label=y, params=self._surrogat_params)
 
         self.model = lgb.train(self._surrogat_params, train_data)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
-        X[self.cat_names] = X[self.cat_names].astype("category")
-        return self.model.predict(X)
+
+        X_enc = self._encode_cat_vars(X)
+
+        return self.model.predict(X_enc)
 
     def _get_gbm_model(self):
         original_tree_model_dict = self.model.dump_model()
@@ -211,8 +224,6 @@ class EntmootOpti(Algorithm):
 
         Xi = self.data[self.inputs.names].values
         yi = self.data[self.outputs.names]
-
-        #TODO: Do encoding of categorical features!!
 
         std_est.update(Xi, yi, cat_column=self.cat_idx)
 
