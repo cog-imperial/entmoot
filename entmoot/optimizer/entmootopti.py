@@ -1,4 +1,4 @@
-from entmoot.optimizer.gurobi_utils import get_core_gurobi_model, add_gbm_to_gurobi_model
+from entmoot.optimizer.gurobi_utils import get_core_gurobi_model, add_gbm_to_gurobi_model, get_gbm_obj
 from entmoot.utils import cook_std_estimator
 from entmoot.learning.lgbm_processing import order_tree_model_dict
 from entmoot.space.space import Space, Real, Categorical, Integer
@@ -179,9 +179,11 @@ class EntmootOpti(Algorithm):
         for cat in self.cat_names:
             self.cat_encode_mapping[cat] = {var: enc for (var, enc) in set(zip(X[cat], X_enc[cat]))}
 
+        # TODO: Min child per leaf runtersetzen
+
         train_data = lgb.Dataset(X_enc, label=y, params=self._surrogat_params)
 
-        self.model = lgb.train(self._surrogat_params, train_data)
+        self.model = lgb.train(self._surrogat_params, train_data, categorical_feature=self.cat_idx)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
 
@@ -211,23 +213,33 @@ class EntmootOpti(Algorithm):
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
 
+        # build gurobi core model
         gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
 
+        # add lgbm core structure to gurobi model
         gbm_model_dict = {}
         gbm_model_dict['first'] = self._get_gbm_model()
         add_gbm_to_gurobi_model(
             self._space, gbm_model_dict, gurobi_model
         )
+        gurobi_model.update()
+
+        # add std to gurobi model
         std_estimator_params = {}
         std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
         std_est.cat_idx = self.cat_idx
-
-        Xi = self.data[self.inputs.names].values
+        X_enc = self._encode_cat_vars(self.data[self.inputs.names]).values
         yi = self.data[self.outputs.names]
-
-        std_est.update(Xi, yi, cat_column=self.cat_idx)
-
+        std_est.update(X_enc, yi, cat_column=self.cat_idx)
         std_est.add_to_gurobi_model(gurobi_model)
+        gurobi_model.update()
+
+        # add obj to gurobi model
+        mu = get_gbm_obj(gurobi_model)
+        std = std_est.get_gurobi_obj(gurobi_model, scaled=False)
+        kappa = 1.96
+        ob_expr = gurobipy.quicksum((mu, kappa * std))
+        gurobi_model.setObjective(ob_expr, gurobipy.GRB.MINIMIZE)
         gurobi_model.update()
 
         assert 1 == 1
