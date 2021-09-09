@@ -38,4 +38,4 @@ def test_api():
     assert len(X_next) == n_proposals
 
     # Run Bayesian Optimization loop
-    # entmoot.run()
+    entmoot.run()

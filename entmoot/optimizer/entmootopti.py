@@ -141,6 +141,7 @@ class EntmootOpti(Algorithm):
         self.cat_names: list[str] = None
         self.cat_idx: list[int] = None
         self.cat_encode_mapping: dict = {}
+        self.cat_decode_mapping: dict = {}
 
     def _build_space_object(self):
         dimensions = []
@@ -178,6 +179,7 @@ class EntmootOpti(Algorithm):
 
         for cat in self.cat_names:
             self.cat_encode_mapping[cat] = {var: enc for (var, enc) in set(zip(X[cat], X_enc[cat]))}
+            self.cat_decode_mapping[cat] = {enc: var for (enc, var) in set(zip(X_enc[cat], X[cat]))}
 
         # TODO: Min child per leaf runtersetzen
 
@@ -255,6 +257,10 @@ class EntmootOpti(Algorithm):
             cat = [k for k in gurobi_model._cat_var_dict[i] if round(gurobi_model._cat_var_dict[i][k].x, 1) == 1]
             x_next[i] = cat[0]
 
-        X_next_df = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+        X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+
+        X_next_df = X_next_df_enc.copy()
+        for cat in self.cat_decode_mapping:
+            X_next_df[cat] = X_next_df[cat].replace(self.cat_decode_mapping[cat])
 
         return X_next_df
