@@ -32,7 +32,10 @@ def test_api():
     assert len(y_pred) == 2
 
     # Optimize acquisition function
-    X_next = entmoot.propose(n_proposals=3)
+    n_proposals = 1
+    X_next = entmoot.propose(n_proposals=n_proposals)
+
+    assert len(X_next) == n_proposals
 
     # Run Bayesian Optimization loop
     # entmoot.run()

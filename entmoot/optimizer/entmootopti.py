@@ -242,4 +242,19 @@ class EntmootOpti(Algorithm):
         gurobi_model.setObjective(ob_expr, gurobipy.GRB.MINIMIZE)
         gurobi_model.update()
 
-        assert 1 == 1
+        # Optimize gurobi model
+        gurobi_model.optimize()
+
+        # Get optimization results
+        x_next = np.empty(len(self._space.dimensions))
+        # cont features
+        for i in gurobi_model._cont_var_dict:
+            x_next[i] = gurobi_model._cont_var_dict[i].x
+        # cat features
+        for i in gurobi_model._cat_var_dict:
+            cat = [k for k in gurobi_model._cat_var_dict[i] if round(gurobi_model._cat_var_dict[i][k].x, 1) == 1]
+            x_next[i] = cat[0]
+
+        X_next_df = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+
+        return X_next_df
