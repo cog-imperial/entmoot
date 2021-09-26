@@ -215,52 +215,66 @@ class EntmootOpti(Algorithm):
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
 
-        # build gurobi core model
-        gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
+        X_res = pd.DataFrame(columns=self._problem.inputs.names)
+        X_std_data = self._encode_cat_vars(self.data[self.inputs.names]).values
+        y_std_data = self.data[self.outputs.names].values
 
-        # add lgbm core structure to gurobi model
-        gbm_model_dict = {}
-        gbm_model_dict['first'] = self._get_gbm_model()
-        add_gbm_to_gurobi_model(
-            self._space, gbm_model_dict, gurobi_model
-        )
-        gurobi_model.update()
+        for _ in range(n_proposals):
 
-        # add std to gurobi model
-        std_estimator_params = {}
-        std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
-        std_est.cat_idx = self.cat_idx
-        X_enc = self._encode_cat_vars(self.data[self.inputs.names]).values
-        yi = self.data[self.outputs.names]
-        std_est.update(X_enc, yi, cat_column=self.cat_idx)
-        std_est.add_to_gurobi_model(gurobi_model)
-        gurobi_model.update()
+            # build gurobi core model
+            gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
 
-        # add obj to gurobi model
-        mu = get_gbm_obj(gurobi_model)
-        std = std_est.get_gurobi_obj(gurobi_model, scaled=False)
-        kappa = 1.96
-        ob_expr = gurobipy.quicksum((mu, kappa * std))
-        gurobi_model.setObjective(ob_expr, gurobipy.GRB.MINIMIZE)
-        gurobi_model.update()
+            # Shut down logging
+            gurobi_model.Params.OutputFlag = 0
 
-        # Optimize gurobi model
-        gurobi_model.optimize()
+            # add lgbm core structure to gurobi model
+            gbm_model_dict = {}
+            gbm_model_dict['first'] = self._get_gbm_model()
+            add_gbm_to_gurobi_model(
+                self._space, gbm_model_dict, gurobi_model
+            )
+            gurobi_model.update()
 
-        # Get optimization results
-        x_next = np.empty(len(self._space.dimensions))
-        # cont features
-        for i in gurobi_model._cont_var_dict:
-            x_next[i] = gurobi_model._cont_var_dict[i].x
-        # cat features
-        for i in gurobi_model._cat_var_dict:
-            cat = [k for k in gurobi_model._cat_var_dict[i] if round(gurobi_model._cat_var_dict[i][k].x, 1) == 1]
-            x_next[i] = cat[0]
+            # add std to gurobi model
+            std_estimator_params = {}
+            std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
+            std_est.cat_idx = self.cat_idx
 
-        X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+            std_est.update(X_std_data, y_std_data, cat_column=self.cat_idx)
+            std_est.add_to_gurobi_model(gurobi_model)
+            gurobi_model.update()
 
-        X_next_df = X_next_df_enc.copy()
-        for cat in self.cat_decode_mapping:
-            X_next_df[cat] = X_next_df[cat].replace(self.cat_decode_mapping[cat])
+            # add obj to gurobi model
+            mu = get_gbm_obj(gurobi_model)
+            std = std_est.get_gurobi_obj(gurobi_model, scaled=False)
+            kappa = 1.96
+            ob_expr = gurobipy.quicksum((mu, kappa * std))
+            gurobi_model.setObjective(ob_expr, gurobipy.GRB.MINIMIZE)
+            gurobi_model.update()
 
-        return X_next_df
+            # Optimize gurobi model
+            gurobi_model.optimize()
+
+            # Get optimization results
+            x_next = np.empty(len(self._space.dimensions))
+            # cont features
+            for i in gurobi_model._cont_var_dict:
+                x_next[i] = gurobi_model._cont_var_dict[i].x
+            # cat features
+            for i in gurobi_model._cat_var_dict:
+                cat = [k for k in gurobi_model._cat_var_dict[i] if round(gurobi_model._cat_var_dict[i][k].x, 1) == 1]
+                x_next[i] = cat[0]
+
+            # Constant liar strategy where new y-value is chosen as minimal observation
+            X_std_data = np.vstack([X_std_data, x_next])
+            y_std_data = np.vstack([y_std_data, max(y_std_data)])
+
+            X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+
+            X_next_df = X_next_df_enc.copy()
+            for cat in self.cat_decode_mapping:
+                X_next_df[cat] = X_next_df[cat].replace(self.cat_decode_mapping[cat])
+
+            X_res = X_res.append(X_next_df)
+
+        return X_res
