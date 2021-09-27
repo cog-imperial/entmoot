@@ -181,8 +181,6 @@ class EntmootOpti(Algorithm):
             self.cat_encode_mapping[cat] = {var: enc for (var, enc) in set(zip(X[cat], X_enc[cat]))}
             self.cat_decode_mapping[cat] = {enc: var for (enc, var) in set(zip(X_enc[cat], X[cat]))}
 
-        # TODO: Min child per leaf runtersetzen
-
         train_data = lgb.Dataset(X_enc, label=y, params=self._surrogat_params)
 
         self.model = lgb.train(self._surrogat_params, train_data, categorical_feature=self.cat_idx)
@@ -267,7 +265,7 @@ class EntmootOpti(Algorithm):
 
             # Constant liar strategy where new y-value is chosen as minimal observation
             X_std_data = np.vstack([X_std_data, x_next])
-            y_std_data = np.vstack([y_std_data, max(y_std_data)])
+            y_std_data = np.vstack([y_std_data, sum(y_std_data)/len(y_std_data)])
 
             X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
 

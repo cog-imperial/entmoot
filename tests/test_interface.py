@@ -8,10 +8,10 @@ from entmoot.optimizer import EntmootOpti
 def test_api():
     # Definition of test problem
     test_problem = opti.problems.Zakharov_categorical(n_inputs=3)
-    test_problem.create_initial_data(100)
+    test_problem.create_initial_data(15)
 
     # Declaration of entmoot instanceTrain surrogate model
-    surrogat_params = {"verbose": -1}
+    surrogat_params = {"verbose": -1, 'min_data_in_leaf': 5}
     entmoot = EntmootOpti(problem=test_problem, surrogat_params=surrogat_params)
 
     assert entmoot.model is None
@@ -32,7 +32,7 @@ def test_api():
     assert len(y_pred) == 2
 
     # Optimize acquisition function
-    n_proposals = 5
+    n_proposals = 10
     X_next = entmoot.propose(n_proposals=n_proposals)
 
     assert len(X_next) == n_proposals
