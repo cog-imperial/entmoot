@@ -143,6 +143,8 @@ class EntmootOpti(Algorithm):
         self.cat_decode_mapping: dict = {}
         self.gurobi_env = gurobi_env
 
+        self._fit_model()
+
     def _build_space_object(self):
         dimensions = []
         for parameter in self._problem.inputs:

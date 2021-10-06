@@ -32,9 +32,7 @@ def test_api():
         gurobi_env=get_gurobi_env,
     )
 
-    # Train surrogate model
-    assert entmoot.model is None
-    entmoot._fit_model()
+    # Make sure that a model has been trained
     assert type(entmoot.model) == lgb.Booster
 
     X_pred = pd.DataFrame(
@@ -63,7 +61,6 @@ def test_mixed_constraints():
     # single objective, linear-equality + n-choose-k constraints
     problem = opti.problems.Photodegradation()
     entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
-    entmoot._fit_model()  # TODO: _fit_model should be called in constructor
 
     y_pred = entmoot.predict(problem.data)
 
