@@ -7,12 +7,11 @@ from entmoot.learning.gbm_model import GbmModel
 import enum
 import gurobipy
 from tqdm import tqdm
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 import numpy as np
 import opti
 import pandas as pd
 import lightgbm as lgb
-
 
 
 class Algorithm:
@@ -131,7 +130,7 @@ class UncertaintyType(enum.Enum):
 class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
-    def __init__(self, problem: opti.Problem, surrogat_params: dict = None):
+    def __init__(self, problem: opti.Problem, surrogat_params: dict = None, gurobi_env: Optional[Callable] = None):
         self._problem: opti.Problem = problem
         self._surrogat_params: dict = surrogat_params
         self.model: lgb.Booster = None
@@ -142,6 +141,7 @@ class EntmootOpti(Algorithm):
         self.cat_idx: list[int] = None
         self.cat_encode_mapping: dict = {}
         self.cat_decode_mapping: dict = {}
+        self.gurobi_env = gurobi_env
 
     def _build_space_object(self):
         dimensions = []
@@ -217,10 +217,15 @@ class EntmootOpti(Algorithm):
         X_std_data = self._encode_cat_vars(self.data[self.inputs.names]).values
         y_std_data = self.data[self.outputs.names].values
 
+        if self.gurobi_env is not None:
+            env = self.gurobi_env()
+        else:
+            env = None
+
         for _ in range(n_proposals):
 
             # build gurobi core model
-            gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space)
+            gurobi_model: gurobipy.Model = get_core_gurobi_model(self._space, env=env)
 
             # Shut down logging
             gurobi_model.Params.OutputFlag = 0
