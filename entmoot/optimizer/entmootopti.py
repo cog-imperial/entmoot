@@ -132,7 +132,10 @@ class EntmootOpti(Algorithm):
 
     def __init__(self, problem: opti.Problem, surrogat_params: dict = None, gurobi_env: Optional[Callable] = None):
         self._problem: opti.Problem = problem
-        self._surrogat_params: dict = surrogat_params
+        if surrogat_params is None:
+            self._surrogat_params: dict = {}
+        else:
+            self._surrogat_params: dict = surrogat_params
         self.model: lgb.Booster = None
         self._space: Space = self._build_space_object()
 
@@ -184,7 +187,6 @@ class EntmootOpti(Algorithm):
             self.cat_decode_mapping[cat] = {enc: var for (enc, var) in set(zip(X_enc[cat], X[cat]))}
 
         train_data = lgb.Dataset(X_enc, label=y, params=self._surrogat_params)
-
         self.model = lgb.train(self._surrogat_params, train_data, categorical_feature=self.cat_idx)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
