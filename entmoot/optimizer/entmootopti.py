@@ -233,6 +233,7 @@ class EntmootOpti(Algorithm):
 
             # Shut down logging
             gurobi_model.Params.OutputFlag = 0
+            gurobi_model.Params.TimeLimit = 60
 
             # add lgbm core structure to gurobi model
             gbm_model_dict = {}

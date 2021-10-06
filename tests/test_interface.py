@@ -62,9 +62,12 @@ def test_mixed_constraints():
     problem = opti.problems.Photodegradation()
     entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
 
-    y_pred = entmoot.predict(problem.data)
+    X_pred = problem.data[problem.inputs.names]
+    y_pred = entmoot.predict(X_pred)
+    assert len(y_pred) == len(X_pred)
 
-    # X_next = entmoot.propose(n_proposals=2)
+    X_next = entmoot.propose(n_proposals=2)
+    assert len(X_next) == 2
 
 
 def test_biobjective():
