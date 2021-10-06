@@ -146,6 +146,9 @@ class EntmootOpti(Algorithm):
         self.cat_decode_mapping: dict = {}
         self.gurobi_env = gurobi_env
 
+        if self.data is None:
+            raise ValueError("No initial data points provided.")
+
         self._fit_model()
 
     def _build_space_object(self):

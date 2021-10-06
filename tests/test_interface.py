@@ -78,9 +78,12 @@ def test_biobjective():
 def test_no_initial_data():
     # Using Entmoot on a problem without data should raise an informative error.
     problem = opti.problems.Zakharov_Categorical(n_inputs=3)
-    opt = EntmootOpti(problem)
-    opt._fit_model()
 
+    try:
+        EntmootOpti(problem)
+    except ValueError:
+        assert True
+    #TODO: assert False, if another error or no error is raised.
 
 def test_with_missing_data():
     # In the multi-objective case we the model should handle missing data
