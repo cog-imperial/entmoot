@@ -83,7 +83,9 @@ def test_no_initial_data():
         EntmootOpti(problem)
     except ValueError:
         assert True
-    #TODO: assert False, if another error or no error is raised.
+    else:
+        assert False
+
 
 def test_with_missing_data():
     # In the multi-objective case we the model should handle missing data
