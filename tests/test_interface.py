@@ -70,11 +70,6 @@ def test_mixed_constraints():
     assert len(X_next) == 2
 
 
-def test_biobjective():
-    pass
-    # opti.problems.ReizmanSuzuki -> bi-objective, cat + cont variables
-
-
 def test_no_initial_data():
     # Using Entmoot on a problem without data should raise an informative error.
     problem = opti.problems.Zakharov_Categorical(n_inputs=3)
@@ -85,6 +80,12 @@ def test_no_initial_data():
         assert True
     else:
         assert False
+
+
+def test_biobjective():
+    # opti.problems.ReizmanSuzuki -> bi-objective, cat + cont variables
+    problem = opti.problems.ReizmanSuzuki()
+    pass
 
 
 def test_with_missing_data():

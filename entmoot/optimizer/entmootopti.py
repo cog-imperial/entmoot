@@ -255,6 +255,60 @@ class EntmootOpti(Algorithm):
             std_est.add_to_gurobi_model(gurobi_model)
             gurobi_model.update()
 
+            # Migrate constraints from opti to gurobi
+            if self._problem.constraints:
+                for c in self._problem.constraints:
+                    if isinstance(c, opti.constraint.LinearInequality):
+                        coef = {x: a for (x, a) in zip(c.names, c.lhs)}
+                        gurobi_model.addConstr(
+                            (
+                                sum(
+                                    coef[v.varname] * v
+                                    for v in gurobi_model.getVars()
+                                    if v.varname in coef
+                                )
+                                <= c.rhs
+                            ),
+                            name="LinearInequalityOpti"
+                        )
+                    elif isinstance(c, opti.constraint.LinearEquality):
+                        coef = {x: a for (x, a) in zip(c.names, c.lhs)}
+                        gurobi_model.addConstr(
+                            (
+                                sum(
+                                    coef[v.varname] * v
+                                    for v in gurobi_model.getVars()
+                                    if v.varname in coef
+                                )
+                                == c.rhs
+                            ),
+                            name="LinearEqualityOpti"
+                        )
+                    elif isinstance(c, opti.constraint.NChooseK):
+                        # Big-M implementation of n-choose-k constraint
+                        y = gurobi_model.addVars(c.names, vtype=gurobipy.GRB.BINARY)
+                        gurobi_model.addConstrs(
+                            (
+                                y[v.varname] * v.lb <= v
+                                for v in gurobi_model.getVars()
+                                if v.varname in c.names
+                            ),
+                            name="n-choose-k-constraint LB",
+                        )
+                        gurobi_model.addConstrs(
+                            (
+                                y[v.varname] * v.ub >= v
+                                for v in gurobi_model.getVars()
+                                if v.varname in c.names
+                            ),
+                            name="n-choose-k-constraint UB",
+                        )
+                        gurobi_model.addConstr(
+                            y.sum() == c.max_active, name="max active components"
+                        )
+                    else:
+                        raise ValueError(f"Constraint of type {type(c)} not supported.")
+
             # add obj to gurobi model
             mu = get_gbm_obj(gurobi_model)
             std = std_est.get_gurobi_obj(gurobi_model, scaled=False)
