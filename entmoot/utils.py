@@ -38,13 +38,13 @@ import numpy as np
 from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
-import numbers
 from .space import Space, Dimension
-from sklearn.utils import check_random_state
+
 
 def is_supported(base_estimator):
     from entmoot.learning.tree_model import EntingRegressor, MisicRegressor
     return isinstance(base_estimator, (EntingRegressor,MisicRegressor, str, type(None)))
+
 
 def get_cat_idx(space):
     from entmoot.space.space import Space, Categorical, Integer, Real, Dimension
@@ -58,6 +58,7 @@ def get_cat_idx(space):
         if isinstance(dim, Categorical):
             cat_idx.append(idx)
     return cat_idx
+
 
 def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None, 
         base_estimator_params=None):
@@ -96,8 +97,8 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
         base_estimator = base_estimator.upper()
         if base_estimator not in ["GBRT", "RF", "DUMMY"]:
             raise ValueError("Valid strings for the base_estimator parameter "
-                             " are: 'GBRT', 'RF', or 'DUMMY' not "
-                             "%s." % base_estimator)
+                             "are: 'GBRT', 'RF', or 'DUMMY' not "
+                             f"{base_estimator}.")
     elif is_supported(base_estimator):
         base_estimator = \
             EntingRegressor(
@@ -142,6 +143,7 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
         base_estimator.set_params(**base_estimator_params)
         
     return base_estimator
+
 
 def cook_std_estimator(std_estimator, 
                     space=None, 
