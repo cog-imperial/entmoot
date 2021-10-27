@@ -1,20 +1,25 @@
-from entmoot.optimizer.gurobi_utils import get_core_gurobi_model, add_gbm_to_gurobi_model, get_gbm_obj
-from entmoot.utils import cook_std_estimator
-from entmoot.learning.lgbm_processing import order_tree_model_dict
-from entmoot.space.space import Space, Real, Categorical, Integer
-from entmoot.learning.gbm_model import GbmModel
-
-import enum
-import gurobipy
+from enum import Enum
 from typing import Callable, Optional
-from mbo import Algorithm
+
+import gurobipy
+import lightgbm as lgb
 import numpy as np
 import opti
 import pandas as pd
-import lightgbm as lgb
+from mbo.algorithm import Algorithm
+
+from entmoot.learning.gbm_model import GbmModel
+from entmoot.learning.lgbm_processing import order_tree_model_dict
+from entmoot.optimizer.gurobi_utils import (
+    add_gbm_to_gurobi_model,
+    get_core_gurobi_model,
+    get_gbm_obj,
+)
+from entmoot.space.space import Categorical, Integer, Real, Space
+from entmoot.utils import cook_std_estimator
 
 
-class UncertaintyType(enum.Enum):
+class UncertaintyType(Enum):
     # Exploration
     # for bounded - data distance, which uses squared euclidean distance
     BDD = "BDD"
