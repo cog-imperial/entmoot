@@ -50,7 +50,7 @@ import warnings
 import numpy as np
 from .base import InitialPointGenerator
 from ..space import Space
-from ..utils import check_random_state
+from sklearn.utils import check_random_state
 
 
 class Sobol(InitialPointGenerator):

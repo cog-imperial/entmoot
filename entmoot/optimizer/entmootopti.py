@@ -21,23 +21,18 @@ from entmoot.utils import cook_std_estimator
 
 class UncertaintyType(Enum):
     # Exploration
-    # for bounded - data distance, which uses squared euclidean distance
-    BDD = "BDD"
-    # for bounded - data distance, which uses manhattan distance
-    L1BDD = "L1BDD"
-
+    BDD = "BDD"  # for bounded - data distance, which uses squared euclidean distance
+    L1BDD = "L1BDD"  # for bounded - data distance, which uses manhattan distance
     # Exploitation
-    # for data distance, which uses squared euclidean distance
-    DDP = "DDP"
-    # for data distance, which uses manhattan distance
-    L1DDP = "L1DDP"
+    DDP = "DDP"  # for data distance, which uses squared euclidean distance
+    L1DDP = "L1DDP"  # for data distance, which uses manhattan distance
 
 
 class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
     def __init__(self, problem: opti.Problem, surrogat_params: dict = None, gurobi_env: Optional[Callable] = None):
-        self._problem: opti.Problem = problem
+        self.problem: opti.Problem = problem
         if surrogat_params is None:
             self._surrogat_params: dict = {}
         else:
@@ -52,14 +47,14 @@ class EntmootOpti(Algorithm):
         self.cat_decode_mapping: dict = {}
         self.gurobi_env = gurobi_env
 
-        if self.data is None:
+        if self.problem.data is None:
             raise ValueError("No initial data points provided.")
 
         self._fit_model()
 
     def _build_space_object(self):
         dimensions = []
-        for parameter in self._problem.inputs:
+        for parameter in self.problem.inputs:
             if isinstance(parameter, opti.Continuous):
                 dimensions.append(Real(*parameter.bounds, name=parameter.name))
             elif isinstance(parameter, opti.Categorical):
@@ -80,14 +75,12 @@ class EntmootOpti(Algorithm):
 
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
-
-        X = self.data[self.inputs.names]
-        y = self.data[self.outputs.names]
+        X = self.problem.data[self.problem.inputs.names]
+        y = self.problem.data[self.problem.outputs.names]
 
         # Extract names of categorical columns and mark them as categorical variables in Pandas.
-
-        self.cat_names = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
-        self.cat_idx = [i for i, j in enumerate(self.inputs.parameters.values()) if type(j) is opti.Categorical]
+        self.cat_names = [i.name for i in self.problem.inputs if type(i) is opti.Categorical]
+        self.cat_idx = [i for i, j in enumerate(self.problem.inputs) if type(j) is opti.Categorical]
 
         X_enc = self._encode_cat_vars(X)
 
@@ -99,9 +92,7 @@ class EntmootOpti(Algorithm):
         self.model = lgb.train(self._surrogat_params, train_data, categorical_feature=self.cat_idx)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
-
         X_enc = self._encode_cat_vars(X)
-
         return self.model.predict(X_enc)
 
     def _get_gbm_model(self):
@@ -125,10 +116,9 @@ class EntmootOpti(Algorithm):
         return gbm_model
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
-
-        X_res = pd.DataFrame(columns=self._problem.inputs.names)
-        X_std_data = self._encode_cat_vars(self.data[self.inputs.names]).values
-        y_std_data = self.data[self.outputs.names].values
+        X_res = pd.DataFrame(columns=self.problem.inputs.names)
+        X_std_data = self._encode_cat_vars(self.problem.data[self.problem.inputs.names]).values
+        y_std_data = self.problem.get_Y()
 
         if self.gurobi_env is not None:
             env = self.gurobi_env()
@@ -162,8 +152,8 @@ class EntmootOpti(Algorithm):
             gurobi_model.update()
 
             # Migrate constraints from opti to gurobi
-            if self._problem.constraints:
-                for c in self._problem.constraints:
+            if self.problem.constraints:
+                for c in self.problem.constraints:
                     if isinstance(c, opti.constraint.LinearInequality):
                         coef = {x: a for (x, a) in zip(c.names, c.lhs)}
                         gurobi_model.addConstr(
@@ -240,7 +230,7 @@ class EntmootOpti(Algorithm):
             X_std_data = np.vstack([X_std_data, x_next])
             y_std_data = np.vstack([y_std_data, sum(y_std_data)/len(y_std_data)])
 
-            X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+            X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self.problem.inputs.names)
 
             X_next_df = X_next_df_enc.copy()
             for cat in self.cat_decode_mapping:
