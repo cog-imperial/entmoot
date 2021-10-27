@@ -37,7 +37,7 @@ import numpy as np
 from .halton import Halton
 from ..space import Space
 from .base import InitialPointGenerator
-from ..utils import check_random_state
+from sklearn.utils import check_random_state
 
 class Hammersly(InitialPointGenerator):
     """Creates `Hammersley` sequence samples.
