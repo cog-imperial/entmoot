@@ -1,137 +1,38 @@
-from entmoot.optimizer.gurobi_utils import get_core_gurobi_model, add_gbm_to_gurobi_model, get_gbm_obj
-from entmoot.utils import cook_std_estimator
-from entmoot.learning.lgbm_processing import order_tree_model_dict
-from entmoot.space.space import Space, Real, Categorical, Integer
-from entmoot.learning.gbm_model import GbmModel
+from enum import Enum
+from typing import Callable, Optional
 
-import enum
 import gurobipy
-from tqdm import tqdm
-from typing import Callable, Optional, Tuple
+import lightgbm as lgb
 import numpy as np
 import opti
 import pandas as pd
-import lightgbm as lgb
+from mbo.algorithm import Algorithm
+
+from entmoot.learning.gbm_model import GbmModel
+from entmoot.learning.lgbm_processing import order_tree_model_dict
+from entmoot.optimizer.gurobi_utils import (
+    add_gbm_to_gurobi_model,
+    get_core_gurobi_model,
+    get_gbm_obj,
+)
+from entmoot.space.space import Categorical, Integer, Real, Space
+from entmoot.utils import cook_std_estimator
 
 
-class Algorithm:
-    """Base class for Bayesian optimization algorithms"""
-
-    def __init__(self, problem: opti.Problem):
-        self._problem = problem
-        self.model = None
-
-    @property
-    def inputs(self):
-        return self._problem.inputs
-
-    @property
-    def outputs(self):
-        return self._problem.outputs
-
-    @property
-    def data(self):
-        return self._problem.data
-
-    def get_XY(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Get the input and output data."""
-        X = self.data[self.inputs.names]
-        Y = self.data[self.outputs.names]
-        return X, Y
-
-    def _fit_model(self) -> None:
-        """Fit a probabilistic model to the available data."""
-        pass
-
-    def copy(self, data: Optional[pd.DataFrame] = None) -> "Algorithm":
-        """Creates a copy of the optimizer where the data is possibly replaced."""
-        new_opt = self.from_config(self.to_config())
-        if data is not None:
-            new_opt._problem.set_data(data)
-            new_opt._fit_model()
-        return new_opt
-
-    def add_data_and_fit(self, data: pd.DataFrame) -> None:
-        """Add new data points and refit the model."""
-        self._problem.add_data(data)
-        self._fit_model()
-
-    def sample_initial_data(self, n_samples: int):
-        """Create an initial data set for problems with known function y=f(x)."""
-        self._problem.create_initial_data(n_samples)
-        self._fit_model()
-
-    def predict(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Evaluate the posterior mean and standard deviation."""
-        raise NotImplementedError
-
-    def predict_pareto_front(self, n_levels: int = 5) -> pd.DataFrame:
-        """Calculate a finite representation the Pareto front of the model posterior."""
-        raise NotImplementedError
-
-    def propose(self, n_proposals: int = 1) -> pd.DataFrame:
-        """Propose a set of experiments according to the algorithm."""
-        raise NotImplementedError
-
-    def run(
-        self, n_proposals: int = 1, n_steps: int = 10, show_progress: bool = True
-    ) -> None:
-        """Run the BO algorithm to optimize the problem."""
-        if self._problem.f is None:
-            raise ValueError(
-                "The problem has no function defined. For external function evaluations use the propose() method instead"
-            )
-
-        for _ in tqdm(range(n_steps), disable=not show_progress):
-            X = self.propose(n_proposals)
-            Y = self._problem.eval(X)
-            self.add_data_and_fit(pd.concat([X, Y], axis=1))
-
-    def get_model_parameters(self) -> pd.DataFrame:
-        """Get the parameters of the surrogate model."""
-        raise NotImplementedError
-
-    def to_config(self) -> dict:
-        """Serialize the algorithm settings to a config dict."""
-        raise NotImplementedError
-
-    def _transform_inputs(self, X: np.ndarray) -> np.ndarray:
-        """Transform the inputs from the domain bounds to the unit range"""
-        xlo, xhi = self.inputs.bounds.values
-        return (X - xlo) / (xhi - xlo)
-
-    def _untransform_inputs(self, X: np.ndarray) -> np.ndarray:
-        """Untransform the inputs from the unit range to the domain bounds"""
-        xlo, xhi = self.inputs.bounds.values
-        return X * (xhi - xlo) + xlo
-
-    @classmethod
-    def from_config(cls, config: dict):
-        """Create an algorithm instance from a configuration dict."""
-        problem = opti.Problem.from_config(config["problem"])
-        parameters = config.get("parameters", {})
-        return cls(problem, **parameters)
-
-
-class UncertaintyType(enum.Enum):
+class UncertaintyType(Enum):
     # Exploration
-    # for bounded - data distance, which uses squared euclidean distance
-    BDD = "BDD"
-    # for bounded - data distance, which uses manhattan distance
-    L1BDD = "L1BDD"
-
+    BDD = "BDD"  # for bounded - data distance, which uses squared euclidean distance
+    L1BDD = "L1BDD"  # for bounded - data distance, which uses manhattan distance
     # Exploitation
-    # for data distance, which uses squared euclidean distance
-    DDP = "DDP"
-    # for data distance, which uses manhattan distance
-    L1DDP = "L1DDP"
+    DDP = "DDP"  # for data distance, which uses squared euclidean distance
+    L1DDP = "L1DDP"  # for data distance, which uses manhattan distance
 
 
 class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
     def __init__(self, problem: opti.Problem, surrogat_params: dict = None, gurobi_env: Optional[Callable] = None):
-        self._problem: opti.Problem = problem
+        self.problem: opti.Problem = problem
         if surrogat_params is None:
             self._surrogat_params: dict = {}
         else:
@@ -146,14 +47,14 @@ class EntmootOpti(Algorithm):
         self.cat_decode_mapping: dict = {}
         self.gurobi_env = gurobi_env
 
-        if self.data is None:
+        if self.problem.data is None:
             raise ValueError("No initial data points provided.")
 
         self._fit_model()
 
     def _build_space_object(self):
         dimensions = []
-        for parameter in self._problem.inputs:
+        for parameter in self.problem.inputs:
             if isinstance(parameter, opti.Continuous):
                 dimensions.append(Real(*parameter.bounds, name=parameter.name))
             elif isinstance(parameter, opti.Categorical):
@@ -174,14 +75,12 @@ class EntmootOpti(Algorithm):
 
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
-
-        X = self.data[self.inputs.names]
-        y = self.data[self.outputs.names]
+        X = self.problem.data[self.problem.inputs.names]
+        y = self.problem.data[self.problem.outputs.names]
 
         # Extract names of categorical columns and mark them as categorical variables in Pandas.
-
-        self.cat_names = [i.name for i in self.inputs.parameters.values() if type(i) is opti.Categorical]
-        self.cat_idx = [i for i, j in enumerate(self.inputs.parameters.values()) if type(j) is opti.Categorical]
+        self.cat_names = [i.name for i in self.problem.inputs if type(i) is opti.Categorical]
+        self.cat_idx = [i for i, j in enumerate(self.problem.inputs) if type(j) is opti.Categorical]
 
         X_enc = self._encode_cat_vars(X)
 
@@ -193,9 +92,7 @@ class EntmootOpti(Algorithm):
         self.model = lgb.train(self._surrogat_params, train_data, categorical_feature=self.cat_idx)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
-
         X_enc = self._encode_cat_vars(X)
-
         return self.model.predict(X_enc)
 
     def _get_gbm_model(self):
@@ -219,10 +116,9 @@ class EntmootOpti(Algorithm):
         return gbm_model
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
-
-        X_res = pd.DataFrame(columns=self._problem.inputs.names)
-        X_std_data = self._encode_cat_vars(self.data[self.inputs.names]).values
-        y_std_data = self.data[self.outputs.names].values
+        X_res = pd.DataFrame(columns=self.problem.inputs.names)
+        X_std_data = self._encode_cat_vars(self.problem.data[self.problem.inputs.names]).values
+        y_std_data = self.problem.get_Y()
 
         if self.gurobi_env is not None:
             env = self.gurobi_env()
@@ -256,8 +152,8 @@ class EntmootOpti(Algorithm):
             gurobi_model.update()
 
             # Migrate constraints from opti to gurobi
-            if self._problem.constraints:
-                for c in self._problem.constraints:
+            if self.problem.constraints:
+                for c in self.problem.constraints:
                     if isinstance(c, opti.constraint.LinearInequality):
                         coef = {x: a for (x, a) in zip(c.names, c.lhs)}
                         gurobi_model.addConstr(
@@ -334,7 +230,7 @@ class EntmootOpti(Algorithm):
             X_std_data = np.vstack([X_std_data, x_next])
             y_std_data = np.vstack([y_std_data, sum(y_std_data)/len(y_std_data)])
 
-            X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self._problem.inputs.names)
+            X_next_df_enc = pd.DataFrame(x_next.reshape(1, -1), columns=self.problem.inputs.names)
 
             X_next_df = X_next_df_enc.copy()
             for cat in self.cat_decode_mapping:

@@ -54,7 +54,7 @@ def test_api():
     n_steps = 3
     n_proposals = 7
     entmoot.run(n_steps=3, n_proposals=7)
-    assert len(entmoot.data) == n_init + n_steps * n_proposals
+    assert len(entmoot.problem.data) == n_init + n_steps * n_proposals
 
 
 def test_mixed_constraints():
