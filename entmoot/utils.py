@@ -38,13 +38,13 @@ import numpy as np
 from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
-import numbers
 from .space import Space, Dimension
-from sklearn.utils import check_random_state
+
 
 def is_supported(base_estimator):
-    from entmoot.learning.tree_model import EntingRegressor
-    return isinstance(base_estimator, (EntingRegressor, str, type(None)))
+    from entmoot.learning.tree_model import EntingRegressor, MisicRegressor
+    return isinstance(base_estimator, (EntingRegressor,MisicRegressor, str, type(None)))
+
 
 def get_cat_idx(space):
     from entmoot.space.space import Space, Categorical, Integer, Real, Dimension
@@ -58,6 +58,7 @@ def get_cat_idx(space):
         if isinstance(dim, Categorical):
             cat_idx.append(idx)
     return cat_idx
+
 
 def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None, 
         base_estimator_params=None):
@@ -85,7 +86,7 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
     """
 
     from lightgbm import LGBMRegressor
-    from entmoot.learning.tree_model import EntingRegressor
+    from entmoot.learning.tree_model import EntingRegressor, MisicRegressor
 
 
     # collect indices of categorical features
@@ -96,8 +97,8 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
         base_estimator = base_estimator.upper()
         if base_estimator not in ["GBRT", "RF", "DUMMY"]:
             raise ValueError("Valid strings for the base_estimator parameter "
-                             " are: 'GBRT', 'RF', or 'DUMMY' not "
-                             "%s." % base_estimator)
+                             "are: 'GBRT', 'RF', or 'DUMMY' not "
+                             f"{base_estimator}.")
     elif is_supported(base_estimator):
         base_estimator = \
             EntingRegressor(
@@ -108,15 +109,20 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
     else:
         raise ValueError("base_estimator is not supported.")
 
+    if std_estimator.std_type == 'distance':
+        tree_reg = EntingRegressor
+    elif std_estimator.std_type == 'proximity':
+        tree_reg = MisicRegressor
+
     if base_estimator == "GBRT":
         gbrt = LGBMRegressor(boosting_type='gbdt',
                             objective='regression',
                             verbose=-1,
                             )
-        base_estimator = EntingRegressor(base_estimator=gbrt,
-                                        std_estimator=std_estimator,
-                                        random_state=random_state,
-                                        cat_idx=cat_idx)
+        base_estimator = tree_reg(base_estimator=gbrt,
+                                std_estimator=std_estimator,
+                                random_state=random_state,
+                                cat_idx=cat_idx)
     elif base_estimator == "RF":
         rf = LGBMRegressor(boosting_type='random_forest',
                             objective='regression',
@@ -125,9 +131,10 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
                             subsample=0.9,
                             bagging_seed= random_state
                             )
-        base_estimator = EntingRegressor(base_estimator=rf,
-                                        std_estimator=std_estimator,
-                                        random_state=random_state)
+        base_estimator = tree_reg(base_estimator=rf,
+                                std_estimator=std_estimator,
+                                random_state=random_state,
+                                cat_idx=cat_idx)
 
     elif base_estimator == "DUMMY":
         return None
@@ -137,10 +144,12 @@ def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=
         
     return base_estimator
 
+
 def cook_std_estimator(std_estimator, 
                     space=None, 
                     random_state=None, 
-                    std_estimator_params=None):
+                    std_estimator_params=None,
+                    gbm_model_dict=None):
     """Cook a default uncertainty estimator.
 
     Parameters
@@ -176,6 +185,9 @@ def cook_std_estimator(std_estimator,
     from entmoot.learning.distance_based_std import \
         DistanceBasedExploration, DistanceBasedPenalty
 
+    from entmoot.learning.proximit_based_std import \
+        ProximityMetric
+
     if std_estimator == "BDD":
         std_estimator = \
             DistanceBasedExploration(
@@ -205,6 +217,11 @@ def cook_std_estimator(std_estimator,
             DistanceBasedPenalty(
                 metric_cont="manhattan",
                 metric_cat="goodall4",
+                space=space
+            )
+    elif std_estimator == "PROX":
+        std_estimator = \
+            ProximityMetric(
                 space=space
             )
 

@@ -43,7 +43,6 @@ from sklearn.base import clone
 
 from entmoot.acquisition import _gaussian_acquisition
 
-import sys
 
 class Optimizer(object):
     """Run bayesian optimisation loop.
@@ -217,7 +216,7 @@ class Optimizer(object):
         else:
             self.acq_func_kwargs = acq_func_kwargs
 
-        allowed_acq_funcs = ["LCB"]
+        allowed_acq_funcs = ["LCB","HLCB"]
         if self.acq_func not in allowed_acq_funcs:
             raise ValueError("expected acq_func to be in %s, got %s" %
                              (",".join(allowed_acq_funcs), self.acq_func))
@@ -252,22 +251,20 @@ class Optimizer(object):
 
         # Configure std estimator
 
-        self.std_estimator = std_estimator
-
         if std_estimator_kwargs is None:
             std_estimator_kwargs = dict()
         
-        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP"]
-        if self.std_estimator not in allowed_std_est:
+        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP", "PROX"]
+        if std_estimator not in allowed_std_est:
             raise ValueError("expected std_estimator to be in %s, got %s" %
-                             (",".join(allowed_std_est), self.std_estimator))
+                             (",".join(allowed_std_est), std_estimator))
 
         self.scaled = self.acq_func_kwargs.get("scaled", False)
 
         # build std_estimator
         import numpy as np
         est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
-        self.std_estimator = cook_std_estimator(
+        std_estimator = cook_std_estimator(
             std_estimator,
             space=self.space,
             random_state=est_random_state,
@@ -286,7 +283,7 @@ class Optimizer(object):
         # build base_estimator
         base_estimator = cook_estimator(
             base_estimator, 
-            self.std_estimator, 
+            std_estimator, 
             space=self.space,
             random_state=est_random_state,
             base_estimator_params=base_estimator_kwargs)
@@ -600,14 +597,8 @@ class Optimizer(object):
                              "not compatible." % (type(x), type(y)))
 
         if self.models:
-            next_xt = self.space.transform([self._next_x])[0]
-            temp_mu, temp_std = \
-                self.models[-1].predict(
-                    X=np.asarray(next_xt).reshape(1, -1), 
-                    return_std=True,
-                    scaled=self.scaled)
-            self.model_mu.append(temp_mu)
-            self.model_std.append(temp_std)
+            self.model_mu.append(self._model_mu)
+            self.model_std.append(self._model_std)
             
         # optimizer learned something new - discard cache
         self.cache_ = {}
@@ -653,6 +644,17 @@ class Optimizer(object):
                 # sampling points from the space
                 next_x = X[np.argmin(values)]
 
+                # derive model mu and std
+                #next_xt = self.space.transform([next_x])[0]
+                next_model_mu, next_model_std = \
+                    self.models[-1].predict(
+                        X=np.asarray(next_x).reshape(1, -1),
+                        return_std=True,
+                        scaled=self.scaled)
+                
+                model_mu = next_model_mu[0]
+                model_std = next_model_std[0]
+
             # acquisition function is optimized globally
             elif self.acq_optimizer == "global":
 
@@ -671,7 +673,7 @@ class Optimizer(object):
                 from entmoot.optimizer.gurobi_utils import \
                     get_core_gurobi_model, add_gbm_to_gurobi_model, \
                     add_std_to_gurobi_model, add_acq_to_gurobi_model, \
-                    set_gurobi_init_to_ref
+                    set_gurobi_init_to_ref, get_gbm_obj_from_model
 
                 # suppress  output to command window
                 import logging
@@ -709,10 +711,12 @@ class Optimizer(object):
 
                 # add obj to gurobi model
                 add_acq_to_gurobi_model(gurobi_model, est,
+                    acq_func=self.acq_func,
                     acq_func_kwargs=self.acq_func_kwargs)
 
                 # set initial gurobi model vars to std_est reference points
-                set_gurobi_init_to_ref(est, gurobi_model)
+                if est.std_estimator.std_type == 'distance':
+                    set_gurobi_init_to_ref(est, gurobi_model)
 
                 # set gurobi time limit
                 if self.gurobi_timelimit is not None:
@@ -727,7 +731,15 @@ class Optimizer(object):
                             "please check that the model is feasible."
 
                 # store optimality gap of gurobi computation
-                self.gurobi_mipgap.append(gurobi_model.mipgap)
+                if self.acq_func not in ["HLCB"]:
+                    self.gurobi_mipgap.append(gurobi_model.mipgap)
+
+                # for i in range(2): REMOVEX
+                #     gurobi_model.params.ObjNumber = i
+                #     # Query the o-th objective value
+                #     print(f"{i}:")
+                #     print(gurobi_model.ObjNVal)
+                    
 
                 # output next_x
                 next_x = np.empty(len(self.space.dimensions))
@@ -747,11 +759,43 @@ class Optimizer(object):
                             ) == 1
                         ]
 
-                    next_x[i] = cat[0]   
+                    next_x[i] = cat[0]
+
+                model_mu = get_gbm_obj_from_model(gurobi_model,'first')
+                model_std = gurobi_model._alpha.x
+
+                # print("stoped here") REMOVEX
+                # print(next_x[-3])
+                # counter = 0
+                # for tree_id,leaf_enc in enumerate(gbm_model_dict['first'].get_active_leaves(next_x)):
+                #     print(f"leaf_val: {gurobi_model._z_l['first',tree_id,leaf_enc].x}")
+                #     if round(gurobi_model._z_l['first',tree_id,leaf_enc].x,1) == 0.0:
+                #         "leafs are inconsistent"
+                #         counter += 1
+                # print("")
+                #if counter > 0:
+                #    print(f"   ! {counter} leafs are off !")
 
             # note the need for [0] at the end
             self._next_x = self.space.inverse_transform(
                 next_x.reshape((1, -1)))[0]
+
+            from entmoot.utils import get_cat_idx
+
+            for idx,xi in enumerate(self._next_x):
+                if idx not in get_cat_idx(self.space):
+                    self._next_x[idx] = round(xi, 5)
+
+                    # enforce variable bounds
+                    if self._next_x[idx] > self.space.transformed_bounds[idx][1]:
+                        self._next_x[idx] = self.space.transformed_bounds[idx][1]
+                    elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
+                        self._next_x[idx] = self.space.transformed_bounds[idx][0]
+
+            self._model_mu = round(model_mu,5)
+
+            self._model_std = round(model_std,5)
+
 
         # Pack results
         from entmoot.utils import create_result
@@ -785,13 +829,16 @@ class Optimizer(object):
             raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
                              "not compatible." % (type(x), type(y)))
 
-    def run(self, func, n_iter=1, no_progress_bar=False):
+    def run(self, func, n_iter=1, no_progress_bar=False, update_min=False):
         """Execute ask() + tell() `n_iter` times"""
         from tqdm import tqdm
 
         for itr in tqdm(range(n_iter),disable=no_progress_bar):
             x = self.ask()
             self.tell(x, func(x), fit= not itr == n_iter-1)
+
+            if no_progress_bar and update_min:
+                print(f"Min. obj.: {round(min(self.yi),2)} at itr.: {itr+1} / {n_iter}", end="\r")
 
         from entmoot.utils import create_result
 
@@ -801,6 +848,9 @@ class Optimizer(object):
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
         result.specs = self.specs
+
+        if no_progress_bar and update_min:
+            print(f"Min. obj.: {round(min(self.yi),2)} at itr.: {n_iter} / {n_iter}")
         return result
 
     def update_next(self):
@@ -838,35 +888,58 @@ class Optimizer(object):
         return result
 
     def predict_with_est(self, x, return_std=True):
-        next_x = self.space.transform([x])[0]
+        from entmoot.utils import is_2Dlistlike
 
+        if is_2Dlistlike(x):
+            next_x = np.asarray(
+                self.space.transform(x)
+            )
+        else:
+            next_x = np.asarray(
+                self.space.transform([x])[0]
+            ).reshape(1, -1)
+            
         if self.models:
             temp_mu, temp_std = \
                 self.models[-1].predict(
-                    X=np.asarray(next_x).reshape(1, -1), 
+                    X=next_x, 
                     return_std=True,
                     scaled=self.scaled)
         else:
-            print("train first")
             est = clone(self.base_estimator_)
             est.fit(self.space.transform(self.Xi), self.yi)
             temp_mu, temp_std = \
                 est.predict(
-                    X=np.asarray(next_x).reshape(1, -1), 
+                    X=next_x, 
                     return_std=True,
                     scaled=self.scaled)
         
-        if return_std:
-            return temp_mu[0], temp_std[0]
+        if is_2Dlistlike(x):
+            if return_std:
+                return temp_mu, temp_std
+            else:
+                return temp_mu
         else:
-            return temp_mu[0]
+            if return_std:
+                return temp_mu[0], temp_std[0]
+            else:
+                return temp_mu[0]
 
     def predict_with_acq(self, x):
-        next_x = self.space.transform([x])[0]
+        from entmoot.utils import is_2Dlistlike
+
+        if is_2Dlistlike(x):
+            next_x = np.asarray(
+                self.space.transform(x)
+            )
+        else:
+            next_x = np.asarray(
+                self.space.transform([x])[0]
+            ).reshape(1, -1)
 
         if self.models:
             temp_val = _gaussian_acquisition(
-                X=np.asarray(next_x).reshape(1, -1), model=self.models[-1], 
+                X=next_x, model=self.models[-1], 
                 y_opt=np.min(self.yi),
                 acq_func=self.acq_func,
                 acq_func_kwargs=self.acq_func_kwargs
@@ -876,10 +949,13 @@ class Optimizer(object):
             est.fit(self.space.transform(self.Xi), self.yi)
 
             temp_val = _gaussian_acquisition(
-                X=np.asarray(next_x).reshape(1, -1), model=est, 
+                X=next_x, model=est, 
                 y_opt=np.min(self.yi),
                 acq_func=self.acq_func,
                 acq_func_kwargs=self.acq_func_kwargs
             )
-        
-        return temp_val[0]
+            
+        if is_2Dlistlike(x):
+            return temp_val
+        else:
+            return temp_val[0]

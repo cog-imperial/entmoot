@@ -147,13 +147,79 @@ class EntingRegressor(BaseEstimator, RegressorMixin):
 
         original_tree_model_dict = self.regressor_._Booster.dump_model()
 
+        import json
+        with open('tree_dict_next.json', 'w') as f:
+            json.dump(
+                original_tree_model_dict, 
+                f, 
+                indent=4, 
+                sort_keys=False
+            )
+
         ordered_tree_model_dict = \
             order_tree_model_dict(
                 original_tree_model_dict,
                 cat_column=self.cat_idx
             )
+
         gbm_model = GbmModel(ordered_tree_model_dict)
         return gbm_model
 
+class MisicRegressor(EntingRegressor):
 
+    def __init__(self, base_estimator=None,
+                std_estimator=None,
+                random_state=None,
+                cat_idx=[]):
 
+        self.random_state = random_state
+        self.base_estimator = base_estimator
+        self.std_estimator = std_estimator
+        self.cat_idx = cat_idx
+
+        # check if base_estimator is EntingRegressor
+        if isinstance(base_estimator, MisicRegressor):
+            self.base_estimator = base_estimator.base_estimator
+            self.std_estimator = base_estimator.std_estimator
+
+    def fit(self, X, y):
+        """Fit model and standard estimator to observations.
+
+        Parameters
+        ----------
+        X : array-like, shape=(n_samples, n_features)
+            Training vectors, where `n_samples` is the number of samples
+            and `n_features` is the number of features.
+
+        y : array-like, shape=(n_samples,)
+            Target values (real numbers in regression)
+
+        Returns
+        -------
+        -
+        """
+        base_estimator = self.base_estimator
+
+        # suppress lgbm output
+        base_estimator.set_params(
+            random_state=self.random_state,
+            verbose=-1
+        )
+
+        # clone base_estimator (only supported for sklearn estimators)
+        self.regressor_ = clone(base_estimator)
+
+        # update tree model regressor
+        import warnings
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if self.cat_idx:
+                self.regressor_.fit(X, y, categorical_feature=self.cat_idx)
+            else:
+                self.regressor_.fit(X, y)
+
+        gbm_model = self.get_gbm_model()
+
+        # update std estimator
+        self.std_estimator.update(X, y, gbm_model, cat_column=self.cat_idx)

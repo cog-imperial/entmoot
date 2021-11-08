@@ -34,8 +34,7 @@ distributions/sampler/sequences/halton.py
 import numpy as np
 from .base import InitialPointGenerator
 from ..space import Space
-from ..utils import check_random_state
-
+from sklearn.utils import check_random_state
 
 class Halton(InitialPointGenerator):
     """Creates `Halton` sequence samples.

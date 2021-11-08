@@ -122,7 +122,8 @@ class GbmModel:
                         var_breakpoints[var] = set([breakpoint])
 
         for k in var_breakpoints.keys():
-            var_breakpoints[k] = sorted(var_breakpoints[k])
+            if isinstance(var_breakpoints[k], set):
+                var_breakpoints[k] = sorted(var_breakpoints[k])
 
         return var_breakpoints
 
@@ -134,9 +135,85 @@ class GbmModel:
         del resulting_counter['leaf']
         return resulting_counter
 
+    def get_active_leaves(self, X):
+        all_active_leaves = []
+        for tree in self.trees:
+            active_leaf = []
+            tree._populate_active_leaf_encodings(active_leaf, X)
+            all_active_leaves.append(''.join(active_leaf))
+        return all_active_leaves
+
+    def get_active_area(self, X, cat_idx=[], space=None, volume=False):
+            active_splits = {}
+            for tree in self.trees:
+                tree._populate_active_splits(active_splits, X)
+
+            all_active_splits = {}
+            for idx,dim in enumerate(space.dimensions):
+                if idx not in cat_idx:
+
+                    if idx in active_splits.keys():
+                        # if tree splits on this conti var
+                        all_active_splits[idx] = active_splits[idx]
+                        all_active_splits[idx].insert(0,dim.transformed_bounds[0])
+                        all_active_splits[idx].append(dim.transformed_bounds[1])
+                    else:
+                        # add actual bounds of var if tree doesn't split on var
+                        all_active_splits[idx] = \
+                            [
+                                dim.transformed_bounds[0],
+                                dim.transformed_bounds[1]
+                            ]
+            # sort all splits and extract modified bounds for vars
+            for key in all_active_splits.keys():
+                all_active_splits[key] = \
+                    sorted( list(set(all_active_splits[key])) )[:2]
+
+            # return hypervolume if required
+            if volume:
+                hyper_vol = 1
+                for key in all_active_splits.keys():
+                    hyper_vol *= \
+                        abs(all_active_splits[key][0] - all_active_splits[key][1])
+                return all_active_splits, hyper_vol
+            else:
+                return all_active_splits
+
 
 class GbmType:
-    pass
+    def _populate_active_splits(self, active_splits, X):
+        if isinstance(self.split_code_pred, list):
+            if X[self.split_var] in self.split_code_pred:
+                self.left._populate_active_splits(active_splits, X)
+            else:
+                self.right._populate_active_splits(active_splits, X)
+        else:
+            if self.split_var != -1:                
+                if not self.split_var in active_splits.keys():
+                    active_splits[self.split_var] = []
+
+                if X[self.split_var] <= self.split_code_pred:
+                    self.left._populate_active_splits(active_splits, X)
+                    active_splits[self.split_var].append(self.split_code_pred)
+                else:
+                    self.right._populate_active_splits(active_splits, X)
+
+    def _populate_active_leaf_encodings(self, active_leaf, X):
+        if isinstance(self.split_code_pred, list):
+            if X[self.split_var] in self.split_code_pred:
+                active_leaf.append('0')
+                self.left._populate_active_leaf_encodings(active_leaf, X)
+            else:
+                active_leaf.append('1')
+                self.right._populate_active_leaf_encodings(active_leaf, X)
+        else:
+            if self.split_var != -1:                
+                if X[self.split_var] <= self.split_code_pred:
+                    active_leaf.append('0')
+                    self.left._populate_active_leaf_encodings(active_leaf, X)
+                else:
+                    active_leaf.append('1')
+                    self.right._populate_active_leaf_encodings(active_leaf, X)
 
 
 class GbmNode(GbmType):
@@ -337,6 +414,7 @@ class LeafNode(GbmType):
     `split_code_pred` as leaf value defined by training."""
     def __init__(self,
                  split_code_pred):
+        self.split_var = -1
         self.split_code_pred = split_code_pred
 
     def __repr__(self):

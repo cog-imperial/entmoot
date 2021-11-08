@@ -9,3 +9,5 @@ test.py
 env
 *.log
 *.sh
+.idea
+.pytest_cache

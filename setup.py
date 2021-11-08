@@ -20,13 +20,16 @@ setup(
         'numpy>=1.18.4',
         'scikit-learn>=0.21.3',
         'pyYAML>=5.3.1',
-        'lightgbm>=2.3.1'
+        'lightgbm>=2.3.1',
+        'mopti>=0.9.2',
+        'mbo>=0.0.1'
     ],
     setup_requires=[
         'numpy>=1.18.4',
         'scikit-learn>=0.21.3',
         'pyYAML>=5.3.1',
-        'lightgbm>=2.3.1'
+        'lightgbm>=2.3.1',
+        'mopti>=0.9.2',
+        'mbo>=0.01'
     ]
 )
-
