@@ -1,10 +1,16 @@
+import pytest
+
+try:
+    # EntmootOpti requires the optional dependencies mopti and mbo
+    from entmoot.optimizer import EntmootOpti
+except ImportError:
+    pytest.skip("EntmootOpti not available", allow_module_level=True)
+
 import os
 
 import lightgbm as lgb
 import opti
 import pandas as pd
-
-from entmoot.optimizer import EntmootOpti
 from gurobipy import Env
 
 

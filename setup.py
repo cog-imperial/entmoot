@@ -20,8 +20,8 @@ setup(
         'numpy>=1.18.4',
         'scikit-learn>=0.21.3',
         'pyYAML>=5.3.1',
-        'lightgbm>=2.3.1',
-        'mopti==0.9.4',
-        'mbo==0.0.1'
-    ]
+        'lightgbm>=2.3.1'
+    ],
+    extras_require={
+        'opti': ['mopti>=0.10.0', 'mbo>=0.1.0']}
 )
