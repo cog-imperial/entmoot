@@ -259,8 +259,6 @@ class Optimizer(object):
             raise ValueError("expected std_estimator to be in %s, got %s" %
                              (",".join(allowed_std_est), std_estimator))
 
-        self.scaled = self.acq_func_kwargs.get("scaled", False)
-
         # build std_estimator
         import numpy as np
         est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
@@ -649,8 +647,7 @@ class Optimizer(object):
                 next_model_mu, next_model_std = \
                     self.models[-1].predict(
                         X=np.asarray(next_x).reshape(1, -1),
-                        return_std=True,
-                        scaled=self.scaled)
+                        return_std=True)
                 
                 model_mu = next_model_mu[0]
                 model_std = next_model_std[0]
@@ -903,16 +900,14 @@ class Optimizer(object):
             temp_mu, temp_std = \
                 self.models[-1].predict(
                     X=next_x, 
-                    return_std=True,
-                    scaled=self.scaled)
+                    return_std=True)
         else:
             est = clone(self.base_estimator_)
             est.fit(self.space.transform(self.Xi), self.yi)
             temp_mu, temp_std = \
                 est.predict(
                     X=next_x, 
-                    return_std=True,
-                    scaled=self.scaled)
+                    return_std=True)
         
         if is_2Dlistlike(x):
             if return_std:

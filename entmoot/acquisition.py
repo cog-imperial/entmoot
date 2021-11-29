@@ -100,9 +100,7 @@ def gaussian_lcb(X, model, kappa=1.96, return_grad=False, acq_func_kwargs=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
 
-        scaled = acq_func_kwargs.get("scaled", False)
-
-        mu, std = model.predict(X, return_std=True, scaled=scaled)
+        mu, std = model.predict(X, return_std=True)
 
         if kappa == "inf":
             return -std
