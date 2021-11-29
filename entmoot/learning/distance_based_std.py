@@ -698,7 +698,7 @@ class DistanceBasedStd(ABC):
         Points at which objective has been evaluated.
     yi : scalar
         Values of objective at corresponding points in `Xi`.
-    cont_dist_metric : DistanceMetric
+    dist_metric : DistanceMetric
         Object used to compute distances between continuous variables.
     x_means : list
         Mean of attribute `Xi`.
@@ -711,36 +711,35 @@ class DistanceBasedStd(ABC):
         Is different for all child classes.
     """
     def __init__(self,
-        metric_cont='sq_euclidean',
-        metric_cat='overlap',
-        space=None):
+        space,
+        unc_scaling="standard",
+        dist_metric='squared_euclidean',
+        cat_dist_metric='overlap'):
 
         self.std_type = 'distance'
 
         # set distance metric for cont variables
-        if metric_cont == 'sq_euclidean':
+        if dist_metric == 'squared_euclidean':
             from entmoot.learning.distance_based_std import SquaredEuclidean
-            self.cont_dist_metric = SquaredEuclidean()
+            self.dist_metric = SquaredEuclidean()
 
-        elif metric_cont == 'manhattan':
+        elif dist_metric == 'manhattan':
             from entmoot.learning.distance_based_std import Manhattan
-            self.cont_dist_metric = Manhattan()
+            self.dist_metric = Manhattan()
 
         self.space = space
 
         # set similarity metric for cat variables
-        if metric_cat == "overlap":
+        if cat_dist_metric == "overlap":
             from entmoot.learning.distance_based_std import Overlap
             self.cat_sim_metric = Overlap()
             
-        elif metric_cat == "goodall4":
+        elif cat_dist_metric == "goodall4":
             from entmoot.learning.distance_based_std import Goodall4
-            assert self.space is not None, "Space parameter is needed for goodall4."
             self.cat_sim_metric = Goodall4()
 
-        elif metric_cat == "of":
+        elif cat_dist_metric == "of":
             from entmoot.learning.distance_based_std import OF
-            assert self.space is not None, "Space parameter is needed for of."
             self.cat_sim_metric = OF()
 
     def get_x_cont_vals(self, xi):
@@ -875,7 +874,7 @@ class DistanceBasedStd(ABC):
 
             # compute all distances for cont variables
             dist_cont = \
-                self.cont_dist_metric.get_distance(ref_points_cont,x_cont_standard)
+                self.dist_metric.get_distance(ref_points_cont,x_cont_standard)
 
         # compute all distances for cat variables
         if self.Xi_cat:
@@ -966,7 +965,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         Points at which objective has been evaluated.
     yi : scalar
         Values of objective at corresponding points in `Xi`.
-    cont_dist_metric : DistanceMetric
+    dist_metric : DistanceMetric
         Object used to compute distances between continuous variables.
     x_means : list
         Mean of attribute `Xi`.
@@ -982,12 +981,15 @@ class DistanceBasedExploration(DistanceBasedStd):
         Bound of exploration measure to prohibit over-exploration
     """
     def __init__(self,
-        metric_cont='sq_euclidean',
-        metric_cat='overlap',
-        space=None,
+        space,
+        unc_scaling="standard",
+        dist_metric='squared_euclidean',
+        cat_dist_metric='overlap',
         zeta=0.5):
 
-        super().__init__(metric_cont,metric_cat,space)
+        super().__init__(space,
+                         dist_metric=dist_metric,
+                         cat_dist_metric=cat_dist_metric)
         self.zeta = zeta
 
     def set_params(self,**kwargs):
@@ -1089,8 +1091,8 @@ class DistanceBasedExploration(DistanceBasedStd):
             self.cat_idx, self.ref_points_cat, model
         )
 
-        self.cont_dist_metric.add_exploration_to_gurobi_model(
-            self.ref_points_cont, 
+        self.dist_metric.add_exploration_to_gurobi_model(
+            self.ref_points_cont,
             self.x_means, 
             self.x_scalers, 
             self.distance_bound, 
@@ -1116,7 +1118,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         Points at which objective has been evaluated.
     yi : scalar
         Values of objective at corresponding points in `Xi`.
-    cont_dist_metric : DistanceMetric
+    dist_metric : DistanceMetric
         Object used to compute distances between continuous variables.
     x_means : list
         Mean of attribute `Xi`.
@@ -1130,11 +1132,14 @@ class DistanceBasedPenalty(DistanceBasedStd):
         length of `ref_points"""
 
     def __init__(self,
-        metric_cont='sq_euclidean',
-        metric_cat='overlap',
-        space=None):
+        space,
+        unc_scaling="standard",
+        dist_metric='squared_euclidean',
+        cat_dist_metric='overlap'):
 
-        super().__init__(metric_cont,metric_cat,space)
+        super().__init__(space,
+                         dist_metric=dist_metric,
+                         cat_dist_metric=cat_dist_metric)
 
     def set_params(self,**kwargs):
         """Sets parameters related to distance-based standard estimator.
@@ -1226,7 +1231,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
             self.cat_idx, self.ref_points_cat, model
         )
 
-        self.cont_dist_metric.add_penalty_to_gurobi_model(
+        self.dist_metric.add_penalty_to_gurobi_model(
             self.ref_points_cont, 
             self.x_means, 
             self.x_scalers, 
