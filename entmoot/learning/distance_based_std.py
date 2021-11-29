@@ -718,6 +718,8 @@ class DistanceBasedStd(ABC):
 
         self.std_type = 'distance'
 
+        self.unc_scaling = unc_scaling
+
         # set distance metric for cont variables
         if dist_metric == 'squared_euclidean':
             from entmoot.learning.distance_based_std import SquaredEuclidean
@@ -813,25 +815,37 @@ class DistanceBasedStd(ABC):
 
         self.n_features = Xi.shape[1]
 
-        # compute mean and scaler of data set
+
         if list(self.Xi_cont):
-            standard_scaler = StandardScaler()
-            projected_features = standard_scaler.fit_transform(self.Xi_cont)
-            self.x_means = standard_scaler.mean_
-            self.x_scalers = standard_scaler.scale_
 
-            # standardize dataset
-            self.Xi_cont_standard = self.standardize_with_Xi(self.Xi_cont)
+            # standardize points for comparison
+            if self.unc_scaling == "standard":
+                standard_scaler = StandardScaler()
+                projected_features = standard_scaler.fit_transform(self.Xi_cont)
+                self.x_shifts = standard_scaler.mean_
+                self.x_scalers = standard_scaler.scale_
 
-        # compute scale coefficient
-        y_scaler = np.std(self.yi)
-        self.std_scale_coef = abs(y_scaler / self.n_features)
+                # standardize dataset
+                self.Xi_cont_scaled = self.scale_with_Xi(self.Xi_cont)
+
+            # normalize points for comparison
+            elif self.unc_scaling == "normalize":
+                self.x_shifts = np.asarray(
+                    [dim.low for dim in self.space.dimensions]
+                )
+
+                self.x_scalers = np.asarray(
+                    [dim.high - dim.low for dim in self.space.dimensions]
+                )
+
+                # standardize dataset
+                self.Xi_cont_scaled = self.scale_with_Xi(self.Xi_cont)
 
         # update cat_sim_metric with new data
         cat_dims = self.get_x_cat_vals(self.space.dimensions)
         self.cat_sim_metric.update(self.Xi_cat, cat_dims)
 
-    def standardize_with_Xi(self, X):
+    def scale_with_Xi(self, X):
         """Standardize given input `X` based on attribute `Xi`.
 
         Parameters
@@ -845,7 +859,7 @@ class DistanceBasedStd(ABC):
         x_standard : numpy array, shape (n_rows, n_dims)
             Standardized array of `X`
         """
-        x_standard = np.divide(X - self.x_means, self.x_scalers)
+        x_standard = np.divide(X - self.x_shifts, self.x_scalers)
         return x_standard
 
     def get_closest_point_distance(self, X):
@@ -869,12 +883,11 @@ class DistanceBasedStd(ABC):
             X_cont = self.get_x_cont_vals(X)
 
             # standardize cont variables
-            x_cont_standard = self.standardize_with_Xi(X_cont)  
-            x_cont_standard = np.asarray(x_cont_standard)
+            x_cont_scaled = np.asarray(self.scale_with_Xi(X_cont))
 
             # compute all distances for cont variables
             dist_cont = \
-                self.dist_metric.get_distance(ref_points_cont,x_cont_standard)
+                self.dist_metric.get_distance(ref_points_cont, x_cont_scaled)
 
         # compute all distances for cat variables
         if self.Xi_cat:
@@ -890,7 +903,7 @@ class DistanceBasedStd(ABC):
 
         return np.min(dist_cont)
 
-    def predict(self, X, scaled=True):
+    def predict(self, X):
         """Predict standard estimate at location `X`.
 
         Parameters
@@ -909,9 +922,6 @@ class DistanceBasedStd(ABC):
         for row_res,Xi in enumerate(X):
             ref_distance = self.get_closest_point_distance(Xi)
             dist[row_res] = ref_distance
-
-        if scaled:
-            dist *= self.std_scale_coef
 
         return dist
 
@@ -988,6 +998,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         zeta=0.5):
 
         super().__init__(space,
+                         unc_scaling=unc_scaling,
                          dist_metric=dist_metric,
                          cat_dist_metric=cat_dist_metric)
         self.zeta = zeta
@@ -1029,14 +1040,14 @@ class DistanceBasedExploration(DistanceBasedStd):
         #self.ref_points = self.Xi_standard
 
         if list(self.Xi_cont):
-            self.ref_points_cont = self.Xi_cont_standard
+            self.ref_points_cont = self.Xi_cont_scaled
         self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
         # compute upper bound of uncertainty
         y_var = np.var(yi)
         self.distance_bound = abs(self.zeta*y_var)
 
-    def predict(self, X, scaled=True):
+    def predict(self, X):
         """Predict standard estimate at location `X`. By default `dist` is
         bounded by attribute `distance_bound`.
 
@@ -1051,13 +1062,13 @@ class DistanceBasedExploration(DistanceBasedStd):
             Returns distances to closest `ref_point` for every point per row
             in `n_rows`.
         """
-        dist = super().predict(X, scaled=scaled)
+        dist = super().predict(X)
 
         # prediction has max out at `distance_bound`
         dist[dist > self.distance_bound] = self.distance_bound
         return dist
 
-    def get_gurobi_obj(self, model, scaled=True):
+    def get_gurobi_obj(self, model):
         """Get contribution of standard estimator to gurobi model objective
         function.
 
@@ -1073,10 +1084,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         """
         # negative contributation of alpha requires non-convex flag in gurobi.
         model.Params.NonConvex=2
-        if scaled:
-            return -self.std_scale_coef*model._alpha
-        else:
-            return -model._alpha
+        return -model._alpha
 
     def add_to_gurobi_model(self,model):
         """Add standard estimator to gurobi model. Model details are 
@@ -1093,7 +1101,7 @@ class DistanceBasedExploration(DistanceBasedStd):
 
         self.dist_metric.add_exploration_to_gurobi_model(
             self.ref_points_cont,
-            self.x_means, 
+            self.x_shifts,
             self.x_scalers, 
             self.distance_bound, 
             model,
@@ -1138,6 +1146,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         cat_dist_metric='overlap'):
 
         super().__init__(space,
+                         unc_scaling= unc_scaling,
                          dist_metric=dist_metric,
                          cat_dist_metric=cat_dist_metric)
 
@@ -1177,11 +1186,11 @@ class DistanceBasedPenalty(DistanceBasedStd):
         #self.ref_points = self.Xi_standard
 
         if list(self.Xi_cont):
-            self.ref_points_cont = self.Xi_cont_standard
+            self.ref_points_cont = self.Xi_cont_scaled
         self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
 
-    def predict(self, X, scaled=True):
+    def predict(self, X):
         """Predict standard estimate at location `X`. Sign of `dist` is negative
         because it contributes as a penalty.
 
@@ -1196,10 +1205,10 @@ class DistanceBasedPenalty(DistanceBasedStd):
             Returns distances to closest `ref_point` for every point per row
             in `n_rows`.
         """
-        dist = super().predict(X, scaled=scaled)
+        dist = super().predict(X)
         return -dist
 
-    def get_gurobi_obj(self, model, scaled=True):
+    def get_gurobi_obj(self, model):
         """Get contribution of standard estimator to gurobi model objective
         function.
 
@@ -1213,10 +1222,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         alpha : gurobipy.Var,
             Model variable that takes the value of the uncertainty measure.
         """
-        if scaled:
-            return self.std_scale_coef*model._alpha
-        else:
-            return model._alpha
+        return model._alpha
 
     def add_to_gurobi_model(self,model):
         """Add standard estimator to gurobi model. Model details are 
@@ -1233,7 +1239,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
 
         self.dist_metric.add_penalty_to_gurobi_model(
             self.ref_points_cont, 
-            self.x_means, 
+            self.x_shifts,
             self.x_scalers, 
             model,
             add_rhs=cat_rhs
