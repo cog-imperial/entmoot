@@ -379,10 +379,12 @@ def entmoot_minimize(
 
         itr += 1
 
-        result = optimizer.tell(
+        optimizer.tell(
             next_x, next_y,
             fit= batch_size is None and not _n_calls <=0
         )
+
+        result = optimizer.get_result()
 
         best_fun = result.fun  
 

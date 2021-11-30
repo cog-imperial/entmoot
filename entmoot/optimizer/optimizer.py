@@ -206,8 +206,8 @@ class Optimizer(object):
         self.space = Space(dimensions)
 
         self._initial_samples = None
-        self._initial_point_generator = cook_initial_point_generator(
-            initial_point_generator)
+        self._initial_point_generator = \
+            cook_initial_point_generator(initial_point_generator)
 
         if self._initial_point_generator is not None:
             transformer = self.space.get_transformer()
@@ -216,25 +216,30 @@ class Optimizer(object):
                 random_state=self.rng.randint(0, np.iinfo(np.int32).max))
             self.space.set_transformer(transformer)
 
-        # define random_state of estimator
-        est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
 
-        # check support of base_estimator if exists
-        if not is_supported(base_estimator):
-            raise ValueError(
-                "Estimator type: %s is not supported." % base_estimator)
+        from entmoot.learning.tree_model import EntingRegressor,MisicRegressor
 
-        # build base_estimator
-        base_estimator = cook_estimator(
-            self.space,
-            base_estimator,
-            base_estimator_kwargs,
-            random_state=est_random_state)
+        if type(base_estimator) not in [EntingRegressor,MisicRegressor]:
+            if type(base_estimator) in [str]:
+                # define random_state of estimator
+                est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
+
+                # check support of base_estimator if exists
+                if not is_supported(base_estimator):
+                    raise ValueError("Estimator type: %s is not supported." % base_estimator)
+
+                # build base_estimator
+                base_estimator = cook_estimator(
+                    self.space,
+                    base_estimator,
+                    base_estimator_kwargs,
+                    random_state=est_random_state)
+            else:
+                raise ValueError("Estimator type: %s is not supported." % base_estimator)
 
         self.base_estimator_ = base_estimator
 
         # Configure Optimizer
-
         self.acq_optimizer = acq_optimizer
 
         # record other arguments
@@ -242,11 +247,8 @@ class Optimizer(object):
             acq_optimizer_kwargs = dict()
 
         self.acq_optimizer_kwargs = acq_optimizer_kwargs
-
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
-
         self.gurobi_env = acq_optimizer_kwargs.get("env", None)
-
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
 
         # Initialize storage for optimization
@@ -318,6 +320,7 @@ class Optimizer(object):
             random_state=random_state,
             verbose=self.verbose
         )
+
         optimizer._initial_samples = self._initial_samples
         optimizer.printed_switch_to_model = self.printed_switch_to_model
         if self.Xi:
@@ -436,14 +439,115 @@ class Optimizer(object):
                 return self.space.rvs(random_state=self.rng)[0]
             else:
                 # The samples are evaluated starting form initial_samples[0]
-                return self._initial_samples[
-                    len(self._initial_samples) - self._n_initial_points]
+                return self._initial_samples[len(self._initial_samples) - self._n_initial_points]
+
+        elif self._next_x is not None:
+            # return self._next_x if optimizer hasn't learned anything new
+            return self._next_x
 
         else:
-            if not self.models:
-                raise RuntimeError("Random evaluations exhausted and no "
-                                   "model has been fit.")
+            # after being "told" n_initial_points we switch from sampling
+            # random points to using a surrogate model
 
+            # create fresh copy of base_estimator
+            est = self.base_estimator_.copy()
+            self.base_estimator_ = est
+
+            # esimator is fitted using a generic fit function
+            est.fit(self.space.transform(self.Xi), self.yi)
+
+            # we cache the estimator in model_queue
+            if self.max_model_queue_size is None:
+                self.models.append(est)
+            elif len(self.models) < self.max_model_queue_size:
+                self.models.append(est)
+            else:
+                # Maximum list size obtained, remove oldest model.
+                self.models.pop(0)
+                self.models.append(est)
+
+            if not self.printed_switch_to_model:
+                print("")
+                print("SOLVER: initial points exhausted")
+                print("   -> switch to model-based optimization")
+                self.printed_switch_to_model = True
+
+            # this code provides a heuristic solution that uses sampling as the optimization strategy
+            if self.acq_optimizer == "sampling":
+                # sample a large number of points and then pick the best ones as
+                # starting points
+                X = self.space.transform(self.space.rvs(
+                    n_samples=self.n_points, random_state=self.rng))
+
+                values = _gaussian_acquisition(
+                    X=X, model=est,
+                    y_opt=np.min(self.yi),
+                    acq_func=self.acq_func,
+                    acq_func_kwargs=self.acq_func_kwargs)
+                # Find the minimum of the acquisition function by randomly
+                # sampling points from the space
+                next_x = X[np.argmin(values)]
+
+                # derive model mu and std
+                # next_xt = self.space.transform([next_x])[0]
+                next_model_mu, next_model_std = \
+                    self.models[-1].predict(
+                        X=np.asarray(next_x).reshape(1, -1),
+                        return_std=True)
+
+                model_mu = next_model_mu[0]
+                model_std = next_model_std[0]
+
+            # acquisition function is optimized globally
+            elif self.acq_optimizer == "global":
+                try:
+                    import gurobipy as gp
+                except ModuleNotFoundError:
+                    print("GurobiNotFoundError: "
+                          "To run `aqu_optimizer='global'` "
+                          "please install the Gurobi solver "
+                          "(https://www.gurobi.com/) and its interface "
+                          "gurobipy. "
+                          "Alternatively, change `aqu_optimizer='sampling'`.")
+                    import sys
+                    sys.exit(1)
+
+                next_x, model_mu, model_std, gurobi_mipgap = \
+                    self.models[-1].get_global_next_x(acq_func=self.acq_func,
+                                                      acq_func_kwargs=self.acq_func_kwargs,
+                                                      acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                                      verbose=self.verbose,
+                                                      gurobi_env=self.gurobi_env,
+                                                      gurobi_timelimit=self.gurobi_timelimit)
+
+                self.gurobi_mipgap.append(gurobi_mipgap)
+
+            # note the need for [0] at the end
+            self._next_x = self.space.inverse_transform(
+                next_x.reshape((1, -1)))[0]
+
+            from entmoot.utils import get_cat_idx
+
+            for idx, xi in enumerate(self._next_x):
+                if idx not in get_cat_idx(self.space):
+                    self._next_x[idx] = round(xi, 5)
+
+                    # enforce variable bounds
+                    if self._next_x[idx] > self.space.transformed_bounds[idx][1]:
+                        self._next_x[idx] = self.space.transformed_bounds[idx][1]
+                    elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
+                        self._next_x[idx] = self.space.transformed_bounds[idx][0]
+
+            self._model_mu = round(model_mu, 5)
+
+            self._model_std = round(model_std, 5)
+
+            if self.models:
+                self.model_mu.append(self._model_mu)
+                self.model_std.append(self._model_std)
+
+
+            # check how far the new next_x is away from existing data
             next_x = self._next_x
             min_delta_x = min([self.space.distance(next_x, xi)
                                for xi in self.Xi])
@@ -522,8 +626,6 @@ class Optimizer(object):
         from entmoot.utils import is_2Dlistlike
 
         # if y isn't a scalar it means we have been handed a batch of points
-        import numpy as np
-
         if is_listlike(y) and is_2Dlistlike(x):
             self.Xi.extend(x)
             self.yi.extend(y)
@@ -535,219 +637,12 @@ class Optimizer(object):
         else:
             raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
                              "not compatible." % (type(x), type(y)))
-
-        if self.models:
-            self.model_mu.append(self._model_mu)
-            self.model_std.append(self._model_std)
             
         # optimizer learned something new - discard cache
         self.cache_ = {}
 
-        # after being "told" n_initial_points we switch from sampling
-        # random points to using a surrogate model
-        if (fit and self._n_initial_points <= 0 and
-                self.base_estimator_ is not None):
-
-            transformed_bounds = np.array(self.space.transformed_bounds)
-            est = self.base_estimator_
-
-            # esimator is fitted using a generic fit function
-            est.fit(self.space.transform(self.Xi), self.yi)
-
-            if self.max_model_queue_size is None:
-                self.models.append(est)
-            elif len(self.models) < self.max_model_queue_size:
-                self.models.append(est)
-            else:
-                # Maximum list size obtained, remove oldest model.
-                self.models.pop(0)
-                self.models.append(est)
-
-            if not self.printed_switch_to_model:
-                print("")
-                print("SOLVER: initial points exhausted")
-                print("   -> switch to model-based optimization")
-                self.printed_switch_to_model = True
-
-            if self.acq_optimizer == "sampling":
-                # sample a large number of points and then pick the best ones as 
-                # starting points
-                X = self.space.transform(self.space.rvs(
-                    n_samples=self.n_points, random_state=self.rng))
-
-                values = _gaussian_acquisition(
-                    X=X, model=est, 
-                    y_opt=np.min(self.yi),
-                    acq_func=self.acq_func,
-                    acq_func_kwargs=self.acq_func_kwargs)
-                # Find the minimum of the acquisition function by randomly
-                # sampling points from the space
-                next_x = X[np.argmin(values)]
-
-                # derive model mu and std
-                #next_xt = self.space.transform([next_x])[0]
-                next_model_mu, next_model_std = \
-                    self.models[-1].predict(
-                        X=np.asarray(next_x).reshape(1, -1),
-                        return_std=True)
-                
-                model_mu = next_model_mu[0]
-                model_std = next_model_std[0]
-
-            # acquisition function is optimized globally
-            elif self.acq_optimizer == "global":
-
-                try:
-                    import gurobipy as gp
-                except ModuleNotFoundError:
-                    print("GurobiNotFoundError: "
-                        "To run `aqu_optimizer='global'` "
-                        "please install the Gurobi solver "
-                        "(https://www.gurobi.com/) and its interface "
-                        "gurobipy. "
-                        "Alternatively, change `aqu_optimizer='sampling'`.")
-                    import sys
-                    sys.exit(1)
-
-                from entmoot.optimizer.gurobi_utils import \
-                    get_core_gurobi_model, add_gbm_to_gurobi_model, \
-                    add_std_to_gurobi_model, add_acq_to_gurobi_model, \
-                    set_gurobi_init_to_ref, get_gbm_obj_from_model
-
-                # suppress  output to command window
-                import logging
-                logger = logging.getLogger()
-                logger.setLevel(logging.CRITICAL)
-
-                # start building model
-
-                add_model_core = \
-                    self.acq_optimizer_kwargs.get("add_model_core", None)
-                gurobi_model = \
-                    get_core_gurobi_model(
-                        self.space, add_model_core, env=self.gurobi_env
-                    )
-
-                if self.verbose == 2:
-                    print("")
-                    print("")
-                    print("")
-                    print("SOLVER: *** start gurobi solve ***")
-                    gurobi_model.Params.LogToConsole=1
-                else:
-                    gurobi_model.Params.LogToConsole=0
-
-                # convert into gbm_model format
-                # and add to gurobi model
-                gbm_model_dict = {}
-                gbm_model_dict['first'] = est.get_gbm_model()
-                add_gbm_to_gurobi_model(
-                    self.space, gbm_model_dict, gurobi_model
-                )
-
-                # add std estimator to gurobi model
-                add_std_to_gurobi_model(est, gurobi_model)
-
-                # add obj to gurobi model
-                add_acq_to_gurobi_model(gurobi_model, est,
-                    acq_func=self.acq_func,
-                    acq_func_kwargs=self.acq_func_kwargs)
-
-                # set initial gurobi model vars to std_est reference points
-                if est.std_estimator.std_type == 'distance':
-                    set_gurobi_init_to_ref(est, gurobi_model)
-
-                # set gurobi time limit
-                if self.gurobi_timelimit is not None:
-                    gurobi_model.Params.TimeLimit= self.gurobi_timelimit
-                gurobi_model.Params.OutputFlag=1
-                
-                gurobi_model.optimize()
-
-                assert gurobi_model.SolCount >= 1, "gurobi couldn't find a feasible " + \
-                    "solution. Try increasing the timelimit if specified. " + \
-                        "In case you specify your own 'add_model_core' " + \
-                            "please check that the model is feasible."
-
-                # store optimality gap of gurobi computation
-                if self.acq_func not in ["HLCB"]:
-                    self.gurobi_mipgap.append(gurobi_model.mipgap)
-
-                # for i in range(2): REMOVEX
-                #     gurobi_model.params.ObjNumber = i
-                #     # Query the o-th objective value
-                #     print(f"{i}:")
-                #     print(gurobi_model.ObjNVal)
-                    
-
-                # output next_x
-                next_x = np.empty(len(self.space.dimensions))
-
-                # cont features
-                for i in gurobi_model._cont_var_dict.keys():
-                    next_x[i] = gurobi_model._cont_var_dict[i].x
-
-                # cat features
-                for i in gurobi_model._cat_var_dict.keys():
-                    cat = \
-                        [
-                            key 
-                            for key in gurobi_model._cat_var_dict[i].keys()
-                            if int(
-                                round(gurobi_model._cat_var_dict[i][key].x,1)
-                            ) == 1
-                        ]
-
-                    next_x[i] = cat[0]
-
-                model_mu = get_gbm_obj_from_model(gurobi_model,'first')
-                model_std = gurobi_model._alpha.x
-                print(f"alpha_val: {model_std}")
-
-                # print("stoped here") REMOVEX
-                # print(next_x[-3])
-                # counter = 0
-                # for tree_id,leaf_enc in enumerate(gbm_model_dict['first'].get_active_leaves(next_x)):
-                #     print(f"leaf_val: {gurobi_model._z_l['first',tree_id,leaf_enc].x}")
-                #     if round(gurobi_model._z_l['first',tree_id,leaf_enc].x,1) == 0.0:
-                #         "leafs are inconsistent"
-                #         counter += 1
-                # print("")
-                #if counter > 0:
-                #    print(f"   ! {counter} leafs are off !")
-
-            # note the need for [0] at the end
-            self._next_x = self.space.inverse_transform(
-                next_x.reshape((1, -1)))[0]
-
-            from entmoot.utils import get_cat_idx
-
-            for idx,xi in enumerate(self._next_x):
-                if idx not in get_cat_idx(self.space):
-                    self._next_x[idx] = round(xi, 5)
-
-                    # enforce variable bounds
-                    if self._next_x[idx] > self.space.transformed_bounds[idx][1]:
-                        self._next_x[idx] = self.space.transformed_bounds[idx][1]
-                    elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
-                        self._next_x[idx] = self.space.transformed_bounds[idx][0]
-
-            self._model_mu = round(model_mu,5)
-
-            self._model_std = round(model_std,5)
-
-
-        # Pack results
-        from entmoot.utils import create_result
-
-        result = create_result(self.Xi, self.yi, self.space, self.rng,
-                               models=self.models,
-                               model_mu=self.model_mu,
-                               model_std=self.model_std,
-                               gurobi_mipgap=self.gurobi_mipgap)
-    
-        result.specs = self.specs
-        return result
+        # set self._next_x to None to indicate that the solver has learned something new
+        self._next_x = None
 
     def _check_y_is_valid(self, x, y):
         """Check if the shape and types of x and y are consistent."""
