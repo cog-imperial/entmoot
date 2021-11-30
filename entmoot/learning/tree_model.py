@@ -1,15 +1,9 @@
 import numpy as np
 
 from sklearn.base import clone
-from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.utils import check_random_state
-
-import copy
-import sys
 
 
-class EntingRegressor(BaseEstimator, RegressorMixin):
+class EntingRegressor:
     """Predict with LightGBM tree model and include model uncertainty 
     defined by distance-based standard estimator.
 
