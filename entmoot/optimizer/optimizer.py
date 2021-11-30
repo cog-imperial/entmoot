@@ -79,27 +79,6 @@ class Optimizer(object):
 
         *NOTE: More model types will be added in the future
 
-    std_estimator : string, default: "BDD",
-        A model is used to estimate uncertainty of `base_estimator`.
-        Different types can be classified as exploration measures, i.e. move
-        as far as possible from reference points, and penalty measures, i.e.
-        stay as close as possible to reference points. Within these types, the 
-        following uncertainty estimators are available:
-        
-        - exploration:
-            - "BDD" for bounded-data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1BDD" for bounded-data distance, which uses manhattan
-              distance to standardized data points
-        
-        - penalty:
-            - "DDP" for data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1DDP" for data distance, which uses manhattan
-              distance to standardized data points
-
-        *NOTE: More model uncertainty estimators will be added in the future
-
     n_initial_points : int, default: 50
         Number of evaluations of `func` with initialization points
         before approximating it with `base_estimator`. Initial point
@@ -147,9 +126,6 @@ class Optimizer(object):
     base_estimator_kwargs : dict
         Additional arguments to be passed to the base_estimator.
 
-    std_estimator_kwargs : dict
-        Additional arguments to be passed to the std_estimator.
-
     model_queue_size : int or None, default: None
         Keeps list of models only as long as the argument given. In the
         case of None, the list has no capped length.
@@ -179,8 +155,7 @@ class Optimizer(object):
     """
     def __init__(self, 
                 dimensions, 
-                base_estimator="GBRT",
-                std_estimator="BDD", 
+                base_estimator="ENTING",
                 n_initial_points=50, 
                 initial_point_generator="random",
                 acq_func="LCB", 
@@ -189,7 +164,6 @@ class Optimizer(object):
                 acq_func_kwargs=None, 
                 acq_optimizer_kwargs=None,
                 base_estimator_kwargs=None,
-                std_estimator_kwargs=None,
                 model_queue_size=None,
                 verbose=False
     ):
@@ -197,7 +171,6 @@ class Optimizer(object):
         from entmoot.utils import is_supported
         from entmoot.utils import cook_estimator
         from entmoot.utils import cook_initial_point_generator
-        from entmoot.utils import cook_std_estimator
         
 
         self.specs = {"args": copy.copy(inspect.currentframe().f_locals),
@@ -206,8 +179,6 @@ class Optimizer(object):
         from sklearn.utils import check_random_state
 
         self.rng = check_random_state(random_state)
-        
-        # Configure acquisition function
 
         # Store and create acquisition function set
         self.acq_func = acq_func
@@ -222,19 +193,15 @@ class Optimizer(object):
                              (",".join(allowed_acq_funcs), self.acq_func))
 
         # Configure counter of points
-
         if n_initial_points < 0:
             raise ValueError(
                 "Expected `n_initial_points` >= 0, got %d" % n_initial_points)
         self._n_initial_points = n_initial_points
         self.n_initial_points_ = n_initial_points
-
-        # Configure search space
         
         # initialize search space
         import numpy as np
         from entmoot.space.space import Space
-        from entmoot.space.space import Categorical
 
         self.space = Space(dimensions)
 
@@ -249,42 +216,20 @@ class Optimizer(object):
                 random_state=self.rng.randint(0, np.iinfo(np.int32).max))
             self.space.set_transformer(transformer)
 
-        # Configure std estimator
-
-        if std_estimator_kwargs is None:
-            std_estimator_kwargs = dict()
-        
-        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP", "PROX"]
-        if std_estimator not in allowed_std_est:
-            raise ValueError("expected std_estimator to be in %s, got %s" %
-                             (",".join(allowed_std_est), std_estimator))
-
-        # build std_estimator
-        import numpy as np
+        # define random_state of estimator
         est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
-        std_estimator = cook_std_estimator(
-            std_estimator,
-            space=self.space,
-            random_state=est_random_state,
-            std_estimator_params=std_estimator_kwargs)
-
-        # Configure estimator
 
         # check support of base_estimator if exists
         if not is_supported(base_estimator):
             raise ValueError(
                 "Estimator type: %s is not supported." % base_estimator)
 
-        if base_estimator_kwargs is None:
-            base_estimator_kwargs = dict()
-
         # build base_estimator
         base_estimator = cook_estimator(
-            base_estimator, 
-            std_estimator, 
-            space=self.space,
-            random_state=est_random_state,
-            base_estimator_params=base_estimator_kwargs)
+            self.space,
+            base_estimator,
+            base_estimator_kwargs,
+            random_state=est_random_state)
 
         self.base_estimator_ = base_estimator
 
@@ -295,9 +240,6 @@ class Optimizer(object):
         # record other arguments
         if acq_optimizer_kwargs is None:
             acq_optimizer_kwargs = dict()
-
-        if std_estimator_kwargs is None:
-            std_estimator_kwargs = dict()
 
         self.acq_optimizer_kwargs = acq_optimizer_kwargs
 
@@ -607,7 +549,7 @@ class Optimizer(object):
                 self.base_estimator_ is not None):
 
             transformed_bounds = np.array(self.space.transformed_bounds)
-            est = clone(self.base_estimator_)
+            est = self.base_estimator_
 
             # esimator is fitted using a generic fit function
             est.fit(self.space.transform(self.Xi), self.yi)
@@ -760,6 +702,7 @@ class Optimizer(object):
 
                 model_mu = get_gbm_obj_from_model(gurobi_model,'first')
                 model_std = gurobi_model._alpha.x
+                print(f"alpha_val: {model_std}")
 
                 # print("stoped here") REMOVEX
                 # print(next_x[-3])
@@ -902,7 +845,7 @@ class Optimizer(object):
                     X=next_x, 
                     return_std=True)
         else:
-            est = clone(self.base_estimator_)
+            est = self.base_estimator_
             est.fit(self.space.transform(self.Xi), self.yi)
             temp_mu, temp_std = \
                 est.predict(
@@ -940,7 +883,7 @@ class Optimizer(object):
                 acq_func_kwargs=self.acq_func_kwargs
             )
         else:
-            est = clone(self.base_estimator_)
+            est = self.base_estimator_
             est.fit(self.space.transform(self.Xi), self.yi)
 
             temp_val = _gaussian_acquisition(
