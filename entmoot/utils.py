@@ -122,8 +122,9 @@ def cook_estimator(space, base_estimator, base_estimator_kwargs=None, random_sta
                                 objective='regression',
                                 verbose=-1,
                                 )
-            base_estimator = tree_reg(base_estimator=gbrt,
-                                    std_estimator=unc_estimator,
+            base_estimator = tree_reg(space,
+                                    gbrt,
+                                    unc_estimator,
                                     random_state=random_state,
                                     cat_idx=cat_idx)
         elif ensemble_type == "RF":
@@ -134,8 +135,9 @@ def cook_estimator(space, base_estimator, base_estimator_kwargs=None, random_sta
                                 subsample=0.9,
                                 bagging_seed= random_state
                                 )
-            base_estimator = tree_reg(base_estimator=rf,
-                                    std_estimator=unc_estimator,
+            base_estimator = tree_reg(space,
+                                    rf,
+                                    unc_estimator,
                                     random_state=random_state,
                                     cat_idx=cat_idx)
 
