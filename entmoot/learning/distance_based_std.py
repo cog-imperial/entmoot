@@ -39,7 +39,7 @@ class DistanceMetric(ABC):
 
         pass
 
-    def get_max_space_scaled_dist(self, ref_points, x_means, x_stddev, model):
+    def get_max_space_scaled_dist(self, ref_points, x_shifts, x_scalers, model):
         # computes maximum distance in search space
         lb = np.asarray(
             [model._cont_var_dict[i].lb for i in model._cont_var_dict.keys()]
@@ -48,8 +48,8 @@ class DistanceMetric(ABC):
             [model._cont_var_dict[i].ub for i in model._cont_var_dict.keys()]
         )
 
-        lb_std = np.divide(lb - x_means, x_stddev)
-        ub_std = np.divide(ub - x_means, x_stddev)
+        lb_std = np.divide(lb - x_shifts, x_scalers)
+        ub_std = np.divide(ub - x_shifts, x_scalers)
 
         max_dist = self.get_distance(
             lb_std,
@@ -99,7 +99,7 @@ class SquaredEuclidean(DistanceMetric):
         return dist
 
     def add_exploration_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, distance_bound, model, add_rhs=None):
+        ref_points, x_shifts, x_scalers, dim_scaler, distance_bound, model, add_rhs=None):
         """Adds exploration constraints to a gurobi optimization model.
         Incentivizes solutions far away from reference points.
 
@@ -109,13 +109,11 @@ class SquaredEuclidean(DistanceMetric):
             Each row of `n_rows` is a reference point. Each dimension of `n_dim` 
             is the numerical value of a continuous variable.
 
-        x_means : np.array, shape (n_dims,)
-            Each dimension is the mean value of a continuous variable used to 
-            scale the data set.
+        x_shifts : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is shifted.
 
-        x_stddev : np.array, shape (n_dims,)
-            Each dimension is the std value of a continuous variable used to 
-            scale the data set.
+        x_scalers : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is scaled.
 
         distance_bound : float
             Defines the maximum value that the exploration term can take.
@@ -139,7 +137,7 @@ class SquaredEuclidean(DistanceMetric):
                 vtype='C'
             )
 
-        def distance_ref_point_i(model, xi_ref, x_mean, x_stddev, add_rhs=None):
+        def distance_ref_point_i(model, xi_ref, x_shifts, x_scalers, dim_scaler, add_rhs=None):
             # function returns constraints capturing the standardized
             # exploration distance
             c_x = model._cont_var_dict
@@ -147,15 +145,15 @@ class SquaredEuclidean(DistanceMetric):
             n_features = len(xi_ref)
 
             diff_to_ref_point_i = quicksum(
-                ( (xi_ref[j] - (c_x[key]-x_mean[j]) / x_stddev[j]) * \
-                    (xi_ref[j] - (c_x[key]-x_mean[j]) / x_stddev[j]) )
+                ( (xi_ref[j] - (c_x[key]-x_shifts[j]) / x_scalers[j]) * \
+                    (xi_ref[j] - (c_x[key]-x_shifts[j]) / x_scalers[j]) )
                 for j,key in enumerate(model._cont_var_dict.keys())
             )
-            
+
             if add_rhs is None:
-                return alpha <= diff_to_ref_point_i
+                return dim_scaler*alpha <= diff_to_ref_point_i
             else:
-                return alpha <= diff_to_ref_point_i + add_rhs
+                return dim_scaler*alpha <= diff_to_ref_point_i + add_rhs
 
         # add exploration distances as quadratic constraints to the model
         for i in range(n_ref_points):
@@ -166,14 +164,14 @@ class SquaredEuclidean(DistanceMetric):
 
             model.addQConstr(
                 distance_ref_point_i(
-                    model, ref_points[i], x_means, x_stddev, temp_rhs
+                    model, ref_points[i], x_shifts, x_scalers, dim_scaler, temp_rhs
                 ),
                 name=f"std_const_{i}"
             )
         model.update()
 
     def add_penalty_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, model, add_rhs=None):
+        ref_points, x_shifts, x_scalers, dim_scaler, model, add_rhs=None):
         """Adds penalty constraints to a gurobi optimization model.
         Incentivizes solutions close to reference points.
 
@@ -183,13 +181,11 @@ class SquaredEuclidean(DistanceMetric):
             Each row of n_rows is a reference point. Each dimension of n_dim is 
             the numerical value of a continuous variable.
 
-        x_means : np.array, shape (n_dims,)
-            Each dimension is the mean value of a continuous variable used to 
-            scale the data set.
+        x_shifts : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is shifted.
 
-        x_stddev : np.array, shape (n_dims,)
-            Each dimension is the std value of a continuous variable used to 
-            scale the data set.
+        x_scalers : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is scaled.
 
         distance_bound : float
             Defines the maximum value that the exploration term can take.
@@ -205,7 +201,7 @@ class SquaredEuclidean(DistanceMetric):
 
         # big m is required to formulate the constraints
         model._big_m = \
-            self.get_max_space_scaled_dist(ref_points, x_means, x_stddev, model)
+            self.get_max_space_scaled_dist(ref_points, x_shifts, x_scalers, model)
         
         # binary variables b_ref correspond to active cluster centers
         model._b_ref = \
@@ -224,7 +220,7 @@ class SquaredEuclidean(DistanceMetric):
                 vtype='C'
             )
 
-        def distance_ref_point_k(model, xk_ref, k_ref, x_mean, x_stddev, add_rhs=None):
+        def distance_ref_point_k(model, xk_ref, k_ref, x_shifts, x_scalers, dim_scaler, add_rhs=None):
             # function returns constraints capturing the standardized
             # penalty distance
             c_x = model._cont_var_dict
@@ -233,15 +229,15 @@ class SquaredEuclidean(DistanceMetric):
             n_features = len(xk_ref)
 
             diff_to_ref_point_k = quicksum(
-                ( (xk_ref[j]  - (c_x[key]-x_mean[j]) / x_stddev[j]) * \
-                    (xk_ref[j]  - (c_x[key]-x_mean[j]) / x_stddev[j]) )
+                ( (xk_ref[j]  - (c_x[key]-x_shifts[j]) / x_scalers[j]) * \
+                    (xk_ref[j]  - (c_x[key]-x_shifts[j]) / x_scalers[j]) )
                 for j,key in enumerate(model._cont_var_dict.keys())
             )
             big_m_term = model._big_m*(1-b_ref[k_ref])
             if add_rhs is None:
-                return diff_to_ref_point_k <= alpha + big_m_term
+                return diff_to_ref_point_k <= dim_scaler*(alpha + big_m_term)
             else:
-                return diff_to_ref_point_k + add_rhs[k_ref] <= alpha + big_m_term
+                return diff_to_ref_point_k + add_rhs[k_ref] <= dim_scaler*(alpha + big_m_term)
 
         # add penalty distances as quadratic constraints to the model
         for k in range(n_ref_points):
@@ -250,8 +246,10 @@ class SquaredEuclidean(DistanceMetric):
                     model, 
                     ref_points[k], 
                     k, 
-                    x_means, 
-                    x_stddev
+                    x_shifts,
+                    x_scalers,
+                    dim_scaler,
+                    add_rhs
                 ),
                 name=f"std_const_{k}"
             )
@@ -310,7 +308,7 @@ class Manhattan(DistanceMetric):
         return dist
 
     def add_exploration_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, distance_bound, model, add_rhs=None):
+        ref_points, x_shifts, x_scalers, dim_scaler, distance_bound, model, add_rhs=None):
         """Adds exploration constraints to a gurobi optimization model.
         Incentivizes solutions far away from reference points.
 
@@ -320,13 +318,11 @@ class Manhattan(DistanceMetric):
             Each row of `n_rows` is a reference point. Each dimension of `n_dim` 
             is the numerical value of a continuous variable.
 
-        x_means : np.array, shape (n_dims,)
-            Each dimension is the mean value of a continuous variable used to 
-            scale the data set.
+        x_shifts : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is shifted.
 
-        x_stddev : np.array, shape (n_dims,)
-            Each dimension is the std value of a continuous variable used to 
-            scale the data set.
+        x_scalers : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is scaled.
 
         distance_bound : float
             Defines the maximum value that the exploration term can take.
@@ -359,14 +355,14 @@ class Manhattan(DistanceMetric):
                         name="alpha", vtype='C')
 
         def distance_ref_point_i_for_feat_j(
-            model, xi_ref, i_ref, feat_j, i_var, x_mean, x_stddev, add_rhs=None):
+            model, xi_ref, i_ref, feat_j, i_var, x_shifts, x_scalers, add_rhs=None):
             # function returns constraints capturing the standardized
             # exploration distance
             c_x = model._cont_var_dict
 
             diff_to_ref_point_i = \
-                ( xi_ref[feat_j] - (c_x[i_var]-x_mean[feat_j]) / \
-                    x_stddev[feat_j] ) 
+                ( xi_ref[feat_j] - (c_x[i_var]-x_shifts[feat_j]) / \
+                    x_scalers[feat_j] )
             return diff_to_ref_point_i == model._c_x_aux_pos[i_ref, i_var] - \
                 model._c_x_aux_neg[i_ref, i_var]
 
@@ -376,7 +372,7 @@ class Manhattan(DistanceMetric):
                 # _c_x_aux_pos and _c_x_aux_neg
                 model.addConstr(
                     distance_ref_point_i_for_feat_j(model, 
-                        ref_points[i_ref], i_ref, feat_j, key, x_means, x_stddev),
+                        ref_points[i_ref], i_ref, feat_j, key, x_shifts, x_scalers),
                     name=f"std_const_feat_{key}_{i_ref}"
                 )
                 # add sos constraints that allow only one of the +/- vars, 
@@ -391,7 +387,7 @@ class Manhattan(DistanceMetric):
             # add exploration distances as linear constraints to the model
             if add_rhs is None:
                 model.addConstr(
-                    model._alpha <= quicksum(
+                    dim_scaler*model._alpha <= quicksum(
                         (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
                         for j in cont_feat_ids
                     ),
@@ -399,7 +395,7 @@ class Manhattan(DistanceMetric):
                 )
             else:
                 model.addConstr(
-                    model._alpha <= quicksum(
+                    dim_scaler*model._alpha <= quicksum(
                         (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
                         for j in cont_feat_ids
                     ) + add_rhs[i_ref],
@@ -408,7 +404,7 @@ class Manhattan(DistanceMetric):
         model.update()
 
     def add_penalty_to_gurobi_model(self,
-        ref_points, x_means, x_stddev, model, add_rhs=None):
+        ref_points, x_shifts, x_scalers, dim_scaler, model, add_rhs=None):
         """Adds penalty constraints to a gurobi optimization model.
         Incentivizes solutions close to reference points.
 
@@ -418,13 +414,11 @@ class Manhattan(DistanceMetric):
             Each row of `n_rows` is a reference point. Each dimension of `n_dim` 
             is the numerical value of a continuous variable.
 
-        x_means : np.array, shape (n_dims,)
-            Each dimension is the mean value of a continuous variable used to 
-            scale the data set.
+        x_shifts : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is shifted.
 
-        x_stddev : np.array, shape (n_dims,)
-            Each dimension is the std value of a continuous variable used to 
-            scale the data set.
+        x_scalers : np.array, shape (n_dims,)
+            Each dimension is the value by which the continuous variable is scaled.
 
         distance_bound : float
             Defines the maximum value that the exploration term can take.
@@ -441,7 +435,7 @@ class Manhattan(DistanceMetric):
 
         # big m is required to formulate the constraints
         model._big_m = \
-            self.get_max_space_scaled_dist(ref_points, x_means, x_stddev, model)
+            self.get_max_space_scaled_dist(ref_points, x_shifts, x_scalers, model)
         
         # two sets of variables are used to capture positive and negative 
         # parts of manhattan distance
@@ -465,14 +459,14 @@ class Manhattan(DistanceMetric):
                         name="alpha", vtype='C')
 
         def distance_ref_point_i_for_feat_j(
-            model, xi_ref, i_ref, feat_j, i_var, x_mean, x_stddev, add_rhs=None):
+            model, xi_ref, i_ref, feat_j, i_var, x_shifts, x_scalers, add_rhs=None):
             # function returns constraints capturing the standardized
             # exploration distance
             c_x = model._cont_var_dict
 
             diff_to_ref_point_i = \
-                ( xi_ref[feat_j] - (c_x[i_var]-x_mean[feat_j]) / \
-                    x_stddev[feat_j] ) 
+                ( xi_ref[feat_j] - (c_x[i_var]-x_shifts[feat_j]) / \
+                    x_scalers[feat_j] )
             return diff_to_ref_point_i == model._c_x_aux_pos[i_ref, i_var] - \
                 model._c_x_aux_neg[i_ref, i_var]
 
@@ -482,7 +476,7 @@ class Manhattan(DistanceMetric):
                 # _c_x_aux_pos and _c_x_aux_neg
                 model.addConstr(
                     distance_ref_point_i_for_feat_j(
-                        model, ref_points[i_ref], i_ref, feat_j, key, x_means, x_stddev),
+                        model, ref_points[i_ref], i_ref, feat_j, key, x_shifts, x_scalers),
                     name=f"std_const_feat_{key}_{i_ref}"
                 )
                 # add sos constraints that allow only one of the +/- vars, 
@@ -500,7 +494,7 @@ class Manhattan(DistanceMetric):
                     quicksum(
                         (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
                         for j in cont_feat_ids
-                    ) <= model._alpha + model._big_m*(1-model._b_ref[i_ref]),
+                    ) <= dim_scaler*(model._alpha + model._big_m*(1-model._b_ref[i_ref])),
                     name=f"alpha_sum"
                 )
             else:
@@ -509,7 +503,7 @@ class Manhattan(DistanceMetric):
                         (model._c_x_aux_pos[i_ref, j] + model._c_x_aux_neg[i_ref, j])
                         for j in cont_feat_ids
                     )  + add_rhs[i_ref] <= \
-                        model._alpha + model._big_m*(1-model._b_ref[i_ref]),
+                        dim_scaler*(model._alpha + model._big_m*(1-model._b_ref[i_ref])),
                     name=f"alpha_sum"
                 )    
         model.update()
@@ -824,6 +818,7 @@ class DistanceBasedStd(ABC):
                 projected_features = standard_scaler.fit_transform(self.Xi_cont)
                 self.x_shifts = standard_scaler.mean_
                 self.x_scalers = standard_scaler.scale_
+                self.dim_scaler = 1
 
                 # standardize dataset
                 self.Xi_cont_scaled = self.scale_with_Xi(self.Xi_cont)
@@ -837,6 +832,7 @@ class DistanceBasedStd(ABC):
                 self.x_scalers = np.asarray(
                     [dim.high - dim.low for dim in self.space.dimensions]
                 )
+                self.dim_scaler = len(self.space.dimensions)
 
                 # standardize dataset
                 self.Xi_cont_scaled = self.scale_with_Xi(self.Xi_cont)
@@ -923,7 +919,10 @@ class DistanceBasedStd(ABC):
             ref_distance = self.get_closest_point_distance(Xi)
             dist[row_res] = ref_distance
 
-        return dist
+        if self.unc_scaling == "standard":
+            return dist
+        elif self.unc_scaling == "normalize":
+            return dist / len(self.space.dimensions)
 
     @abstractmethod
     def add_to_gurobi_model(self,model):
@@ -1044,8 +1043,11 @@ class DistanceBasedExploration(DistanceBasedStd):
         self.ref_points_cat = np.asarray(self.Xi_cat, dtype=int)
 
         # compute upper bound of uncertainty
-        y_var = np.var(yi)
-        self.distance_bound = abs(self.zeta*y_var)
+        if self.unc_scaling == "standard":
+            y_var = np.var(yi)
+            self.distance_bound = abs(self.zeta*y_var)
+        elif self.unc_scaling == "normalize":
+            self.distance_bound = 1.0
 
     def predict(self, X):
         """Predict standard estimate at location `X`. By default `dist` is
@@ -1066,7 +1068,11 @@ class DistanceBasedExploration(DistanceBasedStd):
 
         # prediction has max out at `distance_bound`
         dist[dist > self.distance_bound] = self.distance_bound
-        return dist
+
+        if self.unc_scaling == "standard":
+            return dist
+        elif self.unc_scaling == "normalize":
+            return dist / len(self.space.dimensions)
 
     def get_gurobi_obj(self, model):
         """Get contribution of standard estimator to gurobi model objective
@@ -1102,7 +1108,8 @@ class DistanceBasedExploration(DistanceBasedStd):
         self.dist_metric.add_exploration_to_gurobi_model(
             self.ref_points_cont,
             self.x_shifts,
-            self.x_scalers, 
+            self.x_scalers,
+            self.dim_scaler,
             self.distance_bound, 
             model,
             add_rhs=cat_rhs
@@ -1206,7 +1213,10 @@ class DistanceBasedPenalty(DistanceBasedStd):
             in `n_rows`.
         """
         dist = super().predict(X)
-        return -dist
+        if self.unc_scaling == "standard":
+            return -dist
+        elif self.unc_scaling == "normalize":
+            return -dist / len(self.space.dimensions)
 
     def get_gurobi_obj(self, model):
         """Get contribution of standard estimator to gurobi model objective
@@ -1240,7 +1250,8 @@ class DistanceBasedPenalty(DistanceBasedStd):
         self.dist_metric.add_penalty_to_gurobi_model(
             self.ref_points_cont, 
             self.x_shifts,
-            self.x_scalers, 
+            self.x_scalers,
+            self.dim_scaler,
             model,
             add_rhs=cat_rhs
         )
