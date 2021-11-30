@@ -1,6 +1,6 @@
 import numpy as np
-
 from sklearn.base import clone
+import copy
 
 
 class EntingRegressor:
@@ -21,12 +21,15 @@ class EntingRegressor:
         results.
     """
 
-    def __init__(self, base_estimator=None,
-                std_estimator=None,
+    def __init__(self,
+                space,
+                base_estimator,
+                std_estimator,
                 random_state=None,
                 cat_idx=[]):
 
         self.random_state = random_state
+        self.space = space
         self.base_estimator = base_estimator
         self.std_estimator = std_estimator
         self.cat_idx = cat_idx
@@ -158,6 +161,124 @@ class EntingRegressor:
 
         gbm_model = GbmModel(ordered_tree_model_dict)
         return gbm_model
+
+    def get_global_next_x(self,
+                          acq_func,
+                          acq_func_kwargs,
+                          acq_optimizer_kwargs,
+                          verbose,
+                          gurobi_env,
+                          gurobi_timelimit):
+        from entmoot.optimizer.gurobi_utils import \
+            get_core_gurobi_model, add_gbm_to_gurobi_model, \
+            add_std_to_gurobi_model, add_acq_to_gurobi_model, \
+            set_gurobi_init_to_ref, get_gbm_obj_from_model
+
+        # suppress  output to command window
+        import logging
+        logger = logging.getLogger()
+        logger.setLevel(logging.CRITICAL)
+
+        # start building model
+        add_model_core = \
+            acq_optimizer_kwargs.get("add_model_core", None)
+        gurobi_model = \
+            get_core_gurobi_model(
+                self.space, add_model_core, env=gurobi_env
+            )
+
+        if verbose == 2:
+            print("")
+            print("")
+            print("")
+            print("SOLVER: *** start gurobi solve ***")
+            gurobi_model.Params.LogToConsole = 1
+        else:
+            gurobi_model.Params.LogToConsole = 0
+
+        # convert into gbm_model format
+        # and add to gurobi model
+        gbm_model_dict = {}
+        gbm_model_dict['first'] = self.get_gbm_model()
+        add_gbm_to_gurobi_model(
+            self.space, gbm_model_dict, gurobi_model
+        )
+
+        # add std estimator to gurobi model
+        add_std_to_gurobi_model(self, gurobi_model)
+
+        # add obj to gurobi model
+        add_acq_to_gurobi_model(gurobi_model, self,
+                                acq_func=acq_func,
+                                acq_func_kwargs=acq_func_kwargs)
+
+        # set initial gurobi model vars to std_est reference points
+        if self.std_estimator.std_type == 'distance':
+            set_gurobi_init_to_ref(self, gurobi_model)
+
+        # set gurobi time limit
+        if gurobi_timelimit is not None:
+            gurobi_model.Params.TimeLimit = gurobi_timelimit
+        gurobi_model.Params.OutputFlag = 1
+
+        gurobi_model.optimize()
+
+        assert gurobi_model.SolCount >= 1, "gurobi couldn't find a feasible " + \
+                                           "solution. Try increasing the timelimit if specified. " + \
+                                           "In case you specify your own 'add_model_core' " + \
+                                           "please check that the model is feasible."
+
+        # store optimality gap of gurobi computation
+        gurobi_mipgap = None
+        if acq_func not in ["HLCB"]:
+            gurobi_mipgap = gurobi_model.mipgap
+
+        # for i in range(2): REMOVEX
+        #     gurobi_model.params.ObjNumber = i
+        #     # Query the o-th objective value
+        #     print(f"{i}:")
+        #     print(gurobi_model.ObjNVal)
+
+        # output next_x
+        next_x = np.empty(len(self.space.dimensions))
+
+        # cont features
+        for i in gurobi_model._cont_var_dict.keys():
+            next_x[i] = gurobi_model._cont_var_dict[i].x
+
+        # cat features
+        for i in gurobi_model._cat_var_dict.keys():
+            cat = \
+                [
+                    key
+                    for key in gurobi_model._cat_var_dict[i].keys()
+                    if int(
+                    round(gurobi_model._cat_var_dict[i][key].x, 1)
+                ) == 1
+                ]
+
+            next_x[i] = cat[0]
+
+        model_mu = get_gbm_obj_from_model(gurobi_model, 'first')
+        model_std = gurobi_model._alpha.x
+        # print(f"alpha_val: {model_std}")
+
+        # print("stoped here") REMOVEX
+        # print(next_x[-3])
+        # counter = 0
+        # for tree_id,leaf_enc in enumerate(gbm_model_dict['first'].get_active_leaves(next_x)):
+        #     print(f"leaf_val: {gurobi_model._z_l['first',tree_id,leaf_enc].x}")
+        #     if round(gurobi_model._z_l['first',tree_id,leaf_enc].x,1) == 0.0:
+        #         "leafs are inconsistent"
+        #         counter += 1
+        # print("")
+        # if counter > 0:
+        #    print(f"   ! {counter} leafs are off !")
+
+        return next_x, model_mu, model_std, gurobi_mipgap
+
+    def copy(self):
+        return copy.copy(self)
 
 class MisicRegressor(EntingRegressor):
 
