@@ -654,19 +654,41 @@ class Optimizer(object):
         from entmoot.utils import is_listlike
         from entmoot.utils import is_2Dlistlike
 
-        # if y isn't a scalar it means we have been handed a batch of points
-        if is_listlike(y) and is_2Dlistlike(x):
-            for y_value in y:
-                if not isinstance(y_value, Number):
-                    raise ValueError("expected y to be a list of scalars")
+        # single objective checks for scalar values
+        if self.num_obj == 1:
+            # if y isn't a scalar it means we have been handed a batch of points
+            if is_listlike(y) and is_2Dlistlike(x):
+                for y_value in y:
+                    if not isinstance(y_value, Number):
+                        raise ValueError("expected y to be a list of scalars")
 
-        elif is_listlike(x):
-            if not isinstance(y, Number):
-                raise ValueError("`func` should return a scalar")
+            elif is_listlike(x):
+                if not isinstance(y, Number):
+                    raise ValueError("`func` should return a scalar")
 
+            else:
+                raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
+                                 "not compatible." % (type(x), type(y)))
         else:
-            raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
-                             "not compatible." % (type(x), type(y)))
+            # if y isn't a scalar it means we have been handed a batch of points
+            if is_listlike(y[0]) and is_2Dlistlike(x):
+                for y_value in y:
+                    if len(y_value) != self.num_obj:
+                        raise ValueError(f"expected y to be of size {self.num_obj}")
+                    for yi in y_value:
+                        if not isinstance(yi, Number):
+                            raise ValueError(f"expected y to be a list of list-like items of length {self.num_obj}")
+            elif is_listlike(x):
+                if len(y) != self.num_obj:
+                    raise ValueError(
+                        f"`func` should return a list-like item of length {self.num_obj}")
+                for yi in y:
+                    if not isinstance(yi, Number):
+                        raise ValueError(f"`func` should return a list-like item of length {self.num_obj}")
+            else:
+                raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
+                                 "not compatible." % (type(x), type(y)))
+
 
     def run(self, func, n_iter=1, no_progress_bar=False, update_min=False):
         """Execute ask() + tell() `n_iter` times"""
