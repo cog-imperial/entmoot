@@ -158,6 +158,7 @@ class Optimizer(object):
                 base_estimator="ENTING",
                 n_initial_points=50, 
                 initial_point_generator="random",
+                num_obj=1,
                 acq_func="LCB", 
                 acq_optimizer="global", 
                 random_state=None, 
@@ -216,6 +217,8 @@ class Optimizer(object):
                 random_state=self.rng.randint(0, np.iinfo(np.int32).max))
             self.space.set_transformer(transformer)
 
+        # create base_estimator
+        self.base_estimator_kwargs = {} if base_estimator_kwargs is None else base_estimator_kwargs
 
         from entmoot.learning.tree_model import EntingRegressor,MisicRegressor
 
@@ -232,7 +235,7 @@ class Optimizer(object):
                 base_estimator = cook_estimator(
                     self.space,
                     base_estimator,
-                    base_estimator_kwargs,
+                    self.base_estimator_kwargs,
                     random_state=est_random_state)
             else:
                 raise ValueError("Estimator type: %s is not supported." % base_estimator)
@@ -250,6 +253,7 @@ class Optimizer(object):
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
         self.gurobi_env = acq_optimizer_kwargs.get("env", None)
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
+        self.num_obj = num_obj
 
         # Initialize storage for optimization
         if not isinstance(model_queue_size, (int, type(None))):
