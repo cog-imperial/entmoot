@@ -28,6 +28,8 @@ class EntingRegressor:
                 random_state=None,
                 cat_idx=[]):
 
+        np.random.seed(random_state)
+
         self.random_state = random_state
         self.space = space
         self.base_estimator = base_estimator
@@ -58,6 +60,7 @@ class EntingRegressor:
         """
         self.regressor_ = []
         y = np.asarray(y)
+        self._y = y
 
         for i,est in enumerate(self.base_estimator):
             # suppress lgbm output
@@ -78,10 +81,16 @@ class EntingRegressor:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
 
-                if self.cat_idx:
-                    self.regressor_[-1].fit(X, y[:,i], categorical_feature=self.cat_idx)
+                if self.num_obj > 1:
+                    if self.cat_idx:
+                        self.regressor_[-1].fit(X, y[:,i], categorical_feature=self.cat_idx)
+                    else:
+                        self.regressor_[-1].fit(X, y[:,i])
                 else:
-                    self.regressor_[-1].fit(X, y[:,i])
+                    if self.cat_idx:
+                        self.regressor_[-1].fit(X, y, categorical_feature=self.cat_idx)
+                    else:
+                        self.regressor_[-1].fit(X, y)
 
     def set_params(self, **params):
         """Sets parameters related to tree model estimator. All parameter 
@@ -218,8 +227,26 @@ class EntingRegressor:
         # add std estimator to gurobi model
         add_std_to_gurobi_model(self, gurobi_model)
 
+
+        # collect different objective function contributions
+        from entmoot.optimizer.gurobi_utils import get_gbm_model_multi_obj_mu, get_gbm_model_mu
+
+        if self.num_obj > 1:
+            model_mu = get_gbm_model_multi_obj_mu(gurobi_model, self._y)
+            model_unc = self.std_estimator.get_gurobi_obj(gurobi_model)
+        else:
+            model_mu = get_gbm_model_mu(gurobi_model, self._y, norm=False)
+            model_unc = self.std_estimator.get_gurobi_obj(gurobi_model)
+
         # add obj to gurobi model
-        add_acq_to_gurobi_model(gurobi_model, self,
+        from opti.sampling.simplex import sample
+
+        weight = sample(self.num_obj,1)
+
+        add_acq_to_gurobi_model(gurobi_model, model_mu, model_unc,
+                                self,
+                                weights=weight[0],
+                                num_obj=self.num_obj,
                                 acq_func=acq_func,
                                 acq_func_kwargs=acq_func_kwargs)
 

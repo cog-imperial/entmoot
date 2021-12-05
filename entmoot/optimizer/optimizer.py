@@ -371,7 +371,7 @@ class Optimizer(object):
         next_x : array-like, shape(n_points, n_dims)
             If `n_points` is None, only a single array-like object is returned
         """
-        if n_points is None:
+        if n_points is None and self.num_obj > 1:
             return self._ask()
 
         supported_strategies = ["cl_min", "cl_mean", "cl_max"]

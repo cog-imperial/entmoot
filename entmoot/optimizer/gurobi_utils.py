@@ -199,24 +199,34 @@ def add_acq_to_gurobi_model(model, model_mu, model_unc,
     if acq_func_kwargs is None:
         acq_func_kwargs = dict()
 
+    kappa = acq_func_kwargs.get("kappa", 1.96)
 
-    # collect objective contribution for tree model and std estimator
-    mu, std = get_gurobi_obj(
-        model, est, return_std=True, acq_func_kwargs=acq_func_kwargs
-    )
 
-    if acq_func=="LCB":
-        kappa = acq_func_kwargs.get("kappa", 1.96)
-        ob_expr = quicksum((mu, kappa*std))
-        model.setObjective(ob_expr,GRB.MINIMIZE)
-        model.update()
+    if num_obj > 1:
+        model._mu = model.addVar(
+            name='mu', vtype='C', lb=-GRB.INFINITY, ub=GRB.INFINITY)
 
-    elif acq_func=="HLCB":
+        for obj_idx in model_mu.keys():
+            temp_constr = \
+                model.addConstr(
+                    model._mu >= weights[obj_idx] * model_mu[obj_idx],
+                    name=f"multi-obj_{obj_idx}"
+                )
+            model.update()
+        proc_mu = model._mu
+    else:
+        proc_mu = model_mu
+
+    if acq_func == "LCB":
+        ob_expr = quicksum((proc_mu, kappa * model_unc))
+        model.setObjective(ob_expr, GRB.MINIMIZE)
+
+    elif acq_func == "HLCB":
         obj_cost = acq_func_kwargs.get("obj_cost", 0.5)
-        model.setObjectiveN(mu,0,1, reltol=obj_cost)
-        model.setObjectiveN(std,1,0)
+        model.setObjectiveN(proc_mu, 0, 1, reltol=obj_cost)
+        model.setObjectiveN(model_unc, 1, 0)
 
-        model.update()
+    model.update()
 
 def get_gurobi_obj(model, est, return_std=False, acq_func_kwargs=None):
     """Returns gurobi model objective contribution of tree model and std
