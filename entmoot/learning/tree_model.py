@@ -186,6 +186,7 @@ class EntingRegressor:
                           acq_func,
                           acq_func_kwargs,
                           acq_optimizer_kwargs,
+                          weight,
                           verbose,
                           gurobi_env,
                           gurobi_timelimit):
@@ -241,11 +242,11 @@ class EntingRegressor:
         # add obj to gurobi model
         from opti.sampling.simplex import sample
 
-        weight = sample(self.num_obj,1)
+        weight = sample(self.num_obj,1)[0] if weight is None else weight
 
         add_acq_to_gurobi_model(gurobi_model, model_mu, model_unc,
                                 self,
-                                weights=weight[0],
+                                weights=weight,
                                 num_obj=self.num_obj,
                                 acq_func=acq_func,
                                 acq_func_kwargs=acq_func_kwargs)

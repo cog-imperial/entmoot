@@ -334,7 +334,7 @@ class Optimizer(object):
 
         return optimizer
 
-    def ask(self, n_points=None, strategy="cl_min"):
+    def ask(self, n_points=None, strategy="cl_min", weights=None):
         """Query point or multiple points at which objective should be evaluated.
 
         Parameters
@@ -371,8 +371,27 @@ class Optimizer(object):
         next_x : array-like, shape(n_points, n_dims)
             If `n_points` is None, only a single array-like object is returned
         """
-        if n_points is None and self.num_obj > 1:
+        if n_points is None and weights is None:
             return self._ask()
+        elif self.num_obj > 1:
+            if weights is not None:
+                n_points = len(weights)
+
+            X = []
+            for i in range(n_points):
+                self._next_x = None
+
+                # use the weights if provided
+                if weights:
+                    w = weights[i]
+                    assert len(w) == self.num_obj, \
+                        f"The {i}'th provided weight has dim '{len(w)}' but " \
+                        f"number of objectives is '{self.num_obj}'."
+                    next_x = self._ask(weight=w)
+                else:
+                    next_x = self._ask()
+                X.append(next_x)
+            return X if len(X) > 1 else X[0]
 
         supported_strategies = ["cl_min", "cl_mean", "cl_max"]
 
@@ -423,7 +442,7 @@ class Optimizer(object):
 
         return X
 
-    def _ask(self):
+    def _ask(self, weight=None):
         """Suggest next point at which to evaluate the objective.
 
         Return a random point while not at least `n_initial_points`
@@ -522,6 +541,7 @@ class Optimizer(object):
                     self.models[-1].get_global_next_x(acq_func=self.acq_func,
                                                       acq_func_kwargs=self.acq_func_kwargs,
                                                       acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                                      weight=weight,
                                                       verbose=self.verbose,
                                                       gurobi_env=self.gurobi_env,
                                                       gurobi_timelimit=self.gurobi_timelimit)
