@@ -1,5 +1,6 @@
 from gurobipy import GRB, quicksum
 import gurobipy as gp
+import numpy as np
 
 def get_core_gurobi_model(space, add_model_core=None, env=None):
     """Add core to gurobi model, i.e. bounds, variables and parameters.
@@ -137,7 +138,46 @@ def set_gurobi_init_to_ref(est, model):
     model._alpha.start = 0.0
     model.update()
 
-def add_acq_to_gurobi_model(model, est, acq_func="LCB", acq_func_kwargs=None):
+def get_gbm_model_multi_obj_mu(opt_model, yi):
+    # normalize mu based on targets
+    y_min = np.min(yi, axis=0)
+    y_max = np.max(yi, axis=0)
+    y_range = y_max - y_min
+
+    # collect weighted sum for every label
+    ob_expr = {}
+    for label in opt_model._gbm_set:
+        weighted_sum = quicksum(
+            opt_model._leaf_weight(label, tree, leaf) *
+            opt_model._z_l[label, tree, leaf]
+            for tree, leaf in label_leaf_index(opt_model, label)
+        )
+        # normalized mu contribution
+        ob_expr[label] = (weighted_sum - y_min[label]) / y_range[label]
+    return ob_expr
+
+def get_gbm_model_mu(opt_model, yi, norm=False):
+    # normalize mu based on targets
+    y_min = np.min(yi)
+    y_max = np.max(yi)
+    y_range = y_max - y_min
+
+    weighted_sum = quicksum(
+        opt_model._leaf_weight(label, tree, leaf) * \
+        opt_model._z_l[label, tree, leaf]
+        for label, tree, leaf in leaf_index(opt_model)
+    )
+    if norm:
+        return (weighted_sum - y_min) / y_range
+    else:
+        return weighted_sum
+
+def add_acq_to_gurobi_model(model, model_mu, model_unc,
+                            est,
+                            acq_func="LCB",
+                            acq_func_kwargs=None,
+                            num_obj=1,
+                            weights=None):
     """Sets gurobi model objective function to acquisition function.
 
     Parameters
@@ -159,11 +199,12 @@ def add_acq_to_gurobi_model(model, est, acq_func="LCB", acq_func_kwargs=None):
     if acq_func_kwargs is None:
         acq_func_kwargs = dict()
 
+
     # collect objective contribution for tree model and std estimator
     mu, std = get_gurobi_obj(
         model, est, return_std=True, acq_func_kwargs=acq_func_kwargs
     )
-    
+
     if acq_func=="LCB":
         kappa = acq_func_kwargs.get("kappa", 1.96)
         ob_expr = quicksum((mu, kappa*std))
@@ -241,6 +282,11 @@ def get_gbm_obj_from_model(model, label):
 
 ### GBT HANDLER
 ## gbt model helper functions
+def label_leaf_index(model, label):
+    for tree in range(model._num_trees(label)):
+        for leaf in model._leaves(label, tree):
+            yield (tree, leaf)
+
 def tree_index(model):
     for label in model._gbm_set:
         for tree in range(model._num_trees(label)):

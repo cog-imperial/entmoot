@@ -59,7 +59,7 @@ def get_cat_idx(space):
     return cat_idx
 
 
-def cook_estimator(space, base_estimator, base_estimator_kwargs=None, random_state=None):
+def cook_estimator(space, base_estimator, base_estimator_kwargs=None, num_obj=1, random_state=None):
     """Cook a default estimator.
 
     For the special base_estimator called "DUMMY" the return value is None.
@@ -107,6 +107,7 @@ def cook_estimator(space, base_estimator, base_estimator_kwargs=None, random_sta
                                            unc_scaling=unc_scaling,
                                            dist_metric=dist_metric,
                                            cat_dist_metric=cat_dist_metric,
+                                           num_obj=num_obj,
                                            random_state=random_state)
 
         ensemble_type = base_estimator_kwargs.get("ensemble_type", "GBRT")
@@ -118,23 +119,27 @@ def cook_estimator(space, base_estimator, base_estimator_kwargs=None, random_sta
             tree_reg = MisicRegressor
 
         if ensemble_type == "GBRT":
-            gbrt = LGBMRegressor(boosting_type='gbdt',
-                                objective='regression',
-                                verbose=-1,
-                                )
+            gbrt = []
+            for _ in range(num_obj):
+                gbrt.append(
+                    LGBMRegressor(boosting_type='gbdt',
+                                  objective='regression',
+                                  verbose=-1))
             base_estimator = tree_reg(space,
                                     gbrt,
                                     unc_estimator,
                                     random_state=random_state,
                                     cat_idx=cat_idx)
         elif ensemble_type == "RF":
-            rf = LGBMRegressor(boosting_type='random_forest',
-                                objective='regression',
-                                verbose=0,
-                                subsample_freq=1,
-                                subsample=0.9,
-                                bagging_seed= random_state
-                                )
+            rf = []
+            for _ in range(num_obj):
+                rf.append(
+                    LGBMRegressor(boosting_type='random_forest',
+                                  objective='regression',
+                                  verbose=0,
+                                  subsample_freq=1,
+                                  subsample=0.9,
+                                  bagging_seed=random_state))
             base_estimator = tree_reg(space,
                                     rf,
                                     unc_estimator,
@@ -152,6 +157,7 @@ def cook_unc_estimator(space,
                     unc_scaling,
                     dist_metric,
                     cat_dist_metric,
+                    num_obj=1,
                     random_state=None):
     """Cook a default uncertainty estimator.
 
@@ -191,6 +197,9 @@ def cook_unc_estimator(space,
 
     from entmoot.learning.proximit_based_std import \
         ProximityMetric
+
+    # normalize distances if multi-obj
+    if num_obj>1: unc_scaling="normalize"
 
     if unc_metric == "exploration":
         unc_estimator = DistanceBasedExploration(

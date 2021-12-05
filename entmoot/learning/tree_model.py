@@ -33,9 +33,10 @@ class EntingRegressor:
         self.base_estimator = base_estimator
         self.std_estimator = std_estimator
         self.cat_idx = cat_idx
+        self.num_obj = len(self.base_estimator)
 
         # check if base_estimator is EntingRegressor
-        if isinstance(base_estimator, EntingRegressor):
+        if isinstance(base_estimator[0], EntingRegressor):
             self.base_estimator = base_estimator.base_estimator
             self.std_estimator = base_estimator.std_estimator
 
@@ -55,29 +56,32 @@ class EntingRegressor:
         -------
         -
         """
-        base_estimator = self.base_estimator
+        self.regressor_ = []
+        y = np.asarray(y)
 
-        # suppress lgbm output
-        base_estimator.set_params(
-            random_state=self.random_state,
-            verbose=-1
-        )
+        for i,est in enumerate(self.base_estimator):
+            # suppress lgbm output
+            est.set_params(
+                random_state=self.random_state,
+                verbose=-1
+            )
 
-        # clone base_estimator (only supported for sklearn estimators)
-        self.regressor_ = clone(base_estimator)
+            # clone base_estimator (only supported for sklearn estimators)
+            self.regressor_.append(clone(est))
 
-        # update std estimator
-        self.std_estimator.update(X, y, cat_column=self.cat_idx)
+            # update std estimator
+            self.std_estimator.update(X, y, cat_column=self.cat_idx)
 
-        # update tree model regressor
-        import warnings
-        
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            if self.cat_idx:
-                self.regressor_.fit(X, y, categorical_feature=self.cat_idx)
-            else:
-                self.regressor_.fit(X, y)
+            # update tree model regressor
+            import warnings
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+
+                if self.cat_idx:
+                    self.regressor_[-1].fit(X, y[:,i], categorical_feature=self.cat_idx)
+                else:
+                    self.regressor_[-1].fit(X, y[:,i])
 
     def set_params(self, **params):
         """Sets parameters related to tree model estimator. All parameter 
@@ -95,8 +99,9 @@ class EntingRegressor:
         """
         if not "min_child_samples" in params.keys():
             params.update({"min_child_samples":2})
-            
-        self.base_estimator.set_params(**params)
+
+        for i in range(len(self.base_estimator)):
+            self.base_estimator[i].set_params(**params)
 
     def predict(self, X, return_std=False):
         """Predict.
@@ -116,7 +121,12 @@ class EntingRegressor:
         mean or (mean, std): np.array, shape (n_rows, n_dims) 
             or tuple(np.array, np.array), depending on value of `return_std`.
         """
-        mean = self.regressor_.predict(X)
+        if self.num_obj == 1:
+            mean = self.regressor_[0].predict(X)
+        else:
+            mean = []
+            for tree in self.regressor_:
+                mean.append(tree.predict(X))
 
         if return_std:
             std = self.std_estimator.predict(X)
@@ -141,26 +151,27 @@ class EntingRegressor:
 
         from entmoot.learning.lgbm_processing import order_tree_model_dict
         from entmoot.learning.gbm_model import GbmModel
+        gbm_model_dict = {}
+        for i,tree in enumerate(self.regressor_):
+            original_tree_model_dict = tree._Booster.dump_model()
 
-        original_tree_model_dict = self.regressor_._Booster.dump_model()
+            # import json
+            # with open('tree_dict_next.json', 'w') as f:
+            #     json.dump(
+            #         original_tree_model_dict,
+            #         f,
+            #         indent=4,
+            #         sort_keys=False
+            #     )
 
-        import json
-        with open('tree_dict_next.json', 'w') as f:
-            json.dump(
-                original_tree_model_dict, 
-                f, 
-                indent=4, 
-                sort_keys=False
-            )
+            ordered_tree_model_dict = \
+                order_tree_model_dict(
+                    original_tree_model_dict,
+                    cat_column=self.cat_idx
+                )
 
-        ordered_tree_model_dict = \
-            order_tree_model_dict(
-                original_tree_model_dict,
-                cat_column=self.cat_idx
-            )
-
-        gbm_model = GbmModel(ordered_tree_model_dict)
-        return gbm_model
+            gbm_model_dict[i] = GbmModel(ordered_tree_model_dict)
+        return gbm_model_dict
 
     def get_global_next_x(self,
                           acq_func,
@@ -199,7 +210,7 @@ class EntingRegressor:
         # convert into gbm_model format
         # and add to gurobi model
         gbm_model_dict = {}
-        gbm_model_dict['first'] = self.get_gbm_model()
+        gbm_model_dict = self.get_gbm_model()
         add_gbm_to_gurobi_model(
             self.space, gbm_model_dict, gurobi_model
         )

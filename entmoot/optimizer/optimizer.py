@@ -217,6 +217,8 @@ class Optimizer(object):
                 random_state=self.rng.randint(0, np.iinfo(np.int32).max))
             self.space.set_transformer(transformer)
 
+        self.num_obj = num_obj
+
         # create base_estimator
         self.base_estimator_kwargs = {} if base_estimator_kwargs is None else base_estimator_kwargs
 
@@ -236,6 +238,7 @@ class Optimizer(object):
                     self.space,
                     base_estimator,
                     self.base_estimator_kwargs,
+                    num_obj=self.num_obj,
                     random_state=est_random_state)
             else:
                 raise ValueError("Estimator type: %s is not supported." % base_estimator)
@@ -253,7 +256,6 @@ class Optimizer(object):
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
         self.gurobi_env = acq_optimizer_kwargs.get("env", None)
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
-        self.num_obj = num_obj
 
         # Initialize storage for optimization
         if not isinstance(model_queue_size, (int, type(None))):
@@ -543,7 +545,6 @@ class Optimizer(object):
                         self._next_x[idx] = self.space.transformed_bounds[idx][0]
 
             self._model_mu = round(model_mu, 5)
-
             self._model_std = round(model_std, 5)
 
             if self.models:
