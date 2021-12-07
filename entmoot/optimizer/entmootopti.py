@@ -10,13 +10,14 @@ from mbo.algorithm import Algorithm
 
 from entmoot.learning.gbm_model import GbmModel
 from entmoot.learning.lgbm_processing import order_tree_model_dict
+from entmoot.optimizer import Optimizer
 from entmoot.optimizer.gurobi_utils import (
     add_gbm_to_gurobi_model,
     get_core_gurobi_model,
     get_gbm_obj,
 )
 from entmoot.space.space import Categorical, Integer, Real, Space
-from entmoot.utils import cook_std_estimator
+from entmoot.utils import cook_estimator
 
 
 class UncertaintyType(Enum):
@@ -38,7 +39,8 @@ class EntmootOpti(Algorithm):
         else:
             self._surrogat_params: dict = surrogat_params
         self.model: lgb.Booster = None
-        self._space: Space = self._build_space_object()
+
+        self.num_obj = len(self.problem.outputs.names)
 
         # Handling of categorical features
         self.cat_names: list[str] = None
@@ -50,9 +52,24 @@ class EntmootOpti(Algorithm):
         if self.problem.data is None:
             raise ValueError("No initial data points provided.")
 
+        dimensions: list = self._build_dimensions_list()
+
+        self.entmoot_optimizer: Optimizer = Optimizer(
+            dimensions=dimensions,
+            n_initial_points=0,
+            num_obj=self.num_obj,
+            random_state=73,
+            #acq_optimizer_kwargs={
+            #    "add_model_core": core_model
+            #},
+            base_estimator_kwargs={
+                "min_child_samples": 2
+            },
+        )
+
         self._fit_model()
 
-    def _build_space_object(self):
+    def _build_dimensions_list(self):
         dimensions = []
         for parameter in self.problem.inputs:
             if isinstance(parameter, opti.Continuous):
@@ -64,36 +81,20 @@ class EntmootOpti(Algorithm):
                 # We handle this by rounding the proposals
                 dimensions.append(Integer(*parameter.bounds, name=parameter.name))
 
-        return Space(dimensions)
-
-    def _encode_cat_vars(self, X: pd.DataFrame) -> pd.DataFrame:
-        X_enc = X.copy()
-        X_enc[self.cat_names] = X_enc[self.cat_names].astype("category")
-        for cat in self.cat_names:
-            X_enc[cat] = X_enc[cat].cat.codes
-        return X_enc
+        return dimensions
 
     def _fit_model(self) -> None:
         """Fit a probabilistic model to the available data."""
         X = self.problem.data[self.problem.inputs.names]
-        y = self.problem.data[self.problem.outputs.names]
+        if self.num_obj == 1:
+            y = self.problem.data[self.problem.outputs.names[0]]
+        else:
+            y = self.problem.data[self.problem.outputs.names]
 
-        # Extract names of categorical columns and mark them as categorical variables in Pandas.
-        self.cat_names = [i.name for i in self.problem.inputs if type(i) is opti.Categorical]
-        self.cat_idx = [i for i, j in enumerate(self.problem.inputs) if type(j) is opti.Categorical]
-
-        X_enc = self._encode_cat_vars(X)
-
-        for cat in self.cat_names:
-            self.cat_encode_mapping[cat] = {var: enc for (var, enc) in set(zip(X[cat], X_enc[cat]))}
-            self.cat_decode_mapping[cat] = {enc: var for (enc, var) in set(zip(X_enc[cat], X[cat]))}
-
-        train_data = lgb.Dataset(X_enc, label=y, params=self._surrogat_params)
-        self.model = lgb.train(self._surrogat_params, train_data, categorical_feature=self.cat_idx)
+        self.entmoot_optimizer.tell(x=X.to_numpy().tolist(), y=y.to_numpy().tolist(), fit=True)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
-        X_enc = self._encode_cat_vars(X)
-        return self.model.predict(X_enc)
+        return self.entmoot_optimizer.predict_with_acq(X.to_numpy().tolist())
 
     def _get_gbm_model(self):
         original_tree_model_dict = self.model.dump_model()
@@ -140,15 +141,6 @@ class EntmootOpti(Algorithm):
             add_gbm_to_gurobi_model(
                 self._space, gbm_model_dict, gurobi_model
             )
-            gurobi_model.update()
-
-            # add std to gurobi model
-            std_estimator_params = {}
-            std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
-            std_est.cat_idx = self.cat_idx
-
-            std_est.update(X_std_data, y_std_data, cat_column=self.cat_idx)
-            std_est.add_to_gurobi_model(gurobi_model)
             gurobi_model.update()
 
             # Migrate constraints from opti to gurobi
@@ -204,6 +196,15 @@ class EntmootOpti(Algorithm):
                         )
                     else:
                         raise ValueError(f"Constraint of type {type(c)} not supported.")
+
+            # add std to gurobi model
+            std_estimator_params = {}
+            std_est = cook_std_estimator(uncertainty_type.name, self._space, std_estimator_params=std_estimator_params)
+            std_est.cat_idx = self.cat_idx
+
+            std_est.update(X_std_data, y_std_data, cat_column=self.cat_idx)
+            std_est.add_to_gurobi_model(gurobi_model)
+            gurobi_model.update()
 
             # add obj to gurobi model
             mu = get_gbm_obj(gurobi_model)

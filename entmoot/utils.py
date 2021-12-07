@@ -68,7 +68,7 @@ def cook_estimator(space, base_estimator, base_estimator_kwargs=None, num_obj=1,
 
     Parameters
     ----------
-    base_estimator : "GBRT", creates LightGBM tree model based on base_estimator 
+    base_estimator : "ENTING", creates LightGBM tree model based on base_estimator
 
     std_estimator : DistandBasedStd instance, 
         Estimates model uncertainty of base_estimator

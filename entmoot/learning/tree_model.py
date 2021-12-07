@@ -319,6 +319,7 @@ class EntingRegressor:
     def copy(self):
         return copy.copy(self)
 
+
 class MisicRegressor(EntingRegressor):
 
     def __init__(self, base_estimator=None,
