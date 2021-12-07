@@ -2,6 +2,30 @@ from gurobipy import GRB, quicksum
 import gurobipy as gp
 import numpy as np
 
+def get_opt_core_copy(opt_core):
+    new_opt_core = opt_core.copy()
+    new_opt_core._n_feat = opt_core._n_feat
+
+    # transfer var dicts
+    new_opt_core._cont_var_dict = {}
+    new_opt_core._cat_var_dict = {}
+
+    ## transfer cont_var_dict
+    for var in opt_core._cont_var_dict.keys():
+        var_name = opt_core._cont_var_dict[var].VarName
+
+        new_opt_core._cont_var_dict[var] = \
+            new_opt_core.getVarByName(var_name)
+
+    ## transfer cat_var_dict
+    for var in opt_core._cat_var_dict.keys():
+        var_name = opt_core._cat_var_dict[var].VarName
+
+        new_opt_core._cat_var_dict[var] = \
+            new_opt_core.getVarByName(var_name)
+
+    return new_opt_core
+
 def get_core_gurobi_model(space, add_model_core=None, env=None):
     """Add core to gurobi model, i.e. bounds, variables and parameters.
 
@@ -83,7 +107,10 @@ def get_core_gurobi_model(space, add_model_core=None, env=None):
             "model core was not configured correctly, please create model core using: " + \
                 "entmoot.optimizer.gurobi_utils.add_core_to_gurobi_model(..."
 
-        return add_model_core
+        # create copy of the original model core, so we can keep reusing it
+        model_core_copy = get_opt_core_copy(add_model_core)
+
+        return model_core_copy
 
 def add_std_to_gurobi_model(est, model):
     """Adds standard estimator formulation to gurobi model.
