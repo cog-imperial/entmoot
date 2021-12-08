@@ -334,7 +334,7 @@ class Optimizer(object):
 
         return optimizer
 
-    def ask(self, n_points=None, strategy="cl_min", weights=None):
+    def ask(self, n_points=None, strategy="cl_min", weights=None, add_model_core=None):
         """Query point or multiple points at which objective should be evaluated.
 
         Parameters
@@ -372,7 +372,7 @@ class Optimizer(object):
             If `n_points` is None, only a single array-like object is returned
         """
         if n_points is None and weights is None:
-            return self._ask()
+            return self._ask(add_model_core=add_model_core)
         elif self.num_obj > 1:
             if weights is not None:
                 n_points = len(weights)
@@ -387,9 +387,9 @@ class Optimizer(object):
                     assert len(w) == self.num_obj, \
                         f"The {i}'th provided weight has dim '{len(w)}' but " \
                         f"number of objectives is '{self.num_obj}'."
-                    next_x = self._ask(weight=w)
+                    next_x = self._ask(weight=w, add_model_core=add_model_core)
                 else:
-                    next_x = self._ask()
+                    next_x = self._ask(add_model_core=add_model_core)
                 X.append(next_x)
             return X if len(X) > 1 else X[0]
 
@@ -442,7 +442,7 @@ class Optimizer(object):
 
         return X
 
-    def _ask(self, weight=None):
+    def _ask(self, weight=None, add_model_core=None):
         """Suggest next point at which to evaluate the objective.
 
         Return a random point while not at least `n_initial_points`
@@ -537,10 +537,15 @@ class Optimizer(object):
                     import sys
                     sys.exit(1)
 
+                if add_model_core is None:
+                    add_model_core = \
+                        self.acq_optimizer_kwargs.get("add_model_core", None)
+
                 next_x, model_mu, model_std, gurobi_mipgap = \
                     self.models[-1].get_global_next_x(acq_func=self.acq_func,
                                                       acq_func_kwargs=self.acq_func_kwargs,
                                                       acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                                      add_model_core=add_model_core,
                                                       weight=weight,
                                                       verbose=self.verbose,
                                                       gurobi_env=self.gurobi_env,

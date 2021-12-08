@@ -186,6 +186,7 @@ class EntingRegressor:
                           acq_func,
                           acq_func_kwargs,
                           acq_optimizer_kwargs,
+                          add_model_core,
                           weight,
                           verbose,
                           gurobi_env,
@@ -201,8 +202,6 @@ class EntingRegressor:
         logger.setLevel(logging.CRITICAL)
 
         # start building model
-        add_model_core = \
-            acq_optimizer_kwargs.get("add_model_core", None)
         gurobi_model = \
             get_core_gurobi_model(
                 self.space, add_model_core, env=gurobi_env
