@@ -26,14 +26,18 @@ def test_api():
     n_init = 15
     test_problem.create_initial_data(n_init)
 
+    base_estimator_params = {
+        "lgbm_params": {"min_child_samples": 2},
+        "unc_metric": 'exploration',
+        "unc_scaling": "standard",
+        "dist_metric": "manhattan"
+    }
+
     entmoot = EntmootOpti(
         problem=test_problem,
-        surrogat_params={"verbose": -1, "min_data_in_leaf": 5},
+        base_est_params=base_estimator_params,
         gurobi_env=get_gurobi_env,
     )
-
-    # Make sure that a model has been trained
-    assert type(entmoot.model) == lgb.Booster
 
     X_pred = pd.DataFrame(
         [
@@ -47,7 +51,7 @@ def test_api():
     assert len(y_pred) == 2
 
     # Optimize acquisition function
-    X_next = entmoot.propose(n_proposals=10)
+    X_next: pd.DataFrame = entmoot.propose(n_proposals=10)
     assert len(X_next) == 10
 
     # Run Bayesian Optimization loop
@@ -85,7 +89,17 @@ def test_no_initial_data():
 def test_biobjective():
     # opti.problems.ReizmanSuzuki -> bi-objective, cat + cont variables
     problem = opti.problems.ReizmanSuzuki()
-    pass
+
+    entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
+
+    X_pred = problem.data[problem.inputs.names]
+    y_pred = entmoot.predict(X_pred)
+
+    assert len(y_pred) == len(X_pred)
+
+    X_next = entmoot.propose(n_proposals=2)
+
+    assert len(X_next) == 2
 
 
 def test_with_missing_data():

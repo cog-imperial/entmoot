@@ -3,19 +3,14 @@ from typing import Callable, Optional
 
 import gurobipy
 import lightgbm as lgb
-import numpy as np
 import opti
 import pandas as pd
 from mbo.algorithm import Algorithm
 
-from entmoot.learning.gbm_model import GbmModel
-from entmoot.learning.lgbm_processing import order_tree_model_dict
 from entmoot.optimizer import Optimizer
-from entmoot.optimizer.gurobi_utils import (
-    get_core_gurobi_model,
-    get_gbm_obj,
-)
-from entmoot.space.space import Categorical, Integer, Real
+from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
+
+from entmoot.space.space import Categorical, Integer, Real, Space
 
 
 class UncertaintyType(Enum):
@@ -30,41 +25,37 @@ class UncertaintyType(Enum):
 class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
-    def __init__(self, problem: opti.Problem, surrogat_params: dict = None, gurobi_env: Optional[Callable] = None):
+    def __init__(self, problem: opti.Problem, base_est_params: dict = None, gurobi_env: Optional[Callable] = None):
         self.problem: opti.Problem = problem
-        if surrogat_params is None:
-            self._surrogat_params: dict = {}
+        if base_est_params is None:
+            self._base_est_params: dict = {}
         else:
-            self._surrogat_params: dict = surrogat_params
+            self._base_est_params: dict = base_est_params
         self.model: lgb.Booster = None
 
         self.num_obj = len(self.problem.outputs.names)
 
-        # Handling of categorical features
+        # Gurobi environment handling in case you are using the Gurobi Cloud service
+        self.gurobi_env = gurobi_env
+
         self.cat_names: list[str] = None
         self.cat_idx: list[int] = None
-        self.cat_encode_mapping: dict = {}
-        self.cat_decode_mapping: dict = {}
-        self.gurobi_env = gurobi_env
+
 
         if self.problem.data is None:
             raise ValueError("No initial data points provided.")
 
         dimensions: list = self._build_dimensions_list()
 
+        self.space = Space(dimensions)
+
         self.entmoot_optimizer: Optimizer = Optimizer(
             dimensions=dimensions,
+            base_estimator="ENTING",
             n_initial_points=0,
             num_obj=self.num_obj,
             random_state=73,
-            # core_model SOLL NICHT HIER UEBERGEBEN WERDEN, DA SONST DER GUROBI SERVER SCHON BEI DER INIT FUNKTION HOCHFAHREN MUSS.
-            # BITTE ERST SPAETER BEI DER PROPOSE METHODE
-            #acq_optimizer_kwargs={
-            #    "add_model_core": core_model
-            #},
-            base_estimator_kwargs={
-                "min_child_samples": 2
-            },
+            base_estimator_kwargs=self._base_est_params,
         )
 
         self._fit_model()
@@ -98,7 +89,7 @@ class EntmootOpti(Algorithm):
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
 
-        core_model = get_core_gurobi_model()
+        gurobi_model = get_core_gurobi_model(self.space)
 
         # Migrate constraints from opti to gurobi
         if self.problem.constraints:
@@ -154,6 +145,6 @@ class EntmootOpti(Algorithm):
                 else:
                     raise ValueError(f"Constraint of type {type(c)} not supported.")
 
-            X = self.entmoot_optimizer.ask(n_points=n_proposals)
+        X_res = self.entmoot_optimizer.ask(n_points=n_proposals)
 
-        return X_res
+        return pd.DataFrame(X_res, columns=self.problem.inputs.names)
