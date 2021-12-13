@@ -130,6 +130,7 @@ class EntingRegressor:
         mean or (mean, std): np.array, shape (n_rows, n_dims) 
             or tuple(np.array, np.array), depending on value of `return_std`.
         """
+
         if self.num_obj == 1:
             mean = self.regressor_[0].predict(X)
         else:

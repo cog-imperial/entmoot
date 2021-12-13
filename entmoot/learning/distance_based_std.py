@@ -826,11 +826,15 @@ class DistanceBasedStd(ABC):
             # normalize points for comparison
             elif self.unc_scaling == "normalize":
                 self.x_shifts = np.asarray(
-                    [dim.low for dim in self.space.dimensions]
+                    [dim.low
+                     for idx, dim in enumerate(self.space.dimensions)
+                     if idx not in self.cat_idx]
                 )
 
                 self.x_scalers = np.asarray(
-                    [dim.high - dim.low for dim in self.space.dimensions]
+                    [dim.high - dim.low
+                     for idx, dim in enumerate(self.space.dimensions)
+                     if idx not in self.cat_idx]
                 )
                 self.dim_scaler = len(self.space.dimensions)
 
