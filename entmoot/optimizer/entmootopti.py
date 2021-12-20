@@ -84,8 +84,8 @@ class EntmootOpti(Algorithm):
 
         self.entmoot_optimizer.tell(x=X.to_numpy().tolist(), y=y.to_numpy().tolist(), fit=True)
 
-    def predict(self, X: pd.DataFrame, new_fit: bool=True) -> pd.DataFrame:
-        return self.entmoot_optimizer.predict_with_est(X.to_numpy().tolist(), new_fit=new_fit)
+    def predict(self, X: pd.DataFrame) -> pd.DataFrame:
+        return self.entmoot_optimizer.predict_with_est(X.to_numpy().tolist())
 
     def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
 

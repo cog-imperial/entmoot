@@ -1,6 +1,5 @@
 import os
 
-import lightgbm as lgb
 import opti
 import pandas as pd
 
@@ -47,9 +46,7 @@ def test_api():
     )
 
     # Prediction based on surrogate model
-    y_pred = entmoot.predict(X_pred, new_fit=True)
-    # Prediction without new fit
-    _ = entmoot.predict(X_pred, new_fit=False)
+    y_pred = entmoot.predict(X_pred)
     assert len(y_pred) == 2
 
     # Optimize acquisition function
@@ -69,7 +66,7 @@ def test_mixed_constraints():
     entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
 
     X_pred = problem.data[problem.inputs.names]
-    y_mean, y_std = entmoot.predict(X_pred, new_fit=True)
+    y_mean, y_std = entmoot.predict(X_pred)
     assert len(y_std) == len(X_pred)
     assert len(y_mean) == len(X_pred)
 
@@ -96,7 +93,7 @@ def test_biobjective():
     entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
 
     X_pred = problem.data[problem.inputs.names]
-    y_mean, y_std = entmoot.predict(X_pred, new_fit=True)
+    y_mean, y_std = entmoot.predict(X_pred)
     assert len(y_std) == len(X_pred)
     for y_mean_obj in y_mean:
         assert len(y_mean_obj) == len(X_pred)
