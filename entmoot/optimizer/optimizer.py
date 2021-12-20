@@ -774,7 +774,7 @@ class Optimizer(object):
         result.specs = self.specs
         return result
 
-    def predict_with_est(self, x, return_std=True, new_fit=True):
+    def predict_with_est(self, x, return_std=True):
         from entmoot.utils import is_2Dlistlike
 
         if is_2Dlistlike(x):
@@ -785,21 +785,13 @@ class Optimizer(object):
             next_x = np.asarray(
                 self.space.transform([x])[0]
             ).reshape(1, -1)
-            
-        if new_fit:
-            est = self.base_estimator_
-            est.fit(self.space.transform(self.Xi), self.yi)
-            temp_mu, temp_std = \
-                est.predict(
-                    X=next_x, 
-                    return_std=True)
-        elif self.models:
-            temp_mu, temp_std = \
-                self.models[-1].predict(
-                    X=next_x,
-                    return_std=True)
-        else:
-            raise ValueError("no model was fitted yet! please set 'new_fit' to True")
+
+        est = self.base_estimator_
+        est.fit(self.space.transform(self.Xi), self.yi)
+        temp_mu, temp_std = \
+            est.predict(
+                X=next_x,
+                return_std=True)
         
         if is_2Dlistlike(x):
             if return_std:
