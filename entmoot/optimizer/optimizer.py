@@ -33,7 +33,7 @@ https://github.com/scikit-optimize/scikit-optimize/
 
 Copyright (c) 2019-2020 Alexander Thebelt.
 """
-
+from typing import Optional
 import warnings
 import copy
 import inspect
@@ -153,20 +153,84 @@ class Optimizer(object):
         An instance of :class:`skopt.space.Space`. Stores parameter search
         space used to sample points, bounds, and type of parameters.
     """
-    def __init__(self, 
-                dimensions, 
-                base_estimator="ENTING",
-                n_initial_points=50, 
-                initial_point_generator="random",
-                num_obj=1,
-                acq_func="LCB", 
-                acq_optimizer="global", 
-                random_state=None, 
-                acq_func_kwargs=None, 
-                acq_optimizer_kwargs=None,
-                base_estimator_kwargs=None,
-                model_queue_size=None,
-                verbose=False
+
+    """
+    This class is used to run the main BO loop. 
+    Optimizer objects define all BO settings and store the current data set.
+    
+    The self.ask function provides new input proposals, and resulting black-box
+    values can be added through self.tell. This procedure is automated via
+    self.run, where a callable function is provided as an input.
+    
+    Functions self.predict_with_est and self.predict_with_acq use the current
+    surrogate model to predict inputs.
+    
+    :param dimensions: list
+        list of search-space variables, i.e.
+            If (lower: float, upper: float), gives continuous variable
+            If (lower: int, upper: int), gives discrete variable
+            If list of categories, gives categorical variable
+    :param base_estimator: str
+        currently available estimator types are in ["ENTING"]
+    :param n_initial_points: int
+        number of initial points sampled before surrogate model is trained
+    :param initial_point_generator: str
+        currently supported sampling generators are in
+        ["sobol", "halton", "hammersly", "lhs", "random", "grid"]
+    :param num_obj: int
+        gives the number of objectives that the black-box is being optimized for
+    :param acq_func: str
+        acquisition function type that is used for exploitation vs. exploration
+        trade-off, i.e. currently supported ["LCB"] and ["LCB", "HLCB"] for
+        num_obj == 1
+    :param acq_optimizer: str
+        optimization method used to minimize the acquisition function, i.e.
+        currently supports ["sampling", "global"]
+    :param random_state: Optional[int]
+        fixed random seed to generate reproducible results
+    :param acq_func_kwargs: Optional[dict]
+        define additional params for acquisition function, i.e.
+            "kappa": int, influences acquisition function "min mu - kappa * alpha"
+    :param acq_optimizer_kwargs: Optional[dict]
+        define additional params for acqu. optimizer "sampling":
+            "n_points": int, number of points to minimize the acquisition function
+        define additional params for acqu. optimizer "global":
+            "env": GRBEnv, defines Gurobi environment for cluster computations
+            "gurobi_timelimit": int, optimization time limit in sec
+            "add_model_core": GRBModel, Gurobi optimization model that includes 
+                additional constraints
+    :param base_estimator_kwargs: Optional[dict]
+        defines additional params that influence the base_estimator behavior
+            "lgbm_params": dict, additional parameters that are passed to lightgbm
+            "unc_metric": str, options in ['exploration', 'penalty'], i.e.
+                negative or positive alpha contribution in "min mu \pm kappa * alpha"
+            "unc_scaling": str, options in ["standard", "normalize"], i.e.
+                scaling used for the distance-based uncertainty metric
+            "dist_metric": str, options in ["manhattan",'squared_euclidean'], i.e.
+                metric used to define non-categorical distance for uncertainty
+            "cat_dist_metric": str, options in ["overlap", "goodall4", "of"], i.e.
+                metric used to define categorical distance for uncertainty
+    :param model_queue_size: Optional[int]
+        defines number of previous models that are stored in self.models
+    :param verbose: bool
+        defines the verbosity level of the output
+    """
+
+    def __init__(
+        self,
+        dimensions: list,
+        base_estimator: str = "ENTING",
+        n_initial_points: int = 50,
+        initial_point_generator: str = "random",
+        num_obj: int = 1,
+        acq_func: str = "LCB",
+        acq_optimizer: str = "global",
+        random_state: Optional[int] = None,
+        acq_func_kwargs: Optional[dict] = None,
+        acq_optimizer_kwargs: Optional[dict] = None,
+        base_estimator_kwargs: Optional[dict] = None,
+        model_queue_size: Optional[int] = None,
+        verbose: bool = False
     ):
 
         from entmoot.utils import is_supported
