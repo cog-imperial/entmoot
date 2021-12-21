@@ -13,15 +13,6 @@ from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
 from entmoot.space.space import Categorical, Integer, Real, Space
 
 
-class UncertaintyType(Enum):
-    # Exploration
-    BDD = "BDD"  # for bounded - data distance, which uses squared euclidean distance
-    L1BDD = "L1BDD"  # for bounded - data distance, which uses manhattan distance
-    # Exploitation
-    DDP = "DDP"  # for data distance, which uses squared euclidean distance
-    L1DDP = "L1DDP"  # for data distance, which uses manhattan distance
-
-
 class EntmootOpti(Algorithm):
     """Class for Entmoot objects in opti interface"""
 
@@ -87,7 +78,7 @@ class EntmootOpti(Algorithm):
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         return self.entmoot_optimizer.predict_with_est(X.to_numpy().tolist())
 
-    def propose(self, n_proposals: int = 1, uncertainty_type: UncertaintyType = UncertaintyType.DDP) -> pd.DataFrame:
+    def propose(self, n_proposals: int = 1) -> pd.DataFrame:
 
         gurobi_model = get_core_gurobi_model(self.space)
 
