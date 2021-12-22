@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Callable, Optional
 
 import gurobipy
@@ -14,9 +13,23 @@ from entmoot.space.space import Categorical, Integer, Real, Space
 
 
 class EntmootOpti(Algorithm):
-    """Class for Entmoot objects in opti interface"""
+    """"
+    This class serves as connector between the package mopti (https://github.com/basf/mopti) and entmoot.
+    Mopti is a Python package for specifying problems in a number of closely related fields, including experimental
+    design, multiobjective optimization, decision making and Bayesian optimization.
+    EntmootOpti inherits from mbo.algorithm (https://github.com/basf/mbo) and migrates problems specified in mopti to
+    entmoot.
+
+    :param problem: opti.Problem
+        contains all information about the mopti problem
+    : param base_est_params: dict
+        base estimator parameters which are handed over to entmoot's Optimizer object
+    : param gurobi_env: Optional[Callable]
+        calls a function that returns a Gurobi CloudEnv object, if None: use local license instead
+    """
 
     def __init__(self, problem: opti.Problem, base_est_params: dict = None, gurobi_env: Optional[Callable] = None):
+
         self.problem: opti.Problem = problem
         if base_est_params is None:
             self._base_est_params: dict = {}
@@ -51,7 +64,11 @@ class EntmootOpti(Algorithm):
 
         self._fit_model()
 
-    def _build_dimensions_list(self):
+    def _build_dimensions_list(self) -> list:
+        """
+        Builds a list with information (variable bounds and variable type) about input variables (decision variables)
+        from mopti. This is then later used by the Optimizer object.
+        """
         dimensions = []
         for parameter in self.problem.inputs:
             if isinstance(parameter, opti.Continuous):
@@ -76,10 +93,15 @@ class EntmootOpti(Algorithm):
         self.entmoot_optimizer.tell(x=X.to_numpy().tolist(), y=y.to_numpy().tolist(), fit=True)
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Yields prediction y from surrogate model(s) for provided X.
+        """
         return self.entmoot_optimizer.predict_with_est(X.to_numpy().tolist())
 
     def propose(self, n_proposals: int = 1) -> pd.DataFrame:
-
+        """
+        Suggests next proposal by optimizing the acquisition function.
+        """
         gurobi_model = get_core_gurobi_model(self.space)
 
         # Migrate constraints from opti to gurobi

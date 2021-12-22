@@ -1,25 +1,14 @@
-import os
-
 import opti
 import pandas as pd
 
 from entmoot.optimizer import EntmootOpti
-from gurobipy import Env
-
-
-def get_gurobi_env():
-    """Return a Gurobi CloudEnv if environment variables are set, else None."""
-    if "GRB_CLOUDPOOL" in os.environ:
-        return Env.CloudEnv(
-            logfilename="gurobi.log",
-            accessID=os.environ["GRB_CLOUDACCESSID"],
-            secretKey=os.environ["GRB_CLOUDKEY"],
-            pool=os.environ["GRB_CLOUDPOOL"],
-        )
-    return None
+from entmoot.utils import get_gurobi_env
 
 
 def test_api():
+    """
+    Single objective test problem with two continuous input variables and one categorical input variable
+    """
     # Definition of test problem
     test_problem = opti.problems.Zakharov_Categorical(n_inputs=3)
     n_init = 15
@@ -103,5 +92,5 @@ def test_biobjective():
 
 
 def test_with_missing_data():
-    # In the multi-objective case we the model should handle missing data
+    # In the multi-objective case we the model should handle missing data, i.e. missing entries in the output columns
     pass

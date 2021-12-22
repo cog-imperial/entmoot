@@ -34,11 +34,25 @@ https://github.com/scikit-optimize/scikit-optimize/
 Copyright (c) 2019-2020 Alexander Thebelt.
 """
 
+import os
+from gurobipy import Env
 import numpy as np
 from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
 from .space import Space, Dimension
+
+
+def get_gurobi_env():
+    """Return a Gurobi CloudEnv if environment variables are set, else None."""
+    if "GRB_CLOUDPOOL" in os.environ:
+        return Env.CloudEnv(
+            logfilename="gurobi.log",
+            accessID=os.environ["GRB_CLOUDACCESSID"],
+            secretKey=os.environ["GRB_CLOUDKEY"],
+            pool=os.environ["GRB_CLOUDPOOL"],
+        )
+    return None
 
 
 def is_supported(base_estimator):
