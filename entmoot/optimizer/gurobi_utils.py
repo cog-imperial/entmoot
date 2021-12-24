@@ -19,10 +19,14 @@ def get_opt_core_copy(opt_core):
 
     ## transfer cat_var_dict
     for var in opt_core._cat_var_dict.keys():
-        var_name = opt_core._cat_var_dict[var].VarName
+        for cat in opt_core._cat_var_dict[var].keys():
+            var_name = opt_core._cat_var_dict[var][cat].VarName
 
-        new_opt_core._cat_var_dict[var] = \
-            new_opt_core.getVarByName(var_name)
+            if var not in new_opt_core._cat_var_dict.keys():
+                new_opt_core._cat_var_dict[var] = {}
+
+            new_opt_core._cat_var_dict[var][cat] = \
+                new_opt_core.getVarByName(var_name)
 
     return new_opt_core
 

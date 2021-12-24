@@ -263,6 +263,7 @@ class EntingRegressor:
             gurobi_model.Params.TimeLimit = gurobi_timelimit
         gurobi_model.Params.OutputFlag = 1
 
+        gurobi_model.update()
         gurobi_model.optimize()
 
         assert gurobi_model.SolCount >= 1, "gurobi couldn't find a feasible " + \
