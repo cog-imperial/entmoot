@@ -45,115 +45,6 @@ from entmoot.acquisition import _gaussian_acquisition
 
 
 class Optimizer(object):
-    """Run bayesian optimisation loop.
-
-    An `Optimizer` represents the steps of a bayesian optimisation loop. To
-    use it you need to provide your own loop mechanism. The various
-    optimisers provided by `skopt` use this class under the hood.
-
-    Use this class directly if you want to control the iterations of your
-    bayesian optimisation loop.
-
-    Parameters
-    ----------
-    dimensions : list, shape (n_dims,)
-        List of search space dimensions.
-        Each search dimension can be defined either as
-
-        - a `(lower_bound, upper_bound)` tuple (for `Real` or `Integer`
-          dimensions),
-        - a `(lower_bound, upper_bound, "prior")` tuple (for `Real`
-          dimensions),
-        - as a list of categories (for `Categorical` dimensions), or
-        - an instance of a `Dimension` object (`Real`, `Integer` or
-          `Categorical`).
-
-    base_estimator : string, default: "GBRT",
-        A default LightGBM surrogate model of the corresponding type is used  
-        minimize `func`.
-        The following model types are available:
-        
-        - "GBRT" for gradient-boosted trees
-
-        - "RF" for random forests
-
-        *NOTE: More model types will be added in the future
-
-    n_initial_points : int, default: 50
-        Number of evaluations of `func` with initialization points
-        before approximating it with `base_estimator`. Initial point
-        generator can be changed by setting `initial_point_generator`. For 
-        `n_initial_points` <= 20 we need to set `min_child_samples` <= 20 in 
-        `base_estimator_kwargs` so LightGBM can train tree models based on small
-        data sets.
-
-    initial_point_generator : str, InitialPointGenerator instance, \
-            default: "random"
-        Sets a initial points generator. Can be either
-
-        - "random" for uniform random numbers,
-        - "sobol" for a Sobol sequence,
-        - "halton" for a Halton sequence,
-        - "hammersly" for a Hammersly sequence,
-        - "lhs" for a latin hypercube sequence,
-        - "grid" for a uniform grid sequence
-
-    acq_func : string, default: "LCB"
-        Function to minimize over the posterior distribution. Can be either
-
-        - "LCB" for lower confidence bound.
-
-    acq_optimizer : string, default: "sampling"
-        Method to minimize the acquisition function. The fit model
-        is updated with the optimal value obtained by optimizing `acq_func`
-        with `acq_optimizer`.
-
-        - If set to "sampling", then `acq_func` is optimized by computing
-          `acq_func` at `n_points` randomly sampled points.
-        - If set to "global", then `acq_optimizer` is optimized by using
-          global solver to find minimum of `acq_func`.
-
-    random_state : int, RandomState instance, or None (default)
-        Set random state to something other than None for reproducible
-        results.
-
-    acq_func_kwargs : dict
-        Additional arguments to be passed to the acquisition function.
-
-    acq_optimizer_kwargs : dict
-        Additional arguments to be passed to the acquisition optimizer.
-
-    base_estimator_kwargs : dict
-        Additional arguments to be passed to the base_estimator.
-
-    model_queue_size : int or None, default: None
-        Keeps list of models only as long as the argument given. In the
-        case of None, the list has no capped length.
-
-    verbose : bool or int:
-        - If it is `True`, general solver information is printed at every 
-          iteration
-        - If it is `False`, no output is printed
-
-        - If it is 0, same as if `False`
-        - If it is 1, same as if `True`
-        - If it is 2, general solver information is printed at every iteration
-          as well as detailed solver information, i.e. gurobi log
-
-    Attributes
-    ----------
-    Xi : list
-        Points at which objective has been evaluated.
-    yi : scalar
-        Values of objective at corresponding points in `Xi`.
-    models : list
-        Regression models used to fit observations and compute acquisition
-        function.
-    space : Space
-        An instance of :class:`skopt.space.Space`. Stores parameter search
-        space used to sample points, bounds, and type of parameters.
-    """
-
     """
     This class is used to run the main BO loop. 
     Optimizer objects define all BO settings and store the current data set.
@@ -236,16 +127,12 @@ class Optimizer(object):
         from entmoot.utils import is_supported
         from entmoot.utils import cook_estimator
         from entmoot.utils import cook_initial_point_generator
-        
-
-        self.specs = {"args": copy.copy(inspect.currentframe().f_locals),
-                      "function": "Optimizer"}
-
         from sklearn.utils import check_random_state
 
+        # define random state
         self.rng = check_random_state(random_state)
 
-        # Store and create acquisition function set
+        # store and create acquisition function set
         self.acq_func = acq_func
         if acq_func_kwargs is None:
             self.acq_func_kwargs = dict()
@@ -257,15 +144,14 @@ class Optimizer(object):
             raise ValueError("expected acq_func to be in %s, got %s" %
                              (",".join(allowed_acq_funcs), self.acq_func))
 
-        # Configure counter of points
+        # configure counter of points
         if n_initial_points < 0:
             raise ValueError(
                 "Expected `n_initial_points` >= 0, got %d" % n_initial_points)
         self._n_initial_points = n_initial_points
         self.n_initial_points_ = n_initial_points
         
-        # initialize search space
-        import numpy as np
+        # initialize search space and output
         from entmoot.space.space import Space
 
         self.space = Space(dimensions)
@@ -321,17 +207,24 @@ class Optimizer(object):
         self.gurobi_env = acq_optimizer_kwargs.get("env", None)
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
 
-        # Initialize storage for optimization
+        ## Initialize storage for optimization
         if not isinstance(model_queue_size, (int, type(None))):
             raise TypeError("model_queue_size should be an int or None, "
                             "got {}".format(type(model_queue_size)))
 
+        # model cache
         self.max_model_queue_size = model_queue_size
         self.models = []
+
+        # data set cache
         self.Xi = []
         self.yi = []
+
+        # model_mu and model_std cache
         self.model_mu = []
         self.model_std = []
+
+        # global opti metrics
         self.gurobi_mipgap = []
 
         # Initialize cache for `ask` method responses
@@ -364,18 +257,11 @@ class Optimizer(object):
         else:
             self.printed_switch_to_model = True
 
-    def copy(self, random_state=None):
+    def copy(self, random_state: Optional[int] = None):
         """Create a shallow copy of an instance of the optimizer.
 
-        Parameters
-        ----------
-        random_state : int, RandomState instance, or None (default)
-            Set the random state of the copy.
-
-        Returns
-        -------
-        optimizer : Optimizer instance
-            Shallow copy of optimizer instance
+        :param random_state: Optional[int]
+        :return optimizer: Optimizer
         """
 
         optimizer = Optimizer(
@@ -393,48 +279,43 @@ class Optimizer(object):
 
         optimizer._initial_samples = self._initial_samples
         optimizer.printed_switch_to_model = self.printed_switch_to_model
+
         if self.Xi:
             optimizer._tell(self.Xi, self.yi)
 
         return optimizer
 
-    def ask(self, n_points=None, strategy="cl_min", weights=None, add_model_core=None):
-        """Query point or multiple points at which objective should be evaluated.
-
-        Parameters
-        ----------
-        n_points : int or None, default: None
-            Number of points returned by the ask method.
-            If the value is None, a single point to evaluate is returned.
-            Otherwise a list of points to evaluate is returned of size
-            n_points. This is useful if you can evaluate your objective in
-            parallel, and thus obtain more objective function evaluations per
-            unit of time.
-
-        strategy : string, default: "cl_min"
-            Method to use to sample multiple points (see also `n_points`
-            description). This parameter is ignored if n_points = None.
-            Supported options are `"cl_min"`, `"cl_mean"` or `"cl_max"`.
-
-            - If set to `"cl_min"`, then constant liar strategy is used
-               with lie objective value being minimum of observed objective
-               values. `"cl_mean"` and `"cl_max"` means mean and max of values
-               respectively. For details on this strategy see:
-
-               https://hal.archives-ouvertes.fr/hal-00732512/document
-
-               With this strategy a copy of optimizer is created, which is
-               then asked for a point, and the point is told to the copy of
-               optimizer with some fake objective (lie), the next point is
-               asked from copy, it is also told to the copy with fake
-               objective and so on. The type of lie defines different
-               flavours of `cl_x` strategies.
-
-        Returns
-        -------
-        next_x : array-like, shape(n_points, n_dims)
-            If `n_points` is None, only a single array-like object is returned
+    def ask(
+        self,
+        n_points: int = None,
+        strategy: str = "cl_min",
+        weights: Optional[list] = None,
+        add_model_core=None
+    ) -> list:
         """
+        Computes the next point (or multiple points) at which the objective
+        should be evaluated.
+
+        :param n_points: int = None,
+            gives the number of points that should be returned
+        :param strategy: str = "cl_min",
+            determines the liar strategy, i.e.
+            (https://hal.archives-ouvertes.fr/hal-00732512/document)
+            used for single-objective batch proposals, i.e.
+                "cl_min": str, uses minimum of observations as lie
+                "cl_mean": str, uses mean of observations as lie
+                "cl_max": str, uses maximum of observations as lie
+        :param weights: Optional[list] = None,
+            1D list of weights of size num_obj for single multi-objective proposal;
+            2D list of weights of size shape(n_points,num_obj) for
+                batch multi-objectiveproposals
+        :param add_model_core: GRBModel = None,
+            Gurobi optimization model that includes additional constraints
+
+        :return next_x: list, next proposal of shape(n_points, n_dims)
+        """
+
+        # check if single point or batch of point is returned
         if n_points is None and weights is None:
             return self._ask(add_model_core=add_model_core)
         elif self.num_obj > 1:
@@ -470,7 +351,7 @@ class Optimizer(object):
                 str(supported_strategies) + ", " + "got %s" % strategy
             )
 
-        # Caching the result with n_points not None. If some new parameters
+        # caching the result with n_points not None. If some new parameters
         # are provided to the ask, the cache_ is not used.
         if (n_points, strategy) in self.cache_:
             return self.cache_[(n_points, strategy)]
@@ -478,10 +359,8 @@ class Optimizer(object):
         # Copy of the optimizer is made in order to manage the
         # deletion of points with "lie" objective (the copy of
         # optimizer is simply discarded)
-        import numpy as np
-
-        opt = self.copy(random_state=self.rng.randint(0,
-                                                      np.iinfo(np.int32).max))
+        opt = self.copy(
+            random_state=self.rng.randint(0,np.iinfo(np.int32).max))
 
         X = []
         for i in range(n_points):
@@ -506,21 +385,23 @@ class Optimizer(object):
 
         return X
 
-    def _ask(self, weight=None, add_model_core=None):
-        """Suggest next point at which to evaluate the objective.
-
-        Return a random point while not at least `n_initial_points`
-        observations have been `tell`ed, after that `base_estimator` is used
-        to determine the next point.
-
-        Parameters
-        ----------
-        -
-
-        Returns
-        -------
-        next_x : array-like, shape(n_dims,)
+    def _ask(
+        self,
+        weight: Optional[list] = None,
+        add_model_core=None
+    ):
         """
+        Computes the next point at which the objective should be evaluated.
+
+        :param weight: Optional[list] = None,
+            list of weights of size num_obj to trade-off between different
+            objective contributions
+        :param add_model_core: GRBModel = None,
+            Gurobi optimization model that includes additional constraints
+
+        :return next_x: list, next proposal of shape(n_points, n_dims)
+        """
+
         if self._n_initial_points > 0 or self.base_estimator_ is None:
             # this will not make a copy of `self.rng` and hence keep advancing
             # our random state.
@@ -592,14 +473,12 @@ class Optimizer(object):
                 try:
                     import gurobipy as gp
                 except ModuleNotFoundError:
-                    print("GurobiNotFoundError: "
+                    ImportError("GurobiNotFoundError: "
                           "To run `aqu_optimizer='global'` "
                           "please install the Gurobi solver "
                           "(https://www.gurobi.com/) and its interface "
                           "gurobipy. "
                           "Alternatively, change `aqu_optimizer='sampling'`.")
-                    import sys
-                    sys.exit(1)
 
                 if add_model_core is None:
                     add_model_core = \
@@ -652,68 +531,27 @@ class Optimizer(object):
             # return point computed from last call to tell()
             return next_x
 
-    def tell(self, x, y, fit=True):
-        """Record an observation (or several) of the objective function.
-
-        Provide values of the objective function at points suggested by
-        `ask()` or other points. By default a new model will be fit to all
-        observations. The new model is used to suggest the next point at
-        which to evaluate the objective. This point can be retrieved by calling
-        `ask()`.
-
-        To add observations without fitting a new model set `fit` to False.
-
-        To add multiple observations in a batch pass a list-of-lists for `x`
-        and a list of scalars for `y`.
-
-        Parameters
-        ----------
-        x : list or list-of-lists
-            Point at which objective was evaluated.
-
-        y : scalar or list
-            Value of objective at `x`.
-
-        fit : bool, default: True
-            Fit a model to observed evaluations of the objective. A model will
-            only be fitted after `n_initial_points` points have been told to
-            the optimizer irrespective of the value of `fit`.
-
-        Returns
-        -------
-        res : `OptimizeResult`, scipy object
-               OptimizeResult instance with the required information.
+    def tell(self, x: list, y: list, fit: Optional[bool] = True):
         """
+        Checks that both x and y are valid points for the given search space.
+
+        :param x: list, locations of new data points
+        :param y: list, target value of new data points
+        :param fit: Optional[bool], will be removed soon
+        """
+
         from entmoot.utils import check_x_in_space
         check_x_in_space(x, self.space)
         self._check_y_is_valid(x, y)
-
-        return self._tell(x, y, fit=fit)
+        self._tell(x, y, fit=fit)
 
     def _tell(self, x, y, fit=True):
-        """Perform the actual work of incorporating one or more new points.
-        See `tell()` for the full description.
+        """
+        Adds the new data points to the data set.
 
-        This method exists to give access to the internals of adding points
-        by side stepping all input validation and transformation.
-
-        Parameters
-        ----------
-        x : list or list-of-lists
-            Point at which objective was evaluated.
-
-        y : scalar or list
-            Value of objective at `x`.
-
-        fit : bool, default: True
-            Fit a model to observed evaluations of the objective. A model will
-            only be fitted after `n_initial_points` points have been told to
-            the optimizer irrespective of the value of `fit`.
-
-        Returns
-        -------
-        res : `OptimizeResult`, scipy object
-               OptimizeResult instance with the required information.
+        :param x: list, locations of new data points
+        :param y: list, target value of new data points
+        :param fit: Optional[bool], will be removed soon
         """
 
         from entmoot.utils import is_listlike
@@ -739,7 +577,7 @@ class Optimizer(object):
         self._next_x = None
 
     def _check_y_is_valid(self, x, y):
-        """Check if the shape and types of x and y are consistent."""
+        """check if the shape and types of x and y are consistent."""
 
         from entmoot.utils import is_listlike
         from entmoot.utils import is_2Dlistlike
@@ -798,7 +636,6 @@ class Optimizer(object):
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
-        result.specs = self.specs
 
         if no_progress_bar and update_min:
             print(f"Min. obj.: {round(min(self.yi),2)} at itr.: {n_iter} / {n_iter}")
@@ -835,7 +672,6 @@ class Optimizer(object):
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
-        result.specs = self.specs
         return result
 
     def predict_with_est(self, x, return_std=True):
