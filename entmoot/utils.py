@@ -35,6 +35,8 @@ Copyright (c) 2019-2020 Alexander Thebelt.
 """
 
 import os
+from typing import Optional
+from entmoot.space.space import Space
 from gurobipy import Env
 import numpy as np
 from scipy.optimize import OptimizeResult
@@ -73,33 +75,39 @@ def get_cat_idx(space):
     return cat_idx
 
 
-def cook_estimator(space, base_estimator, base_estimator_kwargs=None, num_obj=1, random_state=None):
-    """Cook a default estimator.
+def cook_estimator(
+        space: Space,
+        base_estimator: str,
+        base_estimator_kwargs: Optional[dict] = None,
+        num_obj: int = 1,
+        random_state: Optional[int] = None):
+    """Cook an estimator that used for mean and uncertainty prediction.
 
-    For the special base_estimator called "DUMMY" the return value is None.
-    This corresponds to sampling points at random, hence there is no need
-    for an estimator.
-
-    Parameters
-    ----------
-    base_estimator : "ENTING", creates LightGBM tree model based on base_estimator
-
-    std_estimator : DistandBasedStd instance, 
-        Estimates model uncertainty of base_estimator
-
-    space : Space instance
-
-    random_state : int, RandomState instance, or None (default)
-        Set random state to something other than None for reproducible
-        results.
-
-    base_estimator_params : dict
-        Extra parameters provided to the base_estimator at init time.
+    :param space: Space, defines the search space of variables
+    :param base_estimator: str
+        currently available estimator types are in ["ENTING"]
+    :param base_estimator_kwargs: Optional[dict]
+        defines additional params that influence the base_estimator behavior
+            "lgbm_params": dict, additional parameters that are passed to lightgbm
+            "ensemble_type": str, options in ['GBRT', 'RF'],
+                "GBRT": uses gradient-boosted tree regressor
+                "RF": uses random forest
+            "unc_metric": str, options in ['exploration', 'penalty'], i.e.
+                negative or positive alpha contribution in "min mu \pm kappa * alpha"
+            "unc_scaling": str, options in ["standard", "normalize"], i.e.
+                scaling used for the distance-based uncertainty metric
+            "dist_metric": str, options in ["manhattan",'squared_euclidean'], i.e.
+                metric used to define non-categorical distance for uncertainty
+            "cat_dist_metric": str, options in ["overlap", "goodall4", "of"], i.e.
+                metric used to define categorical distance for uncertainty
+    :param num_obj: int
+        gives the number of objectives that the black-box is being optimized for
+    :param random_state: Optional[int]
+        fixed random seed to generate reproducible results
     """
 
     from lightgbm import LGBMRegressor
     from entmoot.learning.tree_model import EntingRegressor, MisicRegressor
-
 
     # collect indices of categorical features
     cat_idx = get_cat_idx(space)
@@ -166,44 +174,28 @@ def cook_estimator(space, base_estimator, base_estimator_kwargs=None, num_obj=1,
     return base_estimator
 
 
-def cook_unc_estimator(space,
-                    unc_metric,
-                    unc_scaling,
-                    dist_metric,
-                    cat_dist_metric,
-                    num_obj=1,
-                    random_state=None):
-    """Cook a default uncertainty estimator.
+def cook_unc_estimator(space: Space,
+                    unc_metric: str,
+                    unc_scaling: str,
+                    dist_metric: str,
+                    cat_dist_metric: str,
+                    num_obj: int = 1,
+                    random_state: Optional[int] = None):
+    """Cook a distance-based uncertainty estimator.
 
-    Parameters
-    ----------
-    std_estimator : string.
-        A model is used to estimate uncertainty of `base_estimator`.
-        Different types can be classified as exploration measures, i.e. move
-        as far as possible from reference points, and penalty measures, i.e.
-        stay as close as possible to reference points. Within these types, the 
-        following uncertainty estimators are available:
-        
-        - exploration:
-            - "BDD" for bounded-data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1BDD" for bounded-data distance, which uses manhattan
-              distance to standardized data points
-        
-        - penalty:
-            - "DDP" for data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1DDP" for data distance, which uses manhattan
-              distance to standardized data points
-
-    space : Space instance
-
-    random_state : int, RandomState instance, or None (default)
-        Set random state to something other than None for reproducible
-        results.
-
-    std_estimator_params : dict
-        Extra parameters provided to the std_estimator at init time.
+    :param space: Space, defines the search space of variables
+    :param unc_metric: str, options in ['exploration', 'penalty'], i.e.
+        negative or positive alpha contribution in "min mu \pm kappa * alpha"
+    :param unc_scaling: str, options in ["standard", "normalize"], i.e.
+        scaling used for the distance-based uncertainty metric
+    :param dist_metric: str, options in ["manhattan",'squared_euclidean'], i.e.
+        metric used to define non-categorical distance for uncertainty
+    :param cat_dist_metric: str, options in ["overlap", "goodall4", "of"], i.e.
+        metric used to define categorical distance for uncertainty
+    :param num_obj: int
+        gives the number of objectives that the black-box is being optimized for
+    :param random_state: Optional[int]
+        fixed random seed to generate reproducible results
     """
 
     from entmoot.learning.distance_based_std import \

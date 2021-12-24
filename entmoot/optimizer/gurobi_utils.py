@@ -316,6 +316,14 @@ def get_gbm_obj_from_model(model, label):
         for temp_label, tree, leaf in leaf_index(model) if temp_label == label)
     return temp_sum
 
+def get_gbm_multi_obj_from_model(model):
+    temp_sum = []
+    for label in model._gbm_set:
+        temp_sum.append(sum(model._leaf_weight(label, tree, leaf) * \
+            round(model._z_l[label, tree, leaf].x,1)
+            for temp_label, tree, leaf in leaf_index(model) if temp_label == label))
+    return temp_sum
+
 
 ### GBT HANDLER
 ## gbt model helper functions

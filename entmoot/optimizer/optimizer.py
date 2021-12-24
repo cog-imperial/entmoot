@@ -93,6 +93,9 @@ class Optimizer(object):
     :param base_estimator_kwargs: Optional[dict]
         defines additional params that influence the base_estimator behavior
             "lgbm_params": dict, additional parameters that are passed to lightgbm
+            "ensemble_type": str, options in ['GBRT', 'RF'],
+                "GBRT": uses gradient-boosted tree regressor
+                "RF": uses random forest
             "unc_metric": str, options in ['exploration', 'penalty'], i.e.
                 negative or positive alpha contribution in "min mu \pm kappa * alpha"
             "unc_scaling": str, options in ["standard", "normalize"], i.e.
@@ -512,8 +515,8 @@ class Optimizer(object):
                     elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
                         self._next_x[idx] = self.space.transformed_bounds[idx][0]
 
-            self._model_mu = round(model_mu, 5)
-            self._model_std = round(model_std, 5)
+            self._model_mu = model_mu
+            self._model_std = model_std
 
             if self.models:
                 self.model_mu.append(self._model_mu)

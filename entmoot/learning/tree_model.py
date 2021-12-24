@@ -26,7 +26,10 @@ class EntingRegressor:
                 base_estimator,
                 std_estimator,
                 random_state=None,
-                cat_idx=[]):
+                cat_idx=None):
+
+        if cat_idx is None:
+            cat_idx = []
 
         np.random.seed(random_state)
 
@@ -195,7 +198,7 @@ class EntingRegressor:
         from entmoot.optimizer.gurobi_utils import \
             get_core_gurobi_model, add_gbm_to_gurobi_model, \
             add_std_to_gurobi_model, add_acq_to_gurobi_model, \
-            set_gurobi_init_to_ref, get_gbm_obj_from_model
+            set_gurobi_init_to_ref, get_gbm_obj_from_model, get_gbm_multi_obj_from_model
 
         # suppress  output to command window
         import logging
@@ -298,21 +301,8 @@ class EntingRegressor:
 
             next_x[i] = cat[0]
 
-        model_mu = get_gbm_obj_from_model(gurobi_model, 'first')
+        model_mu = get_gbm_multi_obj_from_model(gurobi_model)
         model_std = gurobi_model._alpha.x
-        # print(f"alpha_val: {model_std}")
-
-        # print("stoped here") REMOVEX
-        # print(next_x[-3])
-        # counter = 0
-        # for tree_id,leaf_enc in enumerate(gbm_model_dict['first'].get_active_leaves(next_x)):
-        #     print(f"leaf_val: {gurobi_model._z_l['first',tree_id,leaf_enc].x}")
-        #     if round(gurobi_model._z_l['first',tree_id,leaf_enc].x,1) == 0.0:
-        #         "leafs are inconsistent"
-        #         counter += 1
-        # print("")
-        # if counter > 0:
-        #    print(f"   ! {counter} leafs are off !")
 
         return next_x, model_mu, model_std, gurobi_mipgap
 
@@ -325,7 +315,10 @@ class MisicRegressor(EntingRegressor):
     def __init__(self, base_estimator=None,
                 std_estimator=None,
                 random_state=None,
-                cat_idx=[]):
+                cat_idx=None):
+
+        if cat_idx is None:
+            cat_idx = []
 
         self.random_state = random_state
         self.base_estimator = base_estimator
