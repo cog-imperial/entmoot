@@ -142,24 +142,22 @@ func = Rosenbrock()
 
 res = entmoot_minimize(
     func,
-    func.get_bounds(),
+    func.get_bounds(10),
     n_calls=60,
     n_points=10000,
-    base_estimator="GBRT",
-    std_estimator="L1DDP", 
-    n_initial_points=50, 
+    base_estimator="ENTING",
+    n_initial_points=50,
     initial_point_generator="random",
-    acq_func="LCB", 
+    acq_func="LCB",
     acq_optimizer="sampling",
     x0=None,
-    y0=None,  
-    random_state=100, 
-    acq_func_kwargs=None, 
+    y0=None,
+    random_state=100,
+    acq_func_kwargs=None,
     acq_optimizer_kwargs=None,
-    std_estimator_kwargs=None,
     model_queue_size=None,
     base_estimator_kwargs=None,
-    verbose = True,
+    verbose=True,
 )
 
 ```
@@ -182,7 +180,7 @@ space = Space(func.get_bounds())
 from entmoot.optimizer.gurobi_utils import get_core_gurobi_model
 core_model = get_core_gurobi_model(space)
 
-# ordering of variable indices is dependent on space definition 
+# ordering of variable indices is dependent on space definition
 
 # cont_var_dict contains all continuous variables
 x0 = core_model._cont_var_dict[0]
@@ -194,6 +192,7 @@ x2 = core_model._cat_var_dict[2]
 # define constraints accordingly
 core_model.addConstr(x0 + x1 >= 2)
 core_model.addConstr(x1 == 1)
+core_model.update()
 
 # specify the model core in `acq_optimizer_kwargs`
 res = entmoot_minimize(
@@ -201,27 +200,24 @@ res = entmoot_minimize(
     func.get_bounds(),
     n_calls=15,
     n_points=10000,
-    base_estimator="GBRT",
-    std_estimator="L1DDP", 
-    n_initial_points=5, 
+    base_estimator="ENTING",
+    n_initial_points=5,
     initial_point_generator="random",
-    acq_func="LCB", 
+    acq_func="LCB",
     acq_optimizer="global",
     x0=None,
-    y0=None,  
-    random_state=100, 
-    acq_func_kwargs=None, 
+    y0=None,
+    random_state=100,
+    acq_func_kwargs=None,
     acq_optimizer_kwargs={
       "add_model_core": core_model
     },
-    std_estimator_kwargs=None,
     model_queue_size=None,
     base_estimator_kwargs={
         "min_child_samples": 2
     },
-    verbose = True,
+    verbose=True,
 )
-
 ```
 
 ## Authors
