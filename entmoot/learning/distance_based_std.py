@@ -1,5 +1,7 @@
 from sklearn.preprocessing import StandardScaler
 from abc import ABC, abstractmethod
+from entmoot.space import Space
+from typing import Optional
 
 import numpy as np
 
@@ -115,6 +117,9 @@ class SquaredEuclidean(DistanceMetric):
         x_scalers : np.array, shape (n_dims,)
             Each dimension is the value by which the continuous variable is scaled.
 
+        dim_scaler : int
+            Value by which the sum of uncertainties is scaled, i.e. either 1 or n_dims
+
         distance_bound : float
             Defines the maximum value that the exploration term can take.
 
@@ -186,6 +191,9 @@ class SquaredEuclidean(DistanceMetric):
 
         x_scalers : np.array, shape (n_dims,)
             Each dimension is the value by which the continuous variable is scaled.
+
+        dim_scaler : int
+            Value by which the sum of uncertainties is scaled, i.e. either 1 or n_dims
 
         distance_bound : float
             Defines the maximum value that the exploration term can take.
@@ -324,6 +332,9 @@ class Manhattan(DistanceMetric):
         x_scalers : np.array, shape (n_dims,)
             Each dimension is the value by which the continuous variable is scaled.
 
+        dim_scaler : int
+            Value by which the sum of uncertainties is scaled, i.e. either 1 or n_dims
+
         distance_bound : float
             Defines the maximum value that the exploration term can take.
 
@@ -419,6 +430,9 @@ class Manhattan(DistanceMetric):
 
         x_scalers : np.array, shape (n_dims,)
             Each dimension is the value by which the continuous variable is scaled.
+
+        dim_scaler : int
+            Value by which the sum of uncertainties is scaled, i.e. either 1 or n_dims
 
         distance_bound : float
             Defines the maximum value that the exploration term can take.
@@ -672,7 +686,8 @@ class OF(NonSimilarityMetric):
 
 
 class DistanceBasedStd(ABC):
-    """Define a distance-based standard estimator.
+    """
+    Define a distance-based standard estimator.
 
     A `DistanceBasedStd` object is used to quantify model uncertainty based 
     on distance to reference points, e.g. data points. The underlying assumption 
@@ -681,34 +696,25 @@ class DistanceBasedStd(ABC):
     Use this class as a template if you want to develop your own distance-based
     measure.
 
-    Parameters
-    ----------
-    metric : string
-        Metric used to compute distances, e.g. squared euclidean, manhattan
-
-    Attributes
-    ----------
-    Xi : list
-        Points at which objective has been evaluated.
-    yi : scalar
-        Values of objective at corresponding points in `Xi`.
-    dist_metric : DistanceMetric
-        Object used to compute distances between continuous variables.
-    x_means : list
-        Mean of attribute `Xi`.
-    x_scaler : list
-        Scalers of attribute `Xi`.
-    Xi_standard : list
-        Standardized `Xi` array.
-    ref_points : list
-        Points to which the distance is computed to estimate model uncertainty.
-        Is different for all child classes.
+    :params space: Space, search space object that contains all vars
+    :params unc_scaling: str, type of scaling used for uncertainty
+        "standard": uses sample mean as shift and sample std as scaling
+        "normalize": normalizes vars by lower and upper bounds provided
+    :params dist_metric: str,
+        type of distance metric used for non-categorical vars, i.e.
+        currently supported ["squared_euclidean", "manhattan"]
+    :params cat_dist_metric: str,
+        type of dist. metric used for uncertainty of categorical vars, i.e. check:
+            {S. Boriah, V. Chandola, V. Kumar,
+            Similarity Measures for Categorical Data: A Comparative Evaluation,
+            2008, SIAM}
+        currently available options in ["overlap", "goodall4", "of"]
     """
     def __init__(self,
-        space,
-        unc_scaling="standard",
-        dist_metric='squared_euclidean',
-        cat_dist_metric='overlap'):
+        space: Space,
+        unc_scaling: str = "standard",
+        dist_metric: str = 'squared_euclidean',
+        cat_dist_metric: str = 'overlap'):
 
         self.std_type = 'distance'
 
@@ -761,7 +767,7 @@ class DistanceBasedStd(ABC):
         """
         pass
 
-    def update(self, Xi, yi, cat_column=[]):
+    def update(self, Xi, yi, cat_column=None):
         """Update available data points which is usually done after every
         iteration.
 
@@ -776,6 +782,8 @@ class DistanceBasedStd(ABC):
         -------
         -
         """
+        if cat_column is None:
+            cat_column = []
 
         self.cat_idx = cat_column
         
@@ -964,41 +972,31 @@ class DistanceBasedExploration(DistanceBasedStd):
     function. Exploration refers to incentivizing distance to reference points
     leading to a negative contribution of the distance measure to the objective
     function.
-    
-    Parameters
-    ----------
-    metric : string
-        Metric used to compute distances, e.g. squared euclidean, manhattan
-    zeta : scalar
-        Coefficient determining how the distance measure is bounded
 
-    Attributes
-    ----------
-    Xi : list
-        Points at which objective has been evaluated.
-    yi : scalar
-        Values of objective at corresponding points in `Xi`.
-    dist_metric : DistanceMetric
-        Object used to compute distances between continuous variables.
-    x_means : list
-        Mean of attribute `Xi`.
-    x_scaler : list
-        Scalers of attribute `Xi`.
-    Xi_standard : list
-        Standardized `Xi` array.
-    ref_points : list
-        `ref_points` standardized to which the distance measure is computed.
-    ref_points_unscaled : list
-        Unscaled `ref_points` to which the distance measure is computed.
-    distance_bound : scalar
-        Bound of exploration measure to prohibit over-exploration
+
+    :params space: Space, search space object that contains all vars
+    :params unc_scaling: str, type of scaling used for uncertainty
+        "standard": uses sample mean as shift and sample std as scaling
+        "normalize": normalizes vars by lower and upper bounds provided
+    :params dist_metric: str,
+        type of distance metric used for non-categorical vars, i.e.
+        currently supported ["squared_euclidean", "manhattan"]
+    :params cat_dist_metric: str,
+        type of dist. metric used for uncertainty of categorical vars, i.e. check:
+            {S. Boriah, V. Chandola, V. Kumar,
+            Similarity Measures for Categorical Data: A Comparative Evaluation,
+            2008, SIAM}
+        currently available options in ["overlap", "goodall4", "of"]
+    :params zeta: Optional[float],
+        coefficient determining how the distance measure is bounded,
+        i.e. bound = abs(zeta * np.var(yi))
     """
     def __init__(self,
-        space,
-        unc_scaling="standard",
-        dist_metric='squared_euclidean',
-        cat_dist_metric='overlap',
-        zeta=0.5):
+        space: Space,
+        unc_scaling: str = "standard",
+        dist_metric: str = 'squared_euclidean',
+        cat_dist_metric: str = 'overlap',
+        zeta: Optional[float] = 0.5):
 
         super().__init__(space,
                          unc_scaling=unc_scaling,
@@ -1021,7 +1019,7 @@ class DistanceBasedExploration(DistanceBasedStd):
         zeta = kwargs.get("zeta", 0.5)
         self.zeta = zeta
 
-    def update(self, Xi, yi, cat_column=[]):
+    def update(self, Xi, yi, cat_column=None):
         """Update available data points which is usually done after every
         iteration.
 
@@ -1036,6 +1034,9 @@ class DistanceBasedExploration(DistanceBasedStd):
         -------
         -
         """
+        if cat_column is None:
+            cat_column = []
+
         super().update(Xi, yi, cat_column=cat_column)
 
         self.ref_points_unscaled = self.Xi_cont
@@ -1120,44 +1121,36 @@ class DistanceBasedExploration(DistanceBasedStd):
         )
 
 class DistanceBasedPenalty(DistanceBasedStd):
-    """Defines a child class based on `DistanceBasedStd`. Penalty 
+    """Defines a child class based on `DistanceBasedStd`. Penalty
     refers to how the distance measure contributes to the acquisition
     function. Penalty refers to penalizing distance to reference points
     leading to a positive contribution of the distance measure to the objective
     function.
-    
-    Parameters
-    ----------
-    metric : string
-        Metric used to compute distances, e.g. squared euclidean, manhattan
 
-    Attributes
-    ----------
-    Xi : list
-        Points at which objective has been evaluated.
-    yi : scalar
-        Values of objective at corresponding points in `Xi`.
-    dist_metric : DistanceMetric
-        Object used to compute distances between continuous variables.
-    x_means : list
-        Mean of attribute `Xi`.
-    x_scaler : list
-        Scalers of attribute `Xi`.
-    Xi_standard : list
-        Standardized `Xi` array.
-    ref_points : list
-        `ref_points` reference to which the distance measure is computed
-    n_ref_points : scalar
-        length of `ref_points"""
+
+    :params space: Space, search space object that contains all vars
+    :params unc_scaling: str, type of scaling used for uncertainty
+        "standard": uses sample mean as shift and sample std as scaling
+        "normalize": normalizes vars by lower and upper bounds provided
+    :params dist_metric: str,
+        type of distance metric used for non-categorical vars, i.e.
+        currently supported ["squared_euclidean", "manhattan"]
+    :params cat_dist_metric: str,
+        type of dist. metric used for uncertainty of categorical vars, i.e. check:
+            {S. Boriah, V. Chandola, V. Kumar,
+            Similarity Measures for Categorical Data: A Comparative Evaluation,
+            2008, SIAM}
+        currently available options in ["overlap", "goodall4", "of"]
+    """
 
     def __init__(self,
-        space,
-        unc_scaling="standard",
-        dist_metric='squared_euclidean',
-        cat_dist_metric='overlap'):
+        space: Space,
+        unc_scaling: str = "standard",
+        dist_metric: str = 'squared_euclidean',
+        cat_dist_metric: str = 'overlap'):
 
         super().__init__(space,
-                         unc_scaling= unc_scaling,
+                         unc_scaling=unc_scaling,
                          dist_metric=dist_metric,
                          cat_dist_metric=cat_dist_metric)
 
@@ -1175,7 +1168,7 @@ class DistanceBasedPenalty(DistanceBasedStd):
         """
         pass
 
-    def update(self, Xi, yi, cat_column=[]):
+    def update(self, Xi, yi, cat_column=None):
         """Update available data points which is usually done after every
         iteration.
 
@@ -1190,6 +1183,9 @@ class DistanceBasedPenalty(DistanceBasedStd):
         -------
         -
         """
+        if cat_column is None:
+            cat_column = []
+
         super().update(Xi, yi, cat_column=cat_column)
 
         self.ref_points_unscaled = self.Xi_cont
