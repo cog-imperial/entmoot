@@ -507,10 +507,10 @@ class Optimizer(object):
                     self._next_x[idx] = round(xi, 5)
 
                     # enforce variable bounds
-                    if self._next_x[idx] > self.space.transformed_bounds[idx][1]:
-                        self._next_x[idx] = self.space.transformed_bounds[idx][1]
-                    elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
-                        self._next_x[idx] = self.space.transformed_bounds[idx][0]
+                    if self._next_x[idx] > self.space.bounds[idx][1]:
+                        self._next_x[idx] = self.space.bounds[idx][1]
+                    elif self._next_x[idx] < self.space.bounds[idx][0]:
+                        self._next_x[idx] = self.space.bounds[idx][0]
 
             self._model_mu = model_mu
             self._model_std = model_std
