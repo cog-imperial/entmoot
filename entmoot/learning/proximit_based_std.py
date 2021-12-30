@@ -7,7 +7,7 @@ class ProximityMetric(DistanceMetric):
         self.space = space
         self.std_type = 'proximity'
         self.active_leaves_per_data = []
-        self.obj_label = 'first'
+        self.obj_label = 0
 
     @staticmethod
     def get_distance(x_left, x_right):

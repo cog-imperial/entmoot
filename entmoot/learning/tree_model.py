@@ -313,7 +313,9 @@ class EntingRegressor:
 
 class MisicRegressor(EntingRegressor):
 
-    def __init__(self, base_estimator=None,
+    def __init__(self,
+                space,
+                base_estimator=None,
                 std_estimator=None,
                 random_state=None,
                 cat_idx=None):
@@ -322,9 +324,11 @@ class MisicRegressor(EntingRegressor):
             cat_idx = []
 
         self.random_state = random_state
+        self.space = space
         self.base_estimator = base_estimator
         self.std_estimator = std_estimator
         self.cat_idx = cat_idx
+        self.num_obj = len(self.base_estimator)
 
         # check if base_estimator is EntingRegressor
         if isinstance(base_estimator, MisicRegressor):
@@ -347,28 +351,38 @@ class MisicRegressor(EntingRegressor):
         -------
         -
         """
-        base_estimator = self.base_estimator
+        self.regressor_ = []
+        y = np.asarray(y)
+        self._y = y
 
-        # suppress lgbm output
-        base_estimator.set_params(
-            random_state=self.random_state,
-            verbose=-1
-        )
+        for i,est in enumerate(self.base_estimator):
+            # suppress lgbm output
+            est.set_params(
+                random_state=self.random_state,
+                verbose=-1
+            )
 
-        # clone base_estimator (only supported for sklearn estimators)
-        self.regressor_ = clone(base_estimator)
+            # clone base_estimator (only supported for sklearn estimators)
+            self.regressor_.append(clone(est))
 
-        # update tree model regressor
-        import warnings
-        
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            if self.cat_idx:
-                self.regressor_.fit(X, y, categorical_feature=self.cat_idx)
-            else:
-                self.regressor_.fit(X, y)
+            # update tree model regressor
+            import warnings
 
-        gbm_model = self.get_gbm_model()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+
+                if self.num_obj > 1:
+                    if self.cat_idx:
+                        self.regressor_[-1].fit(X, y[:,i], categorical_feature=self.cat_idx)
+                    else:
+                        self.regressor_[-1].fit(X, y[:,i])
+                else:
+                    if self.cat_idx:
+                        self.regressor_[-1].fit(X, y, categorical_feature=self.cat_idx)
+                    else:
+                        self.regressor_[-1].fit(X, y)
+
+        gbm_model = self.get_gbm_model()[0]
 
         # update std estimator
         self.std_estimator.update(X, y, gbm_model, cat_column=self.cat_idx)

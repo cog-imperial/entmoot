@@ -222,9 +222,10 @@ def cook_unc_estimator(space: Space,
                 cat_dist_metric=cat_dist_metric)
 
     elif unc_metric == "prox":
-        raise NotImplementedError(
-            "unc_metric 'prox' is currently unavailable and will be adapted for "
-            "multi-objective usage.")
+        if num_obj > 1:
+            raise NotImplementedError(
+                "unc_metric 'prox' is currently unavailable and will be adapted for "
+                "multi-objective usage.")
         unc_estimator = \
             ProximityMetric(space)
 
