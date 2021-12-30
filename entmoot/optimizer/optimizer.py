@@ -35,11 +35,8 @@ Copyright (c) 2019-2020 Alexander Thebelt.
 """
 from typing import Optional
 import warnings
-import copy
-import inspect
 from numbers import Number
 import numpy as np
-from sklearn.base import clone
 
 from entmoot.acquisition import _gaussian_acquisition
 
