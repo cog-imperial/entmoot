@@ -194,7 +194,8 @@ class EntingRegressor:
                           weight,
                           verbose,
                           gurobi_env,
-                          gurobi_timelimit):
+                          gurobi_timelimit,
+                          has_unc=True):
         from entmoot.optimizer.gurobi_utils import \
             get_core_gurobi_model, add_gbm_to_gurobi_model, \
             add_std_to_gurobi_model, add_acq_to_gurobi_model, \
@@ -229,7 +230,8 @@ class EntingRegressor:
         )
 
         # add std estimator to gurobi model
-        add_std_to_gurobi_model(self, gurobi_model)
+        if has_unc:
+            add_std_to_gurobi_model(self, gurobi_model)
 
 
         # collect different objective function contributions
@@ -237,7 +239,10 @@ class EntingRegressor:
 
         if self.num_obj > 1:
             model_mu = get_gbm_model_multi_obj_mu(gurobi_model, self._y)
-            model_unc = self.std_estimator.get_gurobi_obj(gurobi_model)
+
+            if has_unc:
+                model_unc = self.std_estimator.get_gurobi_obj(gurobi_model)
+            else: model_unc = None
         else:
             model_mu = get_gbm_model_mu(gurobi_model, self._y, norm=False)
             model_unc = self.std_estimator.get_gurobi_obj(gurobi_model)
@@ -255,8 +260,9 @@ class EntingRegressor:
                                 acq_func_kwargs=acq_func_kwargs)
 
         # set initial gurobi model vars to std_est reference points
-        if self.std_estimator.std_type == 'distance':
-            set_gurobi_init_to_ref(self, gurobi_model)
+        if has_unc:
+            if self.std_estimator.std_type == 'distance':
+                set_gurobi_init_to_ref(self, gurobi_model)
 
         # set gurobi time limit
         if gurobi_timelimit is not None:
@@ -303,7 +309,10 @@ class EntingRegressor:
             next_x[i] = cat[0]
 
         model_mu = get_gbm_multi_obj_from_model(gurobi_model)
-        model_std = gurobi_model._alpha.x
+        if has_unc:
+            model_std = gurobi_model._alpha.x
+        else:
+            model_std = None
 
         return next_x, model_mu, model_std, gurobi_mipgap
 

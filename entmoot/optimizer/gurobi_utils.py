@@ -249,7 +249,10 @@ def add_acq_to_gurobi_model(model, model_mu, model_unc,
         proc_mu = model_mu
 
     if acq_func == "LCB":
-        ob_expr = quicksum((proc_mu, kappa * model_unc))
+        if model_unc is not None:
+            ob_expr = quicksum((proc_mu, kappa * model_unc))
+        else:
+            ob_expr = proc_mu
         model.setObjective(ob_expr, GRB.MINIMIZE)
 
     elif acq_func == "HLCB":
