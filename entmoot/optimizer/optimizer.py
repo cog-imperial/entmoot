@@ -388,7 +388,7 @@ class Optimizer(object):
     def _ask(
         self,
         weight: Optional[list] = None,
-        add_model_core=None
+        add_model_core = None
     ):
         """
         Computes the next point at which the objective should be evaluated.
@@ -738,3 +738,65 @@ class Optimizer(object):
             return temp_val
         else:
             return temp_val[0]
+
+    def predict_pareto(
+        self,
+        sampling_strategy: str = 'random',
+        num_samples: int = 10,
+        num_levels: int = 10,
+        add_model_core = None
+    ):
+        """
+        Computes the next point at which the objective should be evaluated.
+
+        :param sampling_strategy: str = 'grid'
+            picks the strategy to sample weights for the muli-objective function
+                'random': gives 'num_samples' randomly drawn weights that sum to 1
+                'grid': defines ordered grid of samples depending on 'num_levels'
+        :param num_samples: int = 10,
+            defines number of samples for 'random' sampling strategy
+        :param num_levels: int = 10,
+            defines levels per dimension for 'grid' sampling strategy
+        :param add_model_core: GRBModel = None,
+            Gurobi optimization model that includes additional constraints
+
+        :return pareto_x: list, next pareto point predictions of
+            shape(n_points, n_dims)
+        """
+
+        assert self.num_obj > 1, \
+            f"Number of objectives needs to be > 1 to" \
+            f" compute Pareto frontiers."
+
+        from opti.sampling.simplex import sample, grid
+
+        # pick the sampling strategy
+        if sampling_strategy == 'random':
+            weights = sample(self.num_obj, num_samples)
+        elif sampling_strategy == 'grid':
+            weights = grid(self.num_obj, num_levels)
+        else:
+            raise ValueError("'sampling_type' must be in ['random', 'grid'")
+
+        # fit current model
+        est = self.base_estimator_
+        est.fit(self.space.transform(self.Xi), self.yi)
+
+        # add model constraints if necessary
+        if add_model_core is None:
+            add_model_core = \
+                self.acq_optimizer_kwargs.get("add_model_core", None)
+
+        # compute pareto points based on weight vector
+        pareto_x = []
+        for w in weights:
+            temp_x = est.get_global_next_x(acq_func=self.acq_func,
+                                          acq_func_kwargs=self.acq_func_kwargs,
+                                          acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                          add_model_core=add_model_core,
+                                          weight=w,
+                                          verbose=self.verbose,
+                                          gurobi_env=self.gurobi_env,
+                                          gurobi_timelimit=self.gurobi_timelimit)
+            pareto_x.append(temp_x)
+        return pareto_x
