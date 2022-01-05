@@ -98,6 +98,17 @@ class EntmootOpti(Algorithm):
         """
         return self.entmoot_optimizer.predict_with_est(X.to_numpy().tolist())
 
+    def predict_pareto_front(
+            self, sampling_strategy="random", num_samples=10, num_levels=10, add_model_core=None
+    ) -> pd.DataFrame:
+
+        return self.entmoot_optimizer.predict_pareto(
+            sampling_strategy=sampling_strategy,
+            num_samples=num_samples,
+            num_levels=num_levels,
+            add_model_core=add_model_core
+        )
+
     def propose(self, n_proposals: int = 1) -> pd.DataFrame:
         """
         Suggests next proposal by optimizing the acquisition function.
