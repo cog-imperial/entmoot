@@ -102,12 +102,18 @@ class EntmootOpti(Algorithm):
             self, sampling_strategy="random", num_samples=10, num_levels=10, add_model_core=None
     ) -> pd.DataFrame:
 
-        return self.entmoot_optimizer.predict_pareto(
+        pf_res = self.entmoot_optimizer.predict_pareto(
             sampling_strategy=sampling_strategy,
             num_samples=num_samples,
             num_levels=num_levels,
             add_model_core=add_model_core
         )
+
+        pf_list = [list(x)+y for x, y in pf_res]
+
+        pf_df = pd.DataFrame(pf_list, columns=self.problem.inputs.names + self.problem.outputs.names)
+
+        return pf_df
 
     def propose(self, n_proposals: int = 1) -> pd.DataFrame:
         """

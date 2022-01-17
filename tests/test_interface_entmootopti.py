@@ -88,12 +88,11 @@ def test_biobjective():
         assert len(y_mean_obj) == len(X_pred)
 
     X_next = entmoot.propose(n_proposals=2)
-
-    pareto_front = entmoot.predict_pareto_front()
-
-    #TODO: Convert output of predict_pareto_front() into DataFrame. What are the column names?
-
     assert len(X_next) == 2
+
+    num_samples = 10
+    pareto_front = entmoot.predict_pareto_front(num_samples=num_samples)
+    assert pareto_front.shape == (num_samples, len(problem.inputs.names+problem.outputs.names))
 
 
 def test_with_missing_data():
