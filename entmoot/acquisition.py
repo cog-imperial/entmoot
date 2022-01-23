@@ -38,12 +38,17 @@ import numpy as np
 import warnings
 import sys
 
-def _gaussian_acquisition(X, model, y_opt=None, acq_func="LCB",
+def _gaussian_acquisition(X, model, y_opt=None,
+                          num_obj=1,
+                          acq_func="LCB",
                           acq_func_kwargs=None):
     """
     Wrapper so that the output of this function can be
     directly passed to a minimizer.
     """
+    # not available for multi-obj prediction
+    assert num_obj == 1, f"acquisition predict is not available for 'num_obj > 1'"
+
     # Check inputs
     X = np.asarray(X)
     if X.ndim != 2:
@@ -100,9 +105,7 @@ def gaussian_lcb(X, model, kappa=1.96, return_grad=False, acq_func_kwargs=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
 
-        scaled = acq_func_kwargs.get("scaled", False)
-
-        mu, std = model.predict(X, return_std=True, scaled=scaled)
+        mu, std = model.predict(X, return_std=True)
 
         if kappa == "inf":
             return -std

@@ -34,6 +34,10 @@ https://github.com/scikit-optimize/scikit-optimize/
 Copyright (c) 2019-2020 Alexander Thebelt.
 """
 
+import os
+from typing import Optional
+from entmoot.space.space import Space
+from gurobipy import Env
 import numpy as np
 from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
@@ -41,9 +45,20 @@ from joblib import load as load_
 from .space import Space, Dimension
 
 
+def get_gurobi_env():
+    """Return a Gurobi CloudEnv if environment variables are set, else None."""
+    if "GRB_CLOUDPOOL" in os.environ:
+        return Env.CloudEnv(
+            logfilename="gurobi.log",
+            accessID=os.environ["GRB_CLOUDACCESSID"],
+            secretKey=os.environ["GRB_CLOUDKEY"],
+            pool=os.environ["GRB_CLOUDPOOL"],
+        )
+    return None
+
+
 def is_supported(base_estimator):
-    from entmoot.learning.tree_model import EntingRegressor, MisicRegressor
-    return isinstance(base_estimator, (EntingRegressor,MisicRegressor, str, type(None)))
+    return base_estimator in ['ENTING']
 
 
 def get_cat_idx(space):
@@ -60,173 +75,161 @@ def get_cat_idx(space):
     return cat_idx
 
 
-def cook_estimator(base_estimator, std_estimator=None, space=None, random_state=None, 
-        base_estimator_params=None):
-    """Cook a default estimator.
+def cook_estimator(
+        space: Space,
+        base_estimator: str,
+        base_estimator_kwargs: Optional[dict] = None,
+        num_obj: int = 1,
+        random_state: Optional[int] = None):
+    """Cook an estimator that used for mean and uncertainty prediction.
 
-    For the special base_estimator called "DUMMY" the return value is None.
-    This corresponds to sampling points at random, hence there is no need
-    for an estimator.
-
-    Parameters
-    ----------
-    base_estimator : "GBRT", creates LightGBM tree model based on base_estimator 
-
-    std_estimator : DistandBasedStd instance, 
-        Estimates model uncertainty of base_estimator
-
-    space : Space instance
-
-    random_state : int, RandomState instance, or None (default)
-        Set random state to something other than None for reproducible
-        results.
-
-    base_estimator_params : dict
-        Extra parameters provided to the base_estimator at init time.
+    :param space: Space, defines the search space of variables
+    :param base_estimator: str
+        currently available estimator types are in ["ENTING"]
+    :param base_estimator_kwargs: Optional[dict]
+        defines additional params that influence the base_estimator behavior
+            "lgbm_params": dict, additional parameters that are passed to lightgbm
+            "ensemble_type": str, options in ['GBRT', 'RF'],
+                "GBRT": uses gradient-boosted tree regressor
+                "RF": uses random forest
+            "unc_metric": str, options in ['exploration', 'penalty'], i.e.
+                negative or positive alpha contribution in "min mu \pm kappa * alpha"
+            "unc_scaling": str, options in ["standard", "normalize"], i.e.
+                scaling used for the distance-based uncertainty metric
+            "dist_metric": str, options in ["manhattan",'squared_euclidean'], i.e.
+                metric used to define non-categorical distance for uncertainty
+            "cat_dist_metric": str, options in ["overlap", "goodall4", "of"], i.e.
+                metric used to define categorical distance for uncertainty
+    :param num_obj: int
+        gives the number of objectives that the black-box is being optimized for
+    :param random_state: Optional[int]
+        fixed random seed to generate reproducible results
     """
 
     from lightgbm import LGBMRegressor
     from entmoot.learning.tree_model import EntingRegressor, MisicRegressor
 
-
     # collect indices of categorical features
     cat_idx = get_cat_idx(space)
 
-
-    if isinstance(base_estimator, str):
-        base_estimator = base_estimator.upper()
-        if base_estimator not in ["GBRT", "RF", "DUMMY"]:
-            raise ValueError("Valid strings for the base_estimator parameter "
-                             "are: 'GBRT', 'RF', or 'DUMMY' not "
-                             f"{base_estimator}.")
-    elif is_supported(base_estimator):
-        base_estimator = \
-            EntingRegressor(
-                base_estimator=base_estimator,
-                random_state=random_state,
-                cat_idx=cat_idx
-            )
-    else:
+    if not is_supported(base_estimator):
         raise ValueError("base_estimator is not supported.")
 
-    if std_estimator.std_type == 'distance':
-        tree_reg = EntingRegressor
-    elif std_estimator.std_type == 'proximity':
-        tree_reg = MisicRegressor
+    # build enting estimator with distance-based uncertainty
+    if base_estimator == "ENTING":
 
-    if base_estimator == "GBRT":
-        gbrt = LGBMRegressor(boosting_type='gbdt',
-                            objective='regression',
-                            verbose=-1,
-                            )
-        base_estimator = tree_reg(base_estimator=gbrt,
-                                std_estimator=std_estimator,
-                                random_state=random_state,
-                                cat_idx=cat_idx)
-    elif base_estimator == "RF":
-        rf = LGBMRegressor(boosting_type='random_forest',
-                            objective='regression',
-                            verbose=0,
-                            subsample_freq=1,
-                            subsample=0.9,
-                            bagging_seed= random_state
-                            )
-        base_estimator = tree_reg(base_estimator=rf,
-                                std_estimator=std_estimator,
-                                random_state=random_state,
-                                cat_idx=cat_idx)
+        # check uncertainty metric parameters
+        unc_metric = base_estimator_kwargs.get("unc_metric", "exploration")
+        unc_scaling = base_estimator_kwargs.get("unc_scaling", "standard")
+        dist_metric = base_estimator_kwargs.get("dist_metric", "squared_euclidean")
+        cat_dist_metric = base_estimator_kwargs.get("cat_dist_metric", "goodall4")
 
-    elif base_estimator == "DUMMY":
-        return None
+        unc_estimator = cook_unc_estimator(space,
+                                           unc_metric=unc_metric,
+                                           unc_scaling=unc_scaling,
+                                           dist_metric=dist_metric,
+                                           cat_dist_metric=cat_dist_metric,
+                                           num_obj=num_obj,
+                                           random_state=random_state)
 
-    if base_estimator_params is not None:
-        base_estimator.set_params(**base_estimator_params)
-        
+        ensemble_type = base_estimator_kwargs.get("ensemble_type", "GBRT")
+        lgbm_params = base_estimator_kwargs.get("lgbm_params", {})
+
+        if unc_estimator.std_type == 'distance':
+            tree_reg = EntingRegressor
+        elif unc_estimator.std_type == 'proximity':
+            tree_reg = MisicRegressor
+
+        if ensemble_type == "GBRT":
+            gbrt = []
+            for _ in range(num_obj):
+                gbrt.append(
+                    LGBMRegressor(boosting_type='gbdt',
+                                  objective='regression',
+                                  verbose=-1))
+            base_estimator = tree_reg(space,
+                                    gbrt,
+                                    unc_estimator,
+                                    random_state=random_state,
+                                    cat_idx=cat_idx)
+        elif ensemble_type == "RF":
+            rf = []
+            for _ in range(num_obj):
+                rf.append(
+                    LGBMRegressor(boosting_type='random_forest',
+                                  objective='regression',
+                                  verbose=0,
+                                  subsample_freq=1,
+                                  subsample=0.9,
+                                  bagging_seed=random_state))
+            base_estimator = tree_reg(space,
+                                    rf,
+                                    unc_estimator,
+                                    random_state=random_state,
+                                    cat_idx=cat_idx)
+
+    if base_estimator_kwargs is not None:
+        base_estimator.set_params(**lgbm_params)
+
     return base_estimator
 
 
-def cook_std_estimator(std_estimator, 
-                    space=None, 
-                    random_state=None, 
-                    std_estimator_params=None,
-                    gbm_model_dict=None):
-    """Cook a default uncertainty estimator.
+def cook_unc_estimator(space: Space,
+                    unc_metric: str,
+                    unc_scaling: str,
+                    dist_metric: str,
+                    cat_dist_metric: str,
+                    num_obj: int = 1,
+                    random_state: Optional[int] = None):
+    """Cook a distance-based uncertainty estimator.
 
-    Parameters
-    ----------
-    std_estimator : string.
-        A model is used to estimate uncertainty of `base_estimator`.
-        Different types can be classified as exploration measures, i.e. move
-        as far as possible from reference points, and penalty measures, i.e.
-        stay as close as possible to reference points. Within these types, the 
-        following uncertainty estimators are available:
-        
-        - exploration:
-            - "BDD" for bounded-data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1BDD" for bounded-data distance, which uses manhattan
-              distance to standardized data points
-        
-        - penalty:
-            - "DDP" for data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1DDP" for data distance, which uses manhattan
-              distance to standardized data points
-
-    space : Space instance
-
-    random_state : int, RandomState instance, or None (default)
-        Set random state to something other than None for reproducible
-        results.
-
-    std_estimator_params : dict
-        Extra parameters provided to the std_estimator at init time.
+    :param space: Space, defines the search space of variables
+    :param unc_metric: str, options in ['exploration', 'penalty'], i.e.
+        negative or positive alpha contribution in "min mu \pm kappa * alpha"
+    :param unc_scaling: str, options in ["standard", "normalize"], i.e.
+        scaling used for the distance-based uncertainty metric
+    :param dist_metric: str, options in ["manhattan",'squared_euclidean'], i.e.
+        metric used to define non-categorical distance for uncertainty
+    :param cat_dist_metric: str, options in ["overlap", "goodall4", "of"], i.e.
+        metric used to define categorical distance for uncertainty
+    :param num_obj: int
+        gives the number of objectives that the black-box is being optimized for
+    :param random_state: Optional[int]
+        fixed random seed to generate reproducible results
     """
+
     from entmoot.learning.distance_based_std import \
         DistanceBasedExploration, DistanceBasedPenalty
 
     from entmoot.learning.proximit_based_std import \
         ProximityMetric
 
-    if std_estimator == "BDD":
-        std_estimator = \
-            DistanceBasedExploration(
-                metric_cont="sq_euclidean",
-                metric_cat="goodall4",
-                space=space
-            )
+    # normalize distances if multi-obj
+    if num_obj>1: unc_scaling="normalize"
 
-    elif std_estimator == "DDP":
-        std_estimator = \
-            DistanceBasedPenalty(
-                metric_cont="sq_euclidean",
-                metric_cat="goodall4",
-                space=space
-            )
+    if unc_metric == "exploration":
+        unc_estimator = DistanceBasedExploration(
+                space,
+                unc_scaling=unc_scaling,
+                dist_metric=dist_metric,
+                cat_dist_metric=cat_dist_metric)
 
-    elif std_estimator == "L1BDD":
-        std_estimator = \
-            DistanceBasedExploration(
-                metric_cont="manhattan",
-                metric_cat="goodall4",
-                space=space
-            )
+    elif unc_metric == "penalty":
+        unc_estimator = DistanceBasedPenalty(
+                space,
+                unc_scaling=unc_scaling,
+                dist_metric=dist_metric,
+                cat_dist_metric=cat_dist_metric)
 
-    elif std_estimator == "L1DDP":
-        std_estimator = \
-            DistanceBasedPenalty(
-                metric_cont="manhattan",
-                metric_cat="goodall4",
-                space=space
-            )
-    elif std_estimator == "PROX":
-        std_estimator = \
-            ProximityMetric(
-                space=space
-            )
+    elif unc_metric == "prox":
+        if num_obj > 1:
+            raise NotImplementedError(
+                "unc_metric 'prox' is currently unavailable and will be adapted for "
+                "multi-objective usage.")
+        unc_estimator = \
+            ProximityMetric(space)
 
-    std_estimator.set_params(**std_estimator_params)
-    return std_estimator
+    return unc_estimator
 
 def cook_initial_point_generator(generator, **kwargs):
     """Cook a default initial point generator.

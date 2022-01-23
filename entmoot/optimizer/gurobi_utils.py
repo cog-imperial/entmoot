@@ -1,5 +1,34 @@
 from gurobipy import GRB, quicksum
 import gurobipy as gp
+import numpy as np
+
+def get_opt_core_copy(opt_core):
+    new_opt_core = opt_core.copy()
+    new_opt_core._n_feat = opt_core._n_feat
+
+    # transfer var dicts
+    new_opt_core._cont_var_dict = {}
+    new_opt_core._cat_var_dict = {}
+
+    ## transfer cont_var_dict
+    for var in opt_core._cont_var_dict.keys():
+        var_name = opt_core._cont_var_dict[var].VarName
+
+        new_opt_core._cont_var_dict[var] = \
+            new_opt_core.getVarByName(var_name)
+
+    ## transfer cat_var_dict
+    for var in opt_core._cat_var_dict.keys():
+        for cat in opt_core._cat_var_dict[var].keys():
+            var_name = opt_core._cat_var_dict[var][cat].VarName
+
+            if var not in new_opt_core._cat_var_dict.keys():
+                new_opt_core._cat_var_dict[var] = {}
+
+            new_opt_core._cat_var_dict[var][cat] = \
+                new_opt_core.getVarByName(var_name)
+
+    return new_opt_core
 
 def get_core_gurobi_model(space, add_model_core=None, env=None):
     """Add core to gurobi model, i.e. bounds, variables and parameters.
@@ -82,7 +111,10 @@ def get_core_gurobi_model(space, add_model_core=None, env=None):
             "model core was not configured correctly, please create model core using: " + \
                 "entmoot.optimizer.gurobi_utils.add_core_to_gurobi_model(..."
 
-        return add_model_core
+        # create copy of the original model core, so we can keep reusing it
+        model_core_copy = get_opt_core_copy(add_model_core)
+
+        return model_core_copy
 
 def add_std_to_gurobi_model(est, model):
     """Adds standard estimator formulation to gurobi model.
@@ -137,7 +169,46 @@ def set_gurobi_init_to_ref(est, model):
     model._alpha.start = 0.0
     model.update()
 
-def add_acq_to_gurobi_model(model, est, acq_func="LCB", acq_func_kwargs=None):
+def get_gbm_model_multi_obj_mu(opt_model, yi):
+    # normalize mu based on targets
+    y_min = np.min(yi, axis=0)
+    y_max = np.max(yi, axis=0)
+    y_range = y_max - y_min
+
+    # collect weighted sum for every label
+    ob_expr = {}
+    for label in opt_model._gbm_set:
+        weighted_sum = quicksum(
+            opt_model._leaf_weight(label, tree, leaf) *
+            opt_model._z_l[label, tree, leaf]
+            for tree, leaf in label_leaf_index(opt_model, label)
+        )
+        # normalized mu contribution
+        ob_expr[label] = (weighted_sum - y_min[label]) / y_range[label]
+    return ob_expr
+
+def get_gbm_model_mu(opt_model, yi, norm=False):
+    # normalize mu based on targets
+    y_min = np.min(yi)
+    y_max = np.max(yi)
+    y_range = y_max - y_min
+
+    weighted_sum = quicksum(
+        opt_model._leaf_weight(label, tree, leaf) * \
+        opt_model._z_l[label, tree, leaf]
+        for label, tree, leaf in leaf_index(opt_model)
+    )
+    if norm:
+        return (weighted_sum - y_min) / y_range
+    else:
+        return weighted_sum
+
+def add_acq_to_gurobi_model(model, model_mu, model_unc,
+                            est,
+                            acq_func="LCB",
+                            acq_func_kwargs=None,
+                            num_obj=1,
+                            weights=None):
     """Sets gurobi model objective function to acquisition function.
 
     Parameters
@@ -159,23 +230,37 @@ def add_acq_to_gurobi_model(model, est, acq_func="LCB", acq_func_kwargs=None):
     if acq_func_kwargs is None:
         acq_func_kwargs = dict()
 
-    # collect objective contribution for tree model and std estimator
-    mu, std = get_gurobi_obj(
-        model, est, return_std=True, acq_func_kwargs=acq_func_kwargs
-    )
-    
-    if acq_func=="LCB":
-        kappa = acq_func_kwargs.get("kappa", 1.96)
-        ob_expr = quicksum((mu, kappa*std))
-        model.setObjective(ob_expr,GRB.MINIMIZE)
-        model.update()
+    kappa = acq_func_kwargs.get("kappa", 1.96)
 
-    elif acq_func=="HLCB":
+
+    if num_obj > 1:
+        model._mu = model.addVar(
+            name='mu', vtype='C', lb=-GRB.INFINITY, ub=GRB.INFINITY)
+
+        for obj_idx in model_mu.keys():
+            temp_constr = \
+                model.addConstr(
+                    model._mu >= weights[obj_idx] * model_mu[obj_idx],
+                    name=f"multi-obj_{obj_idx}"
+                )
+            model.update()
+        proc_mu = model._mu
+    else:
+        proc_mu = model_mu
+
+    if acq_func == "LCB":
+        if model_unc is not None:
+            ob_expr = quicksum((proc_mu, kappa * model_unc))
+        else:
+            ob_expr = proc_mu
+        model.setObjective(ob_expr, GRB.MINIMIZE)
+
+    elif acq_func == "HLCB":
         obj_cost = acq_func_kwargs.get("obj_cost", 0.5)
-        model.setObjectiveN(mu,0,1, reltol=obj_cost)
-        model.setObjectiveN(std,1,0)
+        model.setObjectiveN(proc_mu, 0, 1, reltol=obj_cost)
+        model.setObjectiveN(model_unc, 1, 0)
 
-        model.update()
+    model.update()
 
 def get_gurobi_obj(model, est, return_std=False, acq_func_kwargs=None):
     """Returns gurobi model objective contribution of tree model and std
@@ -200,12 +285,11 @@ def get_gurobi_obj(model, est, return_std=False, acq_func_kwargs=None):
     depending on value of `return_std`.
     
     """
-    scaled = acq_func_kwargs.get("scaled", False)
 
     mean = get_gbm_obj(model)
 
     if return_std:
-        std = est.std_estimator.get_gurobi_obj(model, scaled=scaled)
+        std = est.std_estimator.get_gurobi_obj(model)
         return mean, std
 
     return mean
@@ -239,9 +323,22 @@ def get_gbm_obj_from_model(model, label):
         for temp_label, tree, leaf in leaf_index(model) if temp_label == label)
     return temp_sum
 
+def get_gbm_multi_obj_from_model(model):
+    temp_sum = []
+    for label in model._gbm_set:
+        temp_sum.append(sum(model._leaf_weight(label, tree, leaf) * \
+            round(model._z_l[label, tree, leaf].x,1)
+            for temp_label, tree, leaf in leaf_index(model) if temp_label == label))
+    return temp_sum
+
 
 ### GBT HANDLER
 ## gbt model helper functions
+def label_leaf_index(model, label):
+    for tree in range(model._num_trees(label)):
+        for leaf in model._leaves(label, tree):
+            yield (tree, leaf)
+
 def tree_index(model):
     for label in model._gbm_set:
         for tree in range(model._num_trees(label)):

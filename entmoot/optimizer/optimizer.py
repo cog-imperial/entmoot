@@ -33,183 +33,106 @@ https://github.com/scikit-optimize/scikit-optimize/
 
 Copyright (c) 2019-2020 Alexander Thebelt.
 """
-
+from typing import Optional
 import warnings
-import copy
-import inspect
 from numbers import Number
 import numpy as np
-from sklearn.base import clone
 
 from entmoot.acquisition import _gaussian_acquisition
 
 
 class Optimizer(object):
-    """Run bayesian optimisation loop.
-
-    An `Optimizer` represents the steps of a bayesian optimisation loop. To
-    use it you need to provide your own loop mechanism. The various
-    optimisers provided by `skopt` use this class under the hood.
-
-    Use this class directly if you want to control the iterations of your
-    bayesian optimisation loop.
-
-    Parameters
-    ----------
-    dimensions : list, shape (n_dims,)
-        List of search space dimensions.
-        Each search dimension can be defined either as
-
-        - a `(lower_bound, upper_bound)` tuple (for `Real` or `Integer`
-          dimensions),
-        - a `(lower_bound, upper_bound, "prior")` tuple (for `Real`
-          dimensions),
-        - as a list of categories (for `Categorical` dimensions), or
-        - an instance of a `Dimension` object (`Real`, `Integer` or
-          `Categorical`).
-
-    base_estimator : string, default: "GBRT",
-        A default LightGBM surrogate model of the corresponding type is used  
-        minimize `func`.
-        The following model types are available:
-        
-        - "GBRT" for gradient-boosted trees
-
-        - "RF" for random forests
-
-        *NOTE: More model types will be added in the future
-
-    std_estimator : string, default: "BDD",
-        A model is used to estimate uncertainty of `base_estimator`.
-        Different types can be classified as exploration measures, i.e. move
-        as far as possible from reference points, and penalty measures, i.e.
-        stay as close as possible to reference points. Within these types, the 
-        following uncertainty estimators are available:
-        
-        - exploration:
-            - "BDD" for bounded-data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1BDD" for bounded-data distance, which uses manhattan
-              distance to standardized data points
-        
-        - penalty:
-            - "DDP" for data distance, which uses squared euclidean
-              distance to standardized data points
-            - "L1DDP" for data distance, which uses manhattan
-              distance to standardized data points
-
-        *NOTE: More model uncertainty estimators will be added in the future
-
-    n_initial_points : int, default: 50
-        Number of evaluations of `func` with initialization points
-        before approximating it with `base_estimator`. Initial point
-        generator can be changed by setting `initial_point_generator`. For 
-        `n_initial_points` <= 20 we need to set `min_child_samples` <= 20 in 
-        `base_estimator_kwargs` so LightGBM can train tree models based on small
-        data sets.
-
-    initial_point_generator : str, InitialPointGenerator instance, \
-            default: "random"
-        Sets a initial points generator. Can be either
-
-        - "random" for uniform random numbers,
-        - "sobol" for a Sobol sequence,
-        - "halton" for a Halton sequence,
-        - "hammersly" for a Hammersly sequence,
-        - "lhs" for a latin hypercube sequence,
-        - "grid" for a uniform grid sequence
-
-    acq_func : string, default: "LCB"
-        Function to minimize over the posterior distribution. Can be either
-
-        - "LCB" for lower confidence bound.
-
-    acq_optimizer : string, default: "sampling"
-        Method to minimize the acquisition function. The fit model
-        is updated with the optimal value obtained by optimizing `acq_func`
-        with `acq_optimizer`.
-
-        - If set to "sampling", then `acq_func` is optimized by computing
-          `acq_func` at `n_points` randomly sampled points.
-        - If set to "global", then `acq_optimizer` is optimized by using
-          global solver to find minimum of `acq_func`.
-
-    random_state : int, RandomState instance, or None (default)
-        Set random state to something other than None for reproducible
-        results.
-
-    acq_func_kwargs : dict
-        Additional arguments to be passed to the acquisition function.
-
-    acq_optimizer_kwargs : dict
-        Additional arguments to be passed to the acquisition optimizer.
-
-    base_estimator_kwargs : dict
-        Additional arguments to be passed to the base_estimator.
-
-    std_estimator_kwargs : dict
-        Additional arguments to be passed to the std_estimator.
-
-    model_queue_size : int or None, default: None
-        Keeps list of models only as long as the argument given. In the
-        case of None, the list has no capped length.
-
-    verbose : bool or int:
-        - If it is `True`, general solver information is printed at every 
-          iteration
-        - If it is `False`, no output is printed
-
-        - If it is 0, same as if `False`
-        - If it is 1, same as if `True`
-        - If it is 2, general solver information is printed at every iteration
-          as well as detailed solver information, i.e. gurobi log
-
-    Attributes
-    ----------
-    Xi : list
-        Points at which objective has been evaluated.
-    yi : scalar
-        Values of objective at corresponding points in `Xi`.
-    models : list
-        Regression models used to fit observations and compute acquisition
-        function.
-    space : Space
-        An instance of :class:`skopt.space.Space`. Stores parameter search
-        space used to sample points, bounds, and type of parameters.
     """
-    def __init__(self, 
-                dimensions, 
-                base_estimator="GBRT",
-                std_estimator="BDD", 
-                n_initial_points=50, 
-                initial_point_generator="random",
-                acq_func="LCB", 
-                acq_optimizer="global", 
-                random_state=None, 
-                acq_func_kwargs=None, 
-                acq_optimizer_kwargs=None,
-                base_estimator_kwargs=None,
-                std_estimator_kwargs=None,
-                model_queue_size=None,
-                verbose=False
+    This class is used to run the main BO loop. 
+    Optimizer objects define all BO settings and store the current data set.
+    
+    The self.ask function provides new input proposals, and resulting black-box
+    values can be added through self.tell. This procedure is automated via
+    self.run, where a callable function is provided as an input.
+    
+    Functions self.predict_with_est and self.predict_with_acq use the current
+    surrogate model to predict inputs.
+    
+    :param dimensions: list
+        list of search-space variables, i.e.
+            If (lower: float, upper: float), gives continuous variable
+            If (lower: int, upper: int), gives discrete variable
+            If list of categories, gives categorical variable
+    :param base_estimator: str
+        currently available estimator types are in ["ENTING"]
+    :param n_initial_points: int
+        number of initial points sampled before surrogate model is trained
+    :param initial_point_generator: str
+        currently supported sampling generators are in
+        ["sobol", "halton", "hammersly", "lhs", "random", "grid"]
+    :param num_obj: int
+        gives the number of objectives that the black-box is being optimized for
+    :param acq_func: str
+        acquisition function type that is used for exploitation vs. exploration
+        trade-off, i.e. currently supported ["LCB"] and ["LCB", "HLCB"] for
+        num_obj == 1
+    :param acq_optimizer: str
+        optimization method used to minimize the acquisition function, i.e.
+        currently supports ["sampling", "global"]
+    :param random_state: Optional[int]
+        fixed random seed to generate reproducible results
+    :param acq_func_kwargs: Optional[dict]
+        define additional params for acquisition function, i.e.
+            "kappa": int, influences acquisition function "min mu - kappa * alpha"
+    :param acq_optimizer_kwargs: Optional[dict]
+        define additional params for acqu. optimizer "sampling":
+            "n_points": int, number of points to minimize the acquisition function
+        define additional params for acqu. optimizer "global":
+            "env": GRBEnv, defines Gurobi environment for cluster computations
+            "gurobi_timelimit": int, optimization time limit in sec
+            "add_model_core": GRBModel, Gurobi optimization model that includes 
+                additional constraints
+    :param base_estimator_kwargs: Optional[dict]
+        defines additional params that influence the base_estimator behavior
+            "lgbm_params": dict, additional parameters that are passed to lightgbm
+            "ensemble_type": str, options in ['GBRT', 'RF'],
+                "GBRT": uses gradient-boosted tree regressor
+                "RF": uses random forest
+            "unc_metric": str, options in ['exploration', 'penalty'], i.e.
+                negative or positive alpha contribution in "min mu \pm kappa * alpha"
+            "unc_scaling": str, options in ["standard", "normalize"], i.e.
+                scaling used for the distance-based uncertainty metric
+            "dist_metric": str, options in ["manhattan",'squared_euclidean'], i.e.
+                metric used to define non-categorical distance for uncertainty
+            "cat_dist_metric": str, options in ["overlap", "goodall4", "of"], i.e.
+                metric used to define categorical distance for uncertainty
+    :param model_queue_size: Optional[int]
+        defines number of previous models that are stored in self.models
+    :param verbose: bool
+        defines the verbosity level of the output
+    """
+
+    def __init__(
+        self,
+        dimensions: list,
+        base_estimator: str = "ENTING",
+        n_initial_points: int = 50,
+        initial_point_generator: str = "random",
+        num_obj: int = 1,
+        acq_func: str = "LCB",
+        acq_optimizer: str = "global",
+        random_state: Optional[int] = None,
+        acq_func_kwargs: Optional[dict] = None,
+        acq_optimizer_kwargs: Optional[dict] = None,
+        base_estimator_kwargs: Optional[dict] = None,
+        model_queue_size: Optional[int] = None,
+        verbose: bool = False
     ):
 
         from entmoot.utils import is_supported
         from entmoot.utils import cook_estimator
         from entmoot.utils import cook_initial_point_generator
-        from entmoot.utils import cook_std_estimator
-        
-
-        self.specs = {"args": copy.copy(inspect.currentframe().f_locals),
-                      "function": "Optimizer"}
-
         from sklearn.utils import check_random_state
 
+        # define random state
         self.rng = check_random_state(random_state)
-        
-        # Configure acquisition function
 
-        # Store and create acquisition function set
+        # store and create acquisition function set
         self.acq_func = acq_func
         if acq_func_kwargs is None:
             self.acq_func_kwargs = dict()
@@ -221,26 +144,21 @@ class Optimizer(object):
             raise ValueError("expected acq_func to be in %s, got %s" %
                              (",".join(allowed_acq_funcs), self.acq_func))
 
-        # Configure counter of points
-
+        # configure counter of points
         if n_initial_points < 0:
             raise ValueError(
                 "Expected `n_initial_points` >= 0, got %d" % n_initial_points)
         self._n_initial_points = n_initial_points
         self.n_initial_points_ = n_initial_points
-
-        # Configure search space
         
-        # initialize search space
-        import numpy as np
+        # initialize search space and output
         from entmoot.space.space import Space
-        from entmoot.space.space import Categorical
 
         self.space = Space(dimensions)
 
         self._initial_samples = None
-        self._initial_point_generator = cook_initial_point_generator(
-            initial_point_generator)
+        self._initial_point_generator = \
+            cook_initial_point_generator(initial_point_generator)
 
         if self._initial_point_generator is not None:
             transformer = self.space.get_transformer()
@@ -249,77 +167,64 @@ class Optimizer(object):
                 random_state=self.rng.randint(0, np.iinfo(np.int32).max))
             self.space.set_transformer(transformer)
 
-        # Configure std estimator
+        self.num_obj = num_obj
 
-        if std_estimator_kwargs is None:
-            std_estimator_kwargs = dict()
-        
-        allowed_std_est = ["BDD","BCD","DDP","L1BDD","L1DDP", "PROX"]
-        if std_estimator not in allowed_std_est:
-            raise ValueError("expected std_estimator to be in %s, got %s" %
-                             (",".join(allowed_std_est), std_estimator))
+        # create base_estimator
+        self.base_estimator_kwargs = {} if base_estimator_kwargs is None else base_estimator_kwargs
 
-        self.scaled = self.acq_func_kwargs.get("scaled", False)
+        from entmoot.learning.tree_model import EntingRegressor,MisicRegressor
 
-        # build std_estimator
-        import numpy as np
-        est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
-        std_estimator = cook_std_estimator(
-            std_estimator,
-            space=self.space,
-            random_state=est_random_state,
-            std_estimator_params=std_estimator_kwargs)
+        if type(base_estimator) not in [EntingRegressor,MisicRegressor]:
+            if type(base_estimator) in [str]:
+                # define random_state of estimator
+                est_random_state = self.rng.randint(0, np.iinfo(np.int32).max)
 
-        # Configure estimator
+                # check support of base_estimator if exists
+                if not is_supported(base_estimator):
+                    raise ValueError("Estimator type: %s is not supported." % base_estimator)
 
-        # check support of base_estimator if exists
-        if not is_supported(base_estimator):
-            raise ValueError(
-                "Estimator type: %s is not supported." % base_estimator)
-
-        if base_estimator_kwargs is None:
-            base_estimator_kwargs = dict()
-
-        # build base_estimator
-        base_estimator = cook_estimator(
-            base_estimator, 
-            std_estimator, 
-            space=self.space,
-            random_state=est_random_state,
-            base_estimator_params=base_estimator_kwargs)
+                # build base_estimator
+                base_estimator = cook_estimator(
+                    self.space,
+                    base_estimator,
+                    self.base_estimator_kwargs,
+                    num_obj=self.num_obj,
+                    random_state=est_random_state)
+            else:
+                raise ValueError("Estimator type: %s is not supported." % base_estimator)
 
         self.base_estimator_ = base_estimator
 
         # Configure Optimizer
-
         self.acq_optimizer = acq_optimizer
 
         # record other arguments
         if acq_optimizer_kwargs is None:
             acq_optimizer_kwargs = dict()
 
-        if std_estimator_kwargs is None:
-            std_estimator_kwargs = dict()
-
         self.acq_optimizer_kwargs = acq_optimizer_kwargs
-
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
-
         self.gurobi_env = acq_optimizer_kwargs.get("env", None)
-
         self.gurobi_timelimit = acq_optimizer_kwargs.get("gurobi_timelimit", None)
 
-        # Initialize storage for optimization
+        ## Initialize storage for optimization
         if not isinstance(model_queue_size, (int, type(None))):
             raise TypeError("model_queue_size should be an int or None, "
                             "got {}".format(type(model_queue_size)))
 
+        # model cache
         self.max_model_queue_size = model_queue_size
         self.models = []
+
+        # data set cache
         self.Xi = []
         self.yi = []
+
+        # model_mu and model_std cache
         self.model_mu = []
         self.model_std = []
+
+        # global opti metrics
         self.gurobi_mipgap = []
 
         # Initialize cache for `ask` method responses
@@ -352,18 +257,11 @@ class Optimizer(object):
         else:
             self.printed_switch_to_model = True
 
-    def copy(self, random_state=None):
+    def copy(self, random_state: Optional[int] = None):
         """Create a shallow copy of an instance of the optimizer.
 
-        Parameters
-        ----------
-        random_state : int, RandomState instance, or None (default)
-            Set the random state of the copy.
-
-        Returns
-        -------
-        optimizer : Optimizer instance
-            Shallow copy of optimizer instance
+        :param random_state: Optional[int]
+        :return optimizer: Optimizer
         """
 
         optimizer = Optimizer(
@@ -378,52 +276,67 @@ class Optimizer(object):
             random_state=random_state,
             verbose=self.verbose
         )
+
         optimizer._initial_samples = self._initial_samples
         optimizer.printed_switch_to_model = self.printed_switch_to_model
+
         if self.Xi:
             optimizer._tell(self.Xi, self.yi)
 
         return optimizer
 
-    def ask(self, n_points=None, strategy="cl_min"):
-        """Query point or multiple points at which objective should be evaluated.
-
-        Parameters
-        ----------
-        n_points : int or None, default: None
-            Number of points returned by the ask method.
-            If the value is None, a single point to evaluate is returned.
-            Otherwise a list of points to evaluate is returned of size
-            n_points. This is useful if you can evaluate your objective in
-            parallel, and thus obtain more objective function evaluations per
-            unit of time.
-
-        strategy : string, default: "cl_min"
-            Method to use to sample multiple points (see also `n_points`
-            description). This parameter is ignored if n_points = None.
-            Supported options are `"cl_min"`, `"cl_mean"` or `"cl_max"`.
-
-            - If set to `"cl_min"`, then constant liar strategy is used
-               with lie objective value being minimum of observed objective
-               values. `"cl_mean"` and `"cl_max"` means mean and max of values
-               respectively. For details on this strategy see:
-
-               https://hal.archives-ouvertes.fr/hal-00732512/document
-
-               With this strategy a copy of optimizer is created, which is
-               then asked for a point, and the point is told to the copy of
-               optimizer with some fake objective (lie), the next point is
-               asked from copy, it is also told to the copy with fake
-               objective and so on. The type of lie defines different
-               flavours of `cl_x` strategies.
-
-        Returns
-        -------
-        next_x : array-like, shape(n_points, n_dims)
-            If `n_points` is None, only a single array-like object is returned
+    def ask(
+        self,
+        n_points: int = None,
+        strategy: str = "cl_min",
+        weights: Optional[list] = None,
+        add_model_core=None
+    ) -> list:
         """
-        if n_points is None:
-            return self._ask()
+        Computes the next point (or multiple points) at which the objective
+        should be evaluated.
+
+        :param n_points: int = None,
+            gives the number of points that should be returned
+        :param strategy: str = "cl_min",
+            determines the liar strategy, i.e.
+            (https://hal.archives-ouvertes.fr/hal-00732512/document)
+            used for single-objective batch proposals, i.e.
+                "cl_min": str, uses minimum of observations as lie
+                "cl_mean": str, uses mean of observations as lie
+                "cl_max": str, uses maximum of observations as lie
+        :param weights: Optional[list] = None,
+            1D list of weights of size num_obj for single multi-objective proposal;
+            2D list of weights of size shape(n_points,num_obj) for
+                batch multi-objectiveproposals
+        :param add_model_core: GRBModel = None,
+            Gurobi optimization model that includes additional constraints
+
+        :return next_x: list, next proposal of shape(n_points, n_dims)
+        """
+
+        # check if single point or batch of point is returned
+        if n_points is None and weights is None:
+            return self._ask(add_model_core=add_model_core)
+        elif self.num_obj > 1:
+            if weights is not None:
+                n_points = len(weights)
+
+            X = []
+            for i in range(n_points):
+                self._next_x = None
+
+                # use the weights if provided
+                if weights:
+                    w = weights[i]
+                    assert len(w) == self.num_obj, \
+                        f"The {i}'th provided weight has dim '{len(w)}' but " \
+                        f"number of objectives is '{self.num_obj}'."
+                    next_x = self._ask(weight=w, add_model_core=add_model_core)
+                else:
+                    next_x = self._ask(add_model_core=add_model_core)
+                X.append(next_x)
+            return X if len(X) > 1 else X[0]
 
         supported_strategies = ["cl_min", "cl_mean", "cl_max"]
 
@@ -438,7 +351,7 @@ class Optimizer(object):
                 str(supported_strategies) + ", " + "got %s" % strategy
             )
 
-        # Caching the result with n_points not None. If some new parameters
+        # caching the result with n_points not None. If some new parameters
         # are provided to the ask, the cache_ is not used.
         if (n_points, strategy) in self.cache_:
             return self.cache_[(n_points, strategy)]
@@ -446,10 +359,8 @@ class Optimizer(object):
         # Copy of the optimizer is made in order to manage the
         # deletion of points with "lie" objective (the copy of
         # optimizer is simply discarded)
-        import numpy as np
-
-        opt = self.copy(random_state=self.rng.randint(0,
-                                                      np.iinfo(np.int32).max))
+        opt = self.copy(
+            random_state=self.rng.randint(0,np.iinfo(np.int32).max))
 
         X = []
         for i in range(n_points):
@@ -474,21 +385,23 @@ class Optimizer(object):
 
         return X
 
-    def _ask(self):
-        """Suggest next point at which to evaluate the objective.
-
-        Return a random point while not at least `n_initial_points`
-        observations have been `tell`ed, after that `base_estimator` is used
-        to determine the next point.
-
-        Parameters
-        ----------
-        -
-
-        Returns
-        -------
-        next_x : array-like, shape(n_dims,)
+    def _ask(
+        self,
+        weight: Optional[list] = None,
+        add_model_core = None
+    ):
         """
+        Computes the next point at which the objective should be evaluated.
+
+        :param weight: Optional[list] = None,
+            list of weights of size num_obj to trade-off between different
+            objective contributions
+        :param add_model_core: GRBModel = None,
+            Gurobi optimization model that includes additional constraints
+
+        :return next_x: list, next proposal of shape(n_points, n_dims)
+        """
+
         if self._n_initial_points > 0 or self.base_estimator_ is None:
             # this will not make a copy of `self.rng` and hence keep advancing
             # our random state.
@@ -496,124 +409,24 @@ class Optimizer(object):
                 return self.space.rvs(random_state=self.rng)[0]
             else:
                 # The samples are evaluated starting form initial_samples[0]
-                return self._initial_samples[
-                    len(self._initial_samples) - self._n_initial_points]
+                return self._initial_samples[len(self._initial_samples) - self._n_initial_points]
+
+        elif self._next_x is not None:
+            # return self._next_x if optimizer hasn't learned anything new
+            return self._next_x
 
         else:
-            if not self.models:
-                raise RuntimeError("Random evaluations exhausted and no "
-                                   "model has been fit.")
+            # after being "told" n_initial_points we switch from sampling
+            # random points to using a surrogate model
 
-            next_x = self._next_x
-            min_delta_x = min([self.space.distance(next_x, xi)
-                               for xi in self.Xi])
-            if abs(min_delta_x) <= 1e-8:
-                warnings.warn("The objective has been evaluated "
-                              "at this point before.")
-
-            # return point computed from last call to tell()
-            return next_x
-
-    def tell(self, x, y, fit=True):
-        """Record an observation (or several) of the objective function.
-
-        Provide values of the objective function at points suggested by
-        `ask()` or other points. By default a new model will be fit to all
-        observations. The new model is used to suggest the next point at
-        which to evaluate the objective. This point can be retrieved by calling
-        `ask()`.
-
-        To add observations without fitting a new model set `fit` to False.
-
-        To add multiple observations in a batch pass a list-of-lists for `x`
-        and a list of scalars for `y`.
-
-        Parameters
-        ----------
-        x : list or list-of-lists
-            Point at which objective was evaluated.
-
-        y : scalar or list
-            Value of objective at `x`.
-
-        fit : bool, default: True
-            Fit a model to observed evaluations of the objective. A model will
-            only be fitted after `n_initial_points` points have been told to
-            the optimizer irrespective of the value of `fit`.
-
-        Returns
-        -------
-        res : `OptimizeResult`, scipy object
-               OptimizeResult instance with the required information.
-        """
-        from entmoot.utils import check_x_in_space
-        check_x_in_space(x, self.space)
-        self._check_y_is_valid(x, y)
-
-        return self._tell(x, y, fit=fit)
-
-    def _tell(self, x, y, fit=True):
-        """Perform the actual work of incorporating one or more new points.
-        See `tell()` for the full description.
-
-        This method exists to give access to the internals of adding points
-        by side stepping all input validation and transformation.
-
-        Parameters
-        ----------
-        x : list or list-of-lists
-            Point at which objective was evaluated.
-
-        y : scalar or list
-            Value of objective at `x`.
-
-        fit : bool, default: True
-            Fit a model to observed evaluations of the objective. A model will
-            only be fitted after `n_initial_points` points have been told to
-            the optimizer irrespective of the value of `fit`.
-
-        Returns
-        -------
-        res : `OptimizeResult`, scipy object
-               OptimizeResult instance with the required information.
-        """
-
-        from entmoot.utils import is_listlike
-        from entmoot.utils import is_2Dlistlike
-
-        # if y isn't a scalar it means we have been handed a batch of points
-        import numpy as np
-
-        if is_listlike(y) and is_2Dlistlike(x):
-            self.Xi.extend(x)
-            self.yi.extend(y)
-            self._n_initial_points -= len(y)
-        elif is_listlike(x):
-            self.Xi.append(x)
-            self.yi.append(y)
-            self._n_initial_points -= 1
-        else:
-            raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
-                             "not compatible." % (type(x), type(y)))
-
-        if self.models:
-            self.model_mu.append(self._model_mu)
-            self.model_std.append(self._model_std)
-            
-        # optimizer learned something new - discard cache
-        self.cache_ = {}
-
-        # after being "told" n_initial_points we switch from sampling
-        # random points to using a surrogate model
-        if (fit and self._n_initial_points <= 0 and
-                self.base_estimator_ is not None):
-
-            transformed_bounds = np.array(self.space.transformed_bounds)
-            est = clone(self.base_estimator_)
+            # create fresh copy of base_estimator
+            est = self.base_estimator_.copy()
+            self.base_estimator_ = est
 
             # esimator is fitted using a generic fit function
             est.fit(self.space.transform(self.Xi), self.yi)
 
+            # we cache the estimator in model_queue
             if self.max_model_queue_size is None:
                 self.models.append(est)
             elif len(self.models) < self.max_model_queue_size:
@@ -629,14 +442,15 @@ class Optimizer(object):
                 print("   -> switch to model-based optimization")
                 self.printed_switch_to_model = True
 
+            # this code provides a heuristic solution that uses sampling as the optimization strategy
             if self.acq_optimizer == "sampling":
-                # sample a large number of points and then pick the best ones as 
+                # sample a large number of points and then pick the best ones as
                 # starting points
                 X = self.space.transform(self.space.rvs(
                     n_samples=self.n_points, random_state=self.rng))
 
                 values = _gaussian_acquisition(
-                    X=X, model=est, 
+                    X=X, model=est,
                     y_opt=np.min(self.yi),
                     acq_func=self.acq_func,
                     acq_func_kwargs=self.acq_func_kwargs)
@@ -645,136 +459,42 @@ class Optimizer(object):
                 next_x = X[np.argmin(values)]
 
                 # derive model mu and std
-                #next_xt = self.space.transform([next_x])[0]
+                # next_xt = self.space.transform([next_x])[0]
                 next_model_mu, next_model_std = \
                     self.models[-1].predict(
                         X=np.asarray(next_x).reshape(1, -1),
-                        return_std=True,
-                        scaled=self.scaled)
-                
+                        return_std=True)
+
                 model_mu = next_model_mu[0]
                 model_std = next_model_std[0]
 
             # acquisition function is optimized globally
             elif self.acq_optimizer == "global":
-
                 try:
                     import gurobipy as gp
                 except ModuleNotFoundError:
-                    print("GurobiNotFoundError: "
-                        "To run `aqu_optimizer='global'` "
-                        "please install the Gurobi solver "
-                        "(https://www.gurobi.com/) and its interface "
-                        "gurobipy. "
-                        "Alternatively, change `aqu_optimizer='sampling'`.")
-                    import sys
-                    sys.exit(1)
+                    ImportError("GurobiNotFoundError: "
+                          "To run `aqu_optimizer='global'` "
+                          "please install the Gurobi solver "
+                          "(https://www.gurobi.com/) and its interface "
+                          "gurobipy. "
+                          "Alternatively, change `aqu_optimizer='sampling'`.")
 
-                from entmoot.optimizer.gurobi_utils import \
-                    get_core_gurobi_model, add_gbm_to_gurobi_model, \
-                    add_std_to_gurobi_model, add_acq_to_gurobi_model, \
-                    set_gurobi_init_to_ref, get_gbm_obj_from_model
+                if add_model_core is None:
+                    add_model_core = \
+                        self.acq_optimizer_kwargs.get("add_model_core", None)
 
-                # suppress  output to command window
-                import logging
-                logger = logging.getLogger()
-                logger.setLevel(logging.CRITICAL)
+                next_x, model_mu, model_std, gurobi_mipgap = \
+                    self.models[-1].get_global_next_x(acq_func=self.acq_func,
+                                                      acq_func_kwargs=self.acq_func_kwargs,
+                                                      acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                                      add_model_core=add_model_core,
+                                                      weight=weight,
+                                                      verbose=self.verbose,
+                                                      gurobi_env=self.gurobi_env,
+                                                      gurobi_timelimit=self.gurobi_timelimit)
 
-                # start building model
-
-                add_model_core = \
-                    self.acq_optimizer_kwargs.get("add_model_core", None)
-                gurobi_model = \
-                    get_core_gurobi_model(
-                        self.space, add_model_core, env=self.gurobi_env
-                    )
-
-                if self.verbose == 2:
-                    print("")
-                    print("")
-                    print("")
-                    print("SOLVER: *** start gurobi solve ***")
-                    gurobi_model.Params.LogToConsole=1
-                else:
-                    gurobi_model.Params.LogToConsole=0
-
-                # convert into gbm_model format
-                # and add to gurobi model
-                gbm_model_dict = {}
-                gbm_model_dict['first'] = est.get_gbm_model()
-                add_gbm_to_gurobi_model(
-                    self.space, gbm_model_dict, gurobi_model
-                )
-
-                # add std estimator to gurobi model
-                add_std_to_gurobi_model(est, gurobi_model)
-
-                # add obj to gurobi model
-                add_acq_to_gurobi_model(gurobi_model, est,
-                    acq_func=self.acq_func,
-                    acq_func_kwargs=self.acq_func_kwargs)
-
-                # set initial gurobi model vars to std_est reference points
-                if est.std_estimator.std_type == 'distance':
-                    set_gurobi_init_to_ref(est, gurobi_model)
-
-                # set gurobi time limit
-                if self.gurobi_timelimit is not None:
-                    gurobi_model.Params.TimeLimit= self.gurobi_timelimit
-                gurobi_model.Params.OutputFlag=1
-                
-                gurobi_model.optimize()
-
-                assert gurobi_model.SolCount >= 1, "gurobi couldn't find a feasible " + \
-                    "solution. Try increasing the timelimit if specified. " + \
-                        "In case you specify your own 'add_model_core' " + \
-                            "please check that the model is feasible."
-
-                # store optimality gap of gurobi computation
-                if self.acq_func not in ["HLCB"]:
-                    self.gurobi_mipgap.append(gurobi_model.mipgap)
-
-                # for i in range(2): REMOVEX
-                #     gurobi_model.params.ObjNumber = i
-                #     # Query the o-th objective value
-                #     print(f"{i}:")
-                #     print(gurobi_model.ObjNVal)
-                    
-
-                # output next_x
-                next_x = np.empty(len(self.space.dimensions))
-
-                # cont features
-                for i in gurobi_model._cont_var_dict.keys():
-                    next_x[i] = gurobi_model._cont_var_dict[i].x
-
-                # cat features
-                for i in gurobi_model._cat_var_dict.keys():
-                    cat = \
-                        [
-                            key 
-                            for key in gurobi_model._cat_var_dict[i].keys()
-                            if int(
-                                round(gurobi_model._cat_var_dict[i][key].x,1)
-                            ) == 1
-                        ]
-
-                    next_x[i] = cat[0]
-
-                model_mu = get_gbm_obj_from_model(gurobi_model,'first')
-                model_std = gurobi_model._alpha.x
-
-                # print("stoped here") REMOVEX
-                # print(next_x[-3])
-                # counter = 0
-                # for tree_id,leaf_enc in enumerate(gbm_model_dict['first'].get_active_leaves(next_x)):
-                #     print(f"leaf_val: {gurobi_model._z_l['first',tree_id,leaf_enc].x}")
-                #     if round(gurobi_model._z_l['first',tree_id,leaf_enc].x,1) == 0.0:
-                #         "leafs are inconsistent"
-                #         counter += 1
-                # print("")
-                #if counter > 0:
-                #    print(f"   ! {counter} leafs are off !")
+                self.gurobi_mipgap.append(gurobi_mipgap)
 
             # note the need for [0] at the end
             self._next_x = self.space.inverse_transform(
@@ -782,52 +502,121 @@ class Optimizer(object):
 
             from entmoot.utils import get_cat_idx
 
-            for idx,xi in enumerate(self._next_x):
+            for idx, xi in enumerate(self._next_x):
                 if idx not in get_cat_idx(self.space):
                     self._next_x[idx] = round(xi, 5)
 
                     # enforce variable bounds
-                    if self._next_x[idx] > self.space.transformed_bounds[idx][1]:
-                        self._next_x[idx] = self.space.transformed_bounds[idx][1]
-                    elif self._next_x[idx] < self.space.transformed_bounds[idx][0]:
-                        self._next_x[idx] = self.space.transformed_bounds[idx][0]
+                    if self._next_x[idx] > self.space.bounds[idx][1]:
+                        self._next_x[idx] = self.space.bounds[idx][1]
+                    elif self._next_x[idx] < self.space.bounds[idx][0]:
+                        self._next_x[idx] = self.space.bounds[idx][0]
 
-            self._model_mu = round(model_mu,5)
+            self._model_mu = model_mu
+            self._model_std = model_std
 
-            self._model_std = round(model_std,5)
+            if self.models:
+                self.model_mu.append(self._model_mu)
+                self.model_std.append(self._model_std)
 
 
-        # Pack results
-        from entmoot.utils import create_result
+            # check how far the new next_x is away from existing data
+            next_x = self._next_x
+            min_delta_x = min([self.space.distance(next_x, xi)
+                               for xi in self.Xi])
+            if abs(min_delta_x) <= 1e-8:
+                warnings.warn("The objective has been evaluated "
+                              "at this point before.")
 
-        result = create_result(self.Xi, self.yi, self.space, self.rng,
-                               models=self.models,
-                               model_mu=self.model_mu,
-                               model_std=self.model_std,
-                               gurobi_mipgap=self.gurobi_mipgap)
-    
-        result.specs = self.specs
-        return result
+            # return point computed from last call to tell()
+            return next_x
 
-    def _check_y_is_valid(self, x, y):
-        """Check if the shape and types of x and y are consistent."""
+    def tell(self, x: list, y: list, fit: Optional[bool] = True):
+        """
+        Checks that both x and y are valid points for the given search space.
+
+        :param x: list, locations of new data points
+        :param y: list, target value of new data points
+        :param fit: Optional[bool], will be removed soon
+        """
+
+        from entmoot.utils import check_x_in_space
+        check_x_in_space(x, self.space)
+        self._check_y_is_valid(x, y)
+        self._tell(x, y, fit=fit)
+
+    def _tell(self, x, y, fit=True):
+        """
+        Adds the new data points to the data set.
+
+        :param x: list, locations of new data points
+        :param y: list, target value of new data points
+        :param fit: Optional[bool], will be removed soon
+        """
 
         from entmoot.utils import is_listlike
         from entmoot.utils import is_2Dlistlike
 
         # if y isn't a scalar it means we have been handed a batch of points
         if is_listlike(y) and is_2Dlistlike(x):
-            for y_value in y:
-                if not isinstance(y_value, Number):
-                    raise ValueError("expected y to be a list of scalars")
-
+            self.Xi.extend(x)
+            self.yi.extend(y)
+            self._n_initial_points -= len(y)
         elif is_listlike(x):
-            if not isinstance(y, Number):
-                raise ValueError("`func` should return a scalar")
-
+            self.Xi.append(x)
+            self.yi.append(y)
+            self._n_initial_points -= 1
         else:
             raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
                              "not compatible." % (type(x), type(y)))
+            
+        # optimizer learned something new - discard cache
+        self.cache_ = {}
+
+        # set self._next_x to None to indicate that the solver has learned something new
+        self._next_x = None
+
+    def _check_y_is_valid(self, x, y):
+        """check if the shape and types of x and y are consistent."""
+
+        from entmoot.utils import is_listlike
+        from entmoot.utils import is_2Dlistlike
+
+        # single objective checks for scalar values
+        if self.num_obj == 1:
+            # if y isn't a scalar it means we have been handed a batch of points
+            if is_listlike(y) and is_2Dlistlike(x):
+                for y_value in y:
+                    if not isinstance(y_value, Number):
+                        raise ValueError("expected y to be a list of scalars")
+
+            elif is_listlike(x):
+                if not isinstance(y, Number):
+                    raise ValueError("`func` should return a scalar")
+
+            else:
+                raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
+                                 "not compatible." % (type(x), type(y)))
+        else:
+            # if y isn't a scalar it means we have been handed a batch of points
+            if is_listlike(y[0]) and is_2Dlistlike(x):
+                for y_value in y:
+                    if len(y_value) != self.num_obj:
+                        raise ValueError(f"expected y to be of size {self.num_obj}")
+                    for yi in y_value:
+                        if not isinstance(yi, Number):
+                            raise ValueError(f"expected y to be a list of list-like items of length {self.num_obj}")
+            elif is_listlike(x):
+                if len(y) != self.num_obj:
+                    raise ValueError(
+                        f"`func` should return a list-like item of length {self.num_obj}")
+                for yi in y:
+                    if not isinstance(yi, Number):
+                        raise ValueError(f"`func` should return a list-like item of length {self.num_obj}")
+            else:
+                raise ValueError("Type of arguments `x` (%s) and `y` (%s) "
+                                 "not compatible." % (type(x), type(y)))
+
 
     def run(self, func, n_iter=1, no_progress_bar=False, update_min=False):
         """Execute ask() + tell() `n_iter` times"""
@@ -847,7 +636,6 @@ class Optimizer(object):
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
-        result.specs = self.specs
 
         if no_progress_bar and update_min:
             print(f"Min. obj.: {round(min(self.yi),2)} at itr.: {n_iter} / {n_iter}")
@@ -884,7 +672,6 @@ class Optimizer(object):
                                model_mu=self.model_mu,
                                model_std=self.model_std,
                                gurobi_mipgap=self.gurobi_mipgap)
-        result.specs = self.specs
         return result
 
     def predict_with_est(self, x, return_std=True):
@@ -898,21 +685,13 @@ class Optimizer(object):
             next_x = np.asarray(
                 self.space.transform([x])[0]
             ).reshape(1, -1)
-            
-        if self.models:
-            temp_mu, temp_std = \
-                self.models[-1].predict(
-                    X=next_x, 
-                    return_std=True,
-                    scaled=self.scaled)
-        else:
-            est = clone(self.base_estimator_)
-            est.fit(self.space.transform(self.Xi), self.yi)
-            temp_mu, temp_std = \
-                est.predict(
-                    X=next_x, 
-                    return_std=True,
-                    scaled=self.scaled)
+
+        est = self.base_estimator_
+        est.fit(self.space.transform(self.Xi), self.yi)
+        temp_mu, temp_std = \
+            est.predict(
+                X=next_x,
+                return_std=True)
         
         if is_2Dlistlike(x):
             if return_std:
@@ -945,7 +724,7 @@ class Optimizer(object):
                 acq_func_kwargs=self.acq_func_kwargs
             )
         else:
-            est = clone(self.base_estimator_)
+            est = self.base_estimator_
             est.fit(self.space.transform(self.Xi), self.yi)
 
             temp_val = _gaussian_acquisition(
@@ -959,3 +738,66 @@ class Optimizer(object):
             return temp_val
         else:
             return temp_val[0]
+
+    def predict_pareto(
+        self,
+        sampling_strategy: str = 'random',
+        num_samples: int = 10,
+        num_levels: int = 10,
+        add_model_core = None
+    ):
+        """
+        Computes the next point at which the objective should be evaluated.
+
+        :param sampling_strategy: str = 'grid'
+            picks the strategy to sample weights for the muli-objective function
+                'random': gives 'num_samples' randomly drawn weights that sum to 1
+                'grid': defines ordered grid of samples depending on 'num_levels'
+        :param num_samples: int = 10,
+            defines number of samples for 'random' sampling strategy
+        :param num_levels: int = 10,
+            defines levels per dimension for 'grid' sampling strategy
+        :param add_model_core: GRBModel = None,
+            Gurobi optimization model that includes additional constraints
+
+        :return pareto_x: list, next pareto point predictions of
+            shape(n_points, n_dims)
+        """
+
+        assert self.num_obj > 1, \
+            f"Number of objectives needs to be > 1 to" \
+            f" compute Pareto frontiers."
+
+        from opti.sampling.simplex import sample, grid
+
+        # pick the sampling strategy
+        if sampling_strategy == 'random':
+            weights = sample(self.num_obj, num_samples)
+        elif sampling_strategy == 'grid':
+            weights = grid(self.num_obj, num_levels)
+        else:
+            raise ValueError("'sampling_type' must be in ['random', 'grid'")
+
+        # fit current model
+        est = self.base_estimator_
+        est.fit(self.space.transform(self.Xi), self.yi)
+
+        # add model constraints if necessary
+        if add_model_core is None:
+            add_model_core = \
+                self.acq_optimizer_kwargs.get("add_model_core", None)
+
+        # compute pareto points based on weight vector
+        pareto = []
+        for w in weights:
+            temp_x, temp_mu, model_std, gurobi_mipgap = \
+                est.get_global_next_x(acq_func=self.acq_func,
+                                      acq_func_kwargs=self.acq_func_kwargs,
+                                      acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                      add_model_core=add_model_core,
+                                      weight=w,
+                                      verbose=self.verbose,
+                                      gurobi_env=self.gurobi_env,
+                                      gurobi_timelimit=self.gurobi_timelimit)
+            pareto.append((temp_x, temp_mu))
+        return pareto

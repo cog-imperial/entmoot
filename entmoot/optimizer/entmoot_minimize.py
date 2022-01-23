@@ -53,7 +53,6 @@ def entmoot_minimize(
     batch_strategy="cl_mean",
     n_points=10000,
     base_estimator="GBRT",
-    std_estimator="BDD", 
     n_initial_points=50, 
     initial_point_generator="random",
     acq_func="LCB", 
@@ -64,7 +63,6 @@ def entmoot_minimize(
     acq_func_kwargs=None, 
     acq_optimizer_kwargs=None,
     base_estimator_kwargs=None,
-    std_estimator_kwargs=None,
     model_queue_size=None,
     verbose=False,
 ):
@@ -273,7 +271,6 @@ def entmoot_minimize(
     optimizer = Optimizer(
         dimensions, 
         base_estimator=base_estimator,
-        std_estimator=std_estimator,  
         n_initial_points=n_initial_points, 
         initial_point_generator=initial_point_generator,
         acq_func=acq_func, 
@@ -282,7 +279,6 @@ def entmoot_minimize(
         acq_func_kwargs=acq_func_kwargs, 
         acq_optimizer_kwargs=acq_optimizer_kwargs,
         base_estimator_kwargs=base_estimator_kwargs,
-        std_estimator_kwargs=std_estimator_kwargs,
         model_queue_size=model_queue_size,
         verbose=verbose
     )
@@ -383,10 +379,12 @@ def entmoot_minimize(
 
         itr += 1
 
-        result = optimizer.tell(
+        optimizer.tell(
             next_x, next_y,
             fit= batch_size is None and not _n_calls <=0
         )
+
+        result = optimizer.get_result()
 
         best_fun = result.fun  
 
