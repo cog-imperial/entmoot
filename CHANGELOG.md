@@ -85,3 +85,15 @@
 
 ### Fixed
 - 
+
+## [1.0.0] - 2022-01-23
+ 
+### Added
+- support constraint multi-objective optimization for global optimizer
+- complete interface for mbo
+
+### Changed
+- move model training and optimization from tell() to ask()
+
+### Fixed
+- input constraints fix
