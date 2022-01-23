@@ -504,7 +504,7 @@ class Optimizer(object):
 
             for idx, xi in enumerate(self._next_x):
                 if idx not in get_cat_idx(self.space):
-                    self._next_x[idx] = round(xi, 5)
+                    self._next_x[idx] = xi
 
                     # enforce variable bounds
                     if self._next_x[idx] > self.space.bounds[idx][1]:
