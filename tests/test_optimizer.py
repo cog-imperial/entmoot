@@ -61,17 +61,18 @@ def test_multiple_asks():
     # be a "no op"
     bench1 = Rosenbrock()
 
-    opt = Optimizer(bench1.get_bounds(2), "GBRT", n_initial_points=10,
+    opt = Optimizer(bench1.get_bounds(2), "ENTING", n_initial_points=10,
                     acq_optimizer="sampling",
                     base_estimator_kwargs={"min_child_samples":2})
 
     opt.run(bench1, n_iter=13)
-    # tell() computes the next point ready for the next call to ask()
+    # ask() computes the next point ready for the next call to ask()
     # hence there are three after three iterations
     assert_equal(len(opt.models), 3)
     assert_equal(len(opt.Xi), 13)
     opt.ask()
-    assert_equal(len(opt.models), 3)
+    # training happens in ask(), that's why there's one more model now
+    assert_equal(len(opt.models), 4)
     assert_equal(len(opt.Xi), 13)
     assert_equal(opt.ask(), opt.ask())
     opt.update_next()
@@ -82,7 +83,7 @@ def test_model_queue_size():
     # Check if model_queue_size limits the model queue size
     bench1 = Rosenbrock()
 
-    opt = Optimizer(bench1.get_bounds(2), "GBRT", n_initial_points=10,
+    opt = Optimizer(bench1.get_bounds(2), "ENTING", n_initial_points=10,
                     acq_optimizer="sampling", model_queue_size=2,
                     base_estimator_kwargs={"min_child_samples":2})
 
@@ -102,7 +103,7 @@ def test_model_queue_size():
 def test_invalid_tell_arguments():
     bench1 = Rosenbrock()
 
-    opt = Optimizer(bench1.get_bounds(2), "GBRT", n_initial_points=10,
+    opt = Optimizer(bench1.get_bounds(2), "ENTING", n_initial_points=10,
                     acq_optimizer="sampling", model_queue_size=2,
                     base_estimator_kwargs={"min_child_samples":2})
 
@@ -113,7 +114,7 @@ def test_invalid_tell_arguments():
 def test_invalid_tell_arguments_list():
     bench1 = Rosenbrock()
 
-    opt = Optimizer(bench1.get_bounds(2), "GBRT", n_initial_points=10,
+    opt = Optimizer(bench1.get_bounds(2), "ENTING", n_initial_points=10,
                     acq_optimizer="sampling", model_queue_size=2,
                     base_estimator_kwargs={"min_child_samples":2})
 
@@ -124,7 +125,7 @@ def test_bounds_checking_1D():
     low = -2.
     high = 2.
 
-    opt = Optimizer([(low, high)], "GBRT", n_initial_points=1,
+    opt = Optimizer([(low, high)], "ENTING", n_initial_points=1,
                     acq_optimizer="sampling")
 
     assert_raises(ValueError, opt.tell, [high + 0.5], 2.)
@@ -138,7 +139,7 @@ def test_bounds_checking_2D():
     low = -2.
     high = 2.
 
-    opt = Optimizer([(low, high)], "GBRT", n_initial_points=1,
+    opt = Optimizer([(low, high)], "ENTING", n_initial_points=1,
                     acq_optimizer="sampling")
 
     assert_raises(ValueError, opt.tell, [high + 0.5, high + 4.5], 2.)
@@ -154,7 +155,7 @@ def test_bounds_checking_2D_multiple_points():
     low = -2.
     high = 2.
 
-    opt = Optimizer([(low, high)], "GBRT", n_initial_points=1,
+    opt = Optimizer([(low, high)], "ENTING", n_initial_points=1,
                     acq_optimizer="sampling")
 
     # first component out, second in
@@ -170,7 +171,7 @@ def test_bounds_checking_2D_multiple_points():
 def test_dimension_checking_1D():
     low = -2
     high = 2
-    opt = Optimizer([(low, high)], "GBRT", n_initial_points=1,
+    opt = Optimizer([(low, high)], "ENTING", n_initial_points=1,
                     acq_optimizer="sampling")
 
     with pytest.raises(ValueError) as e:
@@ -183,7 +184,7 @@ def test_dimension_checking_1D():
 def test_dimension_checking_2D():
     low = -2
     high = 2
-    opt = Optimizer([(low, high), (low, high)], "GBRT", n_initial_points=10,
+    opt = Optimizer([(low, high), (low, high)], "ENTING", n_initial_points=10,
                     acq_optimizer="sampling")
 
     # within bounds but one dimension too little
@@ -216,7 +217,7 @@ def test_dimension_checking_2D_multiple_points():
 def test_result_rosenbrock(acq_optimizer):
     bench1 = Rosenbrock()
 
-    opt = Optimizer(bench1.get_bounds(2), "GBRT", n_initial_points=10,
+    opt = Optimizer(bench1.get_bounds(2), "ENTING", n_initial_points=10,
                     acq_optimizer=acq_optimizer,
                     base_estimator_kwargs={"min_child_samples":2},
                     random_state=100)
@@ -258,16 +259,16 @@ def test_result_rosenbrock(acq_optimizer):
             [-0.7887945257988347, 1.843954950307714],
             [-1.5292242379168393, -1.7244656733329853],
             [-0.7726975624367143, 0.5422431772370664],
-            [-0.27264229248767846, -0.2769176550000001],
-            [0.19137509090861582, -0.31858780399999986],
+            [-0.27264284694027374, -0.27692000000000005],
+            [0.191375558305514, -0.31858999999999993],
             [2.048, 0.0],
-            [0.38217349700000014, -0.8962288678056055],
-            [-0.7085115407036777, 0.0],
-            [-0.8912067038309598, -0.23524750599999988],
-            [0.0, 1.2022767981974225],
-            [0.31866949899999986, 2.048],
-            [0.43534523214208437, -0.5351559776571816],
-            [-0.05614667929761541, 0.4412071169912909]]
+            [0.3821699999999999, -0.896229816148446],
+            [-0.7085110933262221, 0.0],
+            [-0.8912055180959243, -0.23524999999999974],
+            [0.0, 1.2022767998385142],
+            [0.31867, 2.048],
+            [0.4353459945606931, -0.5351577612613215],
+            [-0.05614795431522378, 0.4412061957063193]]
         )
 
     res = opt.get_result()
@@ -280,7 +281,7 @@ def test_result_rosenbrock(acq_optimizer):
 
     bench1 = SimpleCat()
 
-    opt = Optimizer(bench1.get_bounds(), "GBRT", n_initial_points=5,
+    opt = Optimizer(bench1.get_bounds(), "ENTING", n_initial_points=5,
                         acq_optimizer=acq_optimizer,
                         base_estimator_kwargs={"min_child_samples":2},
                         random_state=100)
@@ -309,7 +310,7 @@ def test_result_rosenbrock(acq_optimizer):
             [-1.7452758285009282, 0.4972475531459488, 'pow2'],
             [0.24918505872419194, -1.9767312342018637, 'mult6'],
             [2.0, 2.0, 'mult6'],
-            [-0.267284316831746, -0.8793390813532926, 'mult6'],
+            [-0.26728431683174625, -0.8793390813532928, 'mult6'],
             [2.0, -1.6258926741796051, 'pow2'],
             [-0.7295094146491492, -2.0, 'mult6'],
             [-2.0, -2.0, 'mult6']]
