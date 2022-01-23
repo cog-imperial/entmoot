@@ -790,16 +790,14 @@ class Optimizer(object):
         # compute pareto points based on weight vector
         pareto = []
         for w in weights:
-            temp_x = est.get_global_next_x(acq_func=self.acq_func,
-                                          acq_func_kwargs=self.acq_func_kwargs,
-                                          acq_optimizer_kwargs=self.acq_optimizer_kwargs,
-                                          add_model_core=add_model_core,
-                                          weight=w,
-                                          verbose=self.verbose,
-                                          gurobi_env=self.gurobi_env,
-                                          gurobi_timelimit=self.gurobi_timelimit)
-            temp_y = est.predict(np.asarray(temp_x[0]).reshape(1, -1))
-            temp_y = [y[0] for y in temp_y]
-
-            pareto.append((temp_x[0], temp_y))
+            temp_x, temp_mu, model_std, gurobi_mipgap = \
+                est.get_global_next_x(acq_func=self.acq_func,
+                                      acq_func_kwargs=self.acq_func_kwargs,
+                                      acq_optimizer_kwargs=self.acq_optimizer_kwargs,
+                                      add_model_core=add_model_core,
+                                      weight=w,
+                                      verbose=self.verbose,
+                                      gurobi_env=self.gurobi_env,
+                                      gurobi_timelimit=self.gurobi_timelimit)
+            pareto.append((temp_x, temp_mu))
         return pareto
