@@ -97,3 +97,14 @@
 
 ### Fixed
 - input constraints fix
+
+## [1.0.1] - 2022-11-23
+ 
+### Added
+-
+
+### Changed
+- remove rounding from x in Optimizer
+
+### Fixed
+- fixed test cases
