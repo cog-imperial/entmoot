@@ -167,7 +167,7 @@ class EntmootOpti(Algorithm):
         # migrate opti constraints into gurobi model
         self._migrate_constraints(gurobi_model)
 
-        X_res = self.entmoot_optimizer.ask(n_points=n_proposals)
+        X_res = self.entmoot_optimizer.ask(n_points=n_proposals, add_model_core=gurobi_model)
 
         return pd.DataFrame(X_res, columns=self.problem.inputs.names)
 
