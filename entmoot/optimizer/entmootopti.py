@@ -59,7 +59,7 @@ class EntmootOpti(Algorithm):
             n_initial_points=0,
             num_obj=self.num_obj,
             random_state=73,
-            base_estimator_kwargs=self._base_est_params,
+            base_estimator_kwargs=self._base_est_params
         )
 
         self._fit_model()
@@ -90,7 +90,7 @@ class EntmootOpti(Algorithm):
         else:
             y = self.problem.data[self.problem.outputs.names]
 
-        self.entmoot_optimizer.tell(x=X.to_numpy().tolist(), y=y.to_numpy().tolist(), fit=True)
+        self.entmoot_optimizer.tell(x=X.to_numpy().tolist(), y=y.to_numpy().tolist())
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         """
@@ -98,29 +98,7 @@ class EntmootOpti(Algorithm):
         """
         return self.entmoot_optimizer.predict_with_est(X.to_numpy().tolist())
 
-    def predict_pareto_front(
-            self, sampling_strategy="random", num_samples=10, num_levels=10, add_model_core=None
-    ) -> pd.DataFrame:
-
-        pf_res = self.entmoot_optimizer.predict_pareto(
-            sampling_strategy=sampling_strategy,
-            num_samples=num_samples,
-            num_levels=num_levels,
-            add_model_core=add_model_core
-        )
-
-        pf_list = [list(x)+y for x, y in pf_res]
-
-        pf_df = pd.DataFrame(pf_list, columns=self.problem.inputs.names + self.problem.outputs.names)
-
-        return pf_df
-
-    def propose(self, n_proposals: int = 1) -> pd.DataFrame:
-        """
-        Suggests next proposal by optimizing the acquisition function.
-        """
-        gurobi_model = get_core_gurobi_model(self.space)
-
+    def _migrate_constraints(self, gurobi_model):
         # Migrate constraints from opti to gurobi
         if self.problem.constraints:
             for c in self.problem.constraints:
@@ -175,6 +153,47 @@ class EntmootOpti(Algorithm):
                 else:
                     raise ValueError(f"Constraint of type {type(c)} not supported.")
 
+    def propose(self, n_proposals: int = 1, gurobi_env=None) -> pd.DataFrame:
+        """
+        Suggests next proposal by optimizing the acquisition function.
+        """
+
+        # update gurobi environment if new object is given
+        if gurobi_env:
+            self.gurobi_env = gurobi_env
+
+        gurobi_model = get_core_gurobi_model(self.space, env=self.gurobi_env)
+
+        # migrate opti constraints into gurobi model
+        self._migrate_constraints(gurobi_model)
+
         X_res = self.entmoot_optimizer.ask(n_points=n_proposals)
 
         return pd.DataFrame(X_res, columns=self.problem.inputs.names)
+
+    def predict_pareto_front(
+            self, sampling_strategy="random", num_samples=10, num_levels=10,
+            gurobi_env=None
+    ) -> pd.DataFrame:
+
+        # update gurobi environment if new object is given
+        if gurobi_env:
+            self.gurobi_env = gurobi_env
+
+        gurobi_model = get_core_gurobi_model(self.space, env=self.gurobi_env)
+
+        # migrate opti constraints into gurobi model
+        self._migrate_constraints(gurobi_model)
+
+        pf_res = self.entmoot_optimizer.predict_pareto(
+            sampling_strategy=sampling_strategy,
+            num_samples=num_samples,
+            num_levels=num_levels,
+            add_model_core=gurobi_model
+        )
+
+        pf_list = [list(x)+y for x, y in pf_res]
+
+        pf_df = pd.DataFrame(pf_list, columns=self.problem.inputs.names + self.problem.outputs.names)
+
+        return pf_df
