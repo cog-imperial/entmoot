@@ -108,3 +108,14 @@
 
 ### Fixed
 - fixed test cases
+
+## [1.0.2] - 2022-04-06
+ 
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- fix BO library interface
