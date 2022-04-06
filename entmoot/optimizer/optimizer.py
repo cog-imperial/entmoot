@@ -290,7 +290,8 @@ class Optimizer(object):
         n_points: int = None,
         strategy: str = "cl_min",
         weights: Optional[list] = None,
-        add_model_core=None
+        add_model_core=None,
+        gurobi_env=None,
     ) -> list:
         """
         Computes the next point (or multiple points) at which the objective
@@ -311,9 +312,15 @@ class Optimizer(object):
                 batch multi-objectiveproposals
         :param add_model_core: GRBModel = None,
             Gurobi optimization model that includes additional constraints
+        :param gurobi_env: Gurobi Env = None,
+            Gurobi environment used for computation of the next proposal
 
         :return next_x: list, next proposal of shape(n_points, n_dims)
         """
+
+        # update gurobi_env attribute
+        if gurobi_env:
+            self.gurobi_env = gurobi_env
 
         # check if single point or batch of point is returned
         if n_points is None and weights is None:
@@ -375,8 +382,7 @@ class Optimizer(object):
             else:
                 y_lie = np.max(opt.yi) if opt.yi else 0.0  # CL-max lie
 
-            fit_model = not i == n_points-1
-            opt._tell(x, y_lie, fit=fit_model)
+            opt._tell(x, y_lie)
 
 
         self.printed_switch_to_model = opt.printed_switch_to_model
@@ -531,27 +537,25 @@ class Optimizer(object):
             # return point computed from last call to tell()
             return next_x
 
-    def tell(self, x: list, y: list, fit: Optional[bool] = True):
+    def tell(self, x: list, y: list):
         """
         Checks that both x and y are valid points for the given search space.
 
         :param x: list, locations of new data points
         :param y: list, target value of new data points
-        :param fit: Optional[bool], will be removed soon
         """
 
         from entmoot.utils import check_x_in_space
         check_x_in_space(x, self.space)
         self._check_y_is_valid(x, y)
-        self._tell(x, y, fit=fit)
+        self._tell(x, y)
 
-    def _tell(self, x, y, fit=True):
+    def _tell(self, x, y):
         """
         Adds the new data points to the data set.
 
         :param x: list, locations of new data points
         :param y: list, target value of new data points
-        :param fit: Optional[bool], will be removed soon
         """
 
         from entmoot.utils import is_listlike
@@ -624,7 +628,7 @@ class Optimizer(object):
 
         for itr in tqdm(range(n_iter),disable=no_progress_bar):
             x = self.ask()
-            self.tell(x, func(x), fit= not itr == n_iter-1)
+            self.tell(x, func(x))
 
             if no_progress_bar and update_min:
                 print(f"Min. obj.: {round(min(self.yi),2)} at itr.: {itr+1} / {n_iter}", end="\r")
@@ -744,7 +748,8 @@ class Optimizer(object):
         sampling_strategy: str = 'random',
         num_samples: int = 10,
         num_levels: int = 10,
-        add_model_core = None
+        add_model_core = None,
+        gurobi_env=None,
     ):
         """
         Computes the next point at which the objective should be evaluated.
@@ -759,10 +764,16 @@ class Optimizer(object):
             defines levels per dimension for 'grid' sampling strategy
         :param add_model_core: GRBModel = None,
             Gurobi optimization model that includes additional constraints
+        :param gurobi_env: Gurobi Env = None,
+            Gurobi environment used for computation of the next proposal
 
         :return pareto_x: list, next pareto point predictions of
             shape(n_points, n_dims)
         """
+
+        # update gurobi_env attribute
+        if gurobi_env:
+            self.gurobi_env = gurobi_env
 
         assert self.num_obj > 1, \
             f"Number of objectives needs to be > 1 to" \

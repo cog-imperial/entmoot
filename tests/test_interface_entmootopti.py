@@ -24,7 +24,7 @@ def test_api():
     entmoot = EntmootOpti(
         problem=test_problem,
         base_est_params=base_estimator_params,
-        gurobi_env=get_gurobi_env,
+        gurobi_env=get_gurobi_env(),
     )
 
     X_pred = pd.DataFrame(
@@ -52,7 +52,7 @@ def test_api():
 def test_mixed_constraints():
     # single objective, linear-equality + n-choose-k constraints
     problem = opti.problems.Photodegradation()
-    entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
+    entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env())
 
     X_pred = problem.data[problem.inputs.names]
     y_mean, y_std = entmoot.predict(X_pred)
@@ -79,7 +79,7 @@ def test_biobjective():
     # opti.problems.ReizmanSuzuki -> bi-objective, cat + cont variables
     problem = opti.problems.ReizmanSuzuki()
 
-    entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env)
+    entmoot = EntmootOpti(problem=problem, gurobi_env=get_gurobi_env())
 
     X_pred = problem.data[problem.inputs.names]
     y_mean, y_std = entmoot.predict(X_pred)
@@ -90,7 +90,7 @@ def test_biobjective():
     X_next = entmoot.propose(n_proposals=2)
     assert len(X_next) == 2
 
-    num_samples = 10
+    num_samples = 2
     pareto_front = entmoot.predict_pareto_front(num_samples=num_samples)
     assert pareto_front.shape == (num_samples, len(problem.inputs.names+problem.outputs.names))
 
