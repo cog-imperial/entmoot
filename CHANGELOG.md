@@ -119,3 +119,14 @@
 
 ### Fixed
 - fix BO library interface
+
+## [1.0.3] - 2022-04-21
+ 
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- remove 'fit' parameter in 'entmoot_optimize' to fix function
