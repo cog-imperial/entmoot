@@ -64,7 +64,7 @@ class SimpleCat(BenchmarkFunction):
         self.func_config = func_config
 
     def get_bounds(self, n_dim=2):
-        temp_bounds = [(-2.0,2.0) for _ in range(n_dim)]
+        temp_bounds = [(-2.0, 2.0) for _ in range(n_dim)]
         temp_bounds.extend(self.cat_dims)
         return temp_bounds
 

@@ -137,31 +137,28 @@ in detail.
 An example script that minimizes the Rosenbrock function using `ENTMOOT` is
 given in the following.
 ```
-from entmoot.optimizer.entmoot_minimize import entmoot_minimize
+from entmoot.optimizer.optimizer import Optimizer
 from entmoot.benchmarks import Rosenbrock
 
 func = Rosenbrock()
 
-res = entmoot_minimize(
-    func,
-    func.get_bounds(10),
-    n_calls=60,
-    n_points=10000,
-    base_estimator="ENTING",
-    n_initial_points=50,
-    initial_point_generator="random",
-    acq_func="LCB",
-    acq_optimizer="sampling",
-    x0=None,
-    y0=None,
-    random_state=100,
-    acq_func_kwargs=None,
-    acq_optimizer_kwargs=None,
-    model_queue_size=None,
-    base_estimator_kwargs=None,
-    verbose=True,
-)
+opt = Optimizer(func.get_bounds(10),
+                base_estimator="ENTING",
+                n_initial_points=20,
+                initial_point_generator="random",
+                acq_func="LCB",
+                acq_optimizer="sampling",
+                random_state=100,
+                model_queue_size=None,
+                base_estimator_kwargs={
+                    "lgbm_params": {"min_child_samples": 1}
+                },
+                verbose=True,
+                )
 
+# run optimizer for 20 iterations
+res = opt.run(func, n_iter=20)
+print(f"-> best solution found {res.fun}")
 ```
 
 The following example shows how own constraints can be enforced on the input 
@@ -169,7 +166,7 @@ variables. This only works when Gurobi is selected as the solution strategy,
  i. e. `acq_optimizer="global"`. Constraints are formulated according to 
  [documentation](https://www.gurobi.com/documentation/9.0/refman/py_model_addconstr.html).
 ```
-from entmoot.optimizer.entmoot_minimize import entmoot_minimize
+from entmoot.optimizer.optimizer import Optimizer
 from entmoot.benchmarks import SimpleCat
 
 func = SimpleCat()
@@ -196,30 +193,31 @@ core_model.addConstr(x0 + x1 >= 2)
 core_model.addConstr(x1 == 1)
 core_model.update()
 
-# specify the model core in `acq_optimizer_kwargs`
-res = entmoot_minimize(
-    func,
-    func.get_bounds(),
-    n_calls=15,
-    n_points=10000,
-    base_estimator="ENTING",
-    n_initial_points=5,
-    initial_point_generator="random",
-    acq_func="LCB",
-    acq_optimizer="global",
-    x0=None,
-    y0=None,
-    random_state=100,
-    acq_func_kwargs=None,
-    acq_optimizer_kwargs={
-      "add_model_core": core_model
-    },
-    model_queue_size=None,
-    base_estimator_kwargs={
-        "min_child_samples": 2
-    },
-    verbose=True,
-)
+opt = Optimizer(func.get_bounds(),
+                base_estimator="ENTING",
+                n_initial_points=0,
+                initial_point_generator="random",
+                acq_func="LCB",
+                acq_optimizer="global",
+                random_state=100,
+                acq_func_kwargs=None,
+                acq_optimizer_kwargs={
+                    "add_model_core": core_model
+                },
+                model_queue_size=None,
+                base_estimator_kwargs={
+                    "lgbm_params": {"min_child_samples": 1}
+                },
+                verbose=True,
+                )
+
+# add initial points that are feasible
+for x in [(1.1, 1.0, 'mult6'), (1.2, 1.0, 'mult6'), (1.3, 1.0, 'pow2')]:
+    opt.tell(x, func(x))
+
+# run optimizer for 20 iterations
+res = opt.run(func, n_iter=20)
+print(f"-> best solution found {res.fun}")
 ```
 
 ## Example: Multiple Objective Optimization with Constraints
