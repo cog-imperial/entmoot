@@ -130,3 +130,14 @@
 
 ### Fixed
 - remove 'fit' parameter in 'entmoot_optimize' to fix function
+
+## [1.0.4] - 2022-06-29
+ 
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- update README examples for easier usage
