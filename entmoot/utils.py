@@ -42,6 +42,7 @@ from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
 from .space import Space, Dimension
+from typing import Optional
 
 
 def get_gurobi_env():
@@ -77,9 +78,9 @@ def get_cat_idx(space):
 def cook_estimator(
         space: Space,
         base_estimator: str,
-        base_estimator_kwargs: dict | None = None,
+        base_estimator_kwargs: Optional[dict] = None,
         num_obj: int = 1,
-        random_state: int | None = None):
+        random_state: Optional[int] = None):
     """Cook an estimator that used for mean and uncertainty prediction.
 
     :param space: Space, defines the search space of variables
@@ -305,7 +306,7 @@ def check_x_in_space(x, space):
 
 
 def create_result(
-        Xi: list, yi: ArrayLike, space=None, rng=None, specs: dict |None = None, models: list | None = None,
+        Xi: list, yi: ArrayLike, space=None, rng=None, specs: Optional[dict] = None, models: Optional[list] = None,
         model_mu=None, model_std=None, gurobi_mipgap=None):
     """
     Initialize an `OptimizeResult` object.

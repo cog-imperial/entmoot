@@ -51,6 +51,7 @@ import numpy as np
 from .base import InitialPointGenerator
 from ..space import Space
 from sklearn.utils import check_random_state
+from typing import Optional
 
 
 class Sobol(InitialPointGenerator):
@@ -226,7 +227,7 @@ class Sobol(InitialPointGenerator):
         self.recipd = 1.0 / (2 * p2)
         self.lastq = np.zeros(dim_num)
 
-    def generate(self, dimensions, n_samples: int, random_state: int | None = None):
+    def generate(self, dimensions, n_samples: int, random_state: Optional[int] = None):
         """Creates samples from Sobol' set.
         Parameters
         ----------
@@ -396,7 +397,7 @@ def _bit_lo0(n: int):
     return most_right_zero + 1
 
 
-def _random_shift(dm: np.array, random_state: int | None = None):
+def _random_shift(dm: np.array, random_state: Optional[int] = None):
     """Random shifting of a vector.
     Randomization of the quasi-MC samples can be achieved in the easiest manner
     by random shift (or the Cranley-Patterson rotation).

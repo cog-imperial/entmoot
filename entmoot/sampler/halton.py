@@ -35,6 +35,7 @@ import numpy as np
 from .base import InitialPointGenerator
 from ..space import Space
 from sklearn.utils import check_random_state
+from typing import Union
 
 
 class Halton(InitialPointGenerator):
@@ -125,7 +126,7 @@ class Halton(InitialPointGenerator):
         return out
 
 
-def _van_der_corput_samples(idx: int | np.ndarray, number_base: int = 2):
+def _van_der_corput_samples(idx: Union[int, np.ndarray], number_base: int = 2):
     """Create `Van Der Corput` low discrepancy sequence samples.
     A van der Corput sequence is an example of the simplest one-dimensional
     low-discrepancy sequence over the unit interval; it was first described in
