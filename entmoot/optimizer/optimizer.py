@@ -279,6 +279,7 @@ class Optimizer(object):
 
         optimizer._initial_samples = self._initial_samples
         optimizer.printed_switch_to_model = self.printed_switch_to_model
+        optimizer.gurobi_env = self.gurobi_env
 
         if self.Xi:
             optimizer._tell(self.Xi, self.yi)

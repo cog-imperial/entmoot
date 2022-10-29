@@ -37,8 +37,10 @@ def get_core_gurobi_model(space, add_model_core=None, env=None):
     ----------
     space : scikit-optimize object
         Captures the feature space
-    model : gurobipy.Model,
+    model : gurobipy.Model
         Model to which the core is added.
+    env : gurobipy.Env
+        Env to use. If not given Gurobi will use the default env.
 
     Returns
     -------
