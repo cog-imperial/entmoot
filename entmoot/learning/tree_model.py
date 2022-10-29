@@ -25,7 +25,7 @@ class EntingRegressor:
                 space,
                 base_estimator,
                 std_estimator,
-                random_state=None,
+                random_state:int = None,
                 cat_idx=None):
 
         if cat_idx is None:
@@ -118,15 +118,13 @@ class EntingRegressor:
     def predict(self, X, return_std=False):
         """Predict.
 
-        If `return_std` is set to False, only tree model prediction is returned.
-        Return mean and predicted standard deviation, which is approximated 
-        based on standard estimator specified, when `return_std` is set to True. 
-
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
             where `n_samples` is the number of samples
             and `n_features` is the number of features.
+        return_std: boolean, If `return_std` is set to False, only tree model prediction is returned. If set to True,
+            tree model prediction and predicted standard deviation is returned.
 
         Returns
         -------
@@ -189,7 +187,6 @@ class EntingRegressor:
     def get_global_next_x(self,
                           acq_func,
                           acq_func_kwargs,
-                          acq_optimizer_kwargs,
                           add_model_core,
                           weight,
                           verbose,
@@ -199,7 +196,7 @@ class EntingRegressor:
         from entmoot.optimizer.gurobi_utils import \
             get_core_gurobi_model, add_gbm_to_gurobi_model, \
             add_std_to_gurobi_model, add_acq_to_gurobi_model, \
-            set_gurobi_init_to_ref, get_gbm_obj_from_model, get_gbm_multi_obj_from_model
+            set_gurobi_init_to_ref, get_gbm_multi_obj_from_model
 
         # suppress  output to command window
         import logging
@@ -223,7 +220,6 @@ class EntingRegressor:
 
         # convert into gbm_model format
         # and add to gurobi model
-        gbm_model_dict = {}
         gbm_model_dict = self.get_gbm_model()
         add_gbm_to_gurobi_model(
             self.space, gbm_model_dict, gurobi_model
@@ -232,7 +228,6 @@ class EntingRegressor:
         # add std estimator to gurobi model
         if has_unc:
             add_std_to_gurobi_model(self, gurobi_model)
-
 
         # collect different objective function contributions
         from entmoot.optimizer.gurobi_utils import get_gbm_model_multi_obj_mu, get_gbm_model_mu
