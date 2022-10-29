@@ -1,5 +1,5 @@
 import collections as coll
-import sys
+
 
 class GbmModel:
     """Define a gbm model.
@@ -20,7 +20,7 @@ class GbmModel:
     -
 
     """
-    def __init__(self, tree_list):
+    def __init__(self, tree_list: list):
         self.load_ordered_tree_dict(tree_list)
 
     def _build_tree(self, tree):
@@ -46,7 +46,7 @@ class GbmModel:
             tree=tree
         )
 
-    def load_ordered_tree_dict(self, tree_list):
+    def load_ordered_tree_dict(self, tree_list: list):
         """Define attributes used in `GbmModel`.
 
         Parameters
@@ -111,17 +111,17 @@ class GbmModel:
         for tree in self.trees:
             for var, breakpoint in tree.get_all_partition_pairs():
                 try:
-                    if isinstance(breakpoint,list):
+                    if isinstance(breakpoint, list):
                         var_breakpoints[var].append(breakpoint)
                     else:
                         var_breakpoints[var].add(breakpoint)
                 except KeyError:
-                    if isinstance(breakpoint,list):
+                    if isinstance(breakpoint, list):
                         var_breakpoints[var] = [breakpoint]
                     else:    
                         var_breakpoints[var] = set([breakpoint])
 
-        for k in var_breakpoints.keys():
+        for k in var_breakpoints:
             if isinstance(var_breakpoints[k], set):
                 var_breakpoints[k] = sorted(var_breakpoints[k])
 
@@ -152,7 +152,7 @@ class GbmModel:
             for idx,dim in enumerate(space.dimensions):
                 if idx not in cat_idx:
 
-                    if idx in active_splits.keys():
+                    if idx in active_splits:
                         # if tree splits on this conti var
                         all_active_splits[idx] = active_splits[idx]
                         all_active_splits[idx].insert(0,dim.transformed_bounds[0])
@@ -165,14 +165,14 @@ class GbmModel:
                                 dim.transformed_bounds[1]
                             ]
             # sort all splits and extract modified bounds for vars
-            for key in all_active_splits.keys():
+            for key in all_active_splits:
                 all_active_splits[key] = \
                     sorted( list(set(all_active_splits[key])) )[:2]
 
             # return hypervolume if required
             if volume:
                 hyper_vol = 1
-                for key in all_active_splits.keys():
+                for key in all_active_splits:
                     hyper_vol *= \
                         abs(all_active_splits[key][0] - all_active_splits[key][1])
                 return all_active_splits, hyper_vol
@@ -189,7 +189,7 @@ class GbmType:
                 self.right._populate_active_splits(active_splits, X)
         else:
             if self.split_var != -1:                
-                if not self.split_var in active_splits.keys():
+                if not self.split_var in active_splits:
                     active_splits[self.split_var] = []
 
                 if X[self.split_var] <= self.split_code_pred:
@@ -409,6 +409,7 @@ class GbmNode(GbmType):
         joint_count[right_key] += right_count['leaf']
         return joint_count
 
+
 class LeafNode(GbmType):
     """Defines a child class of `GbmType`. Leaf nodes have `split_var = -1` and 
     `split_code_pred` as leaf value defined by training."""
@@ -467,15 +468,15 @@ class LeafNode(GbmType):
     def get_all_partition_pairs(self):
         yield from []
 
-    def get_var_lower(self, encoding, var, lower):
+    def get_var_lower(self, encoding, lower):
         assert not encoding
         return lower
 
-    def get_var_upper(self, encoding, var, upper):
+    def get_var_upper(self, encoding, upper):
         assert not encoding
         return upper
 
-    def get_var_interval(self, encoding, var, var_interval):
+    def get_var_interval(self, encoding, var_interval):
         assert not encoding
         return var_interval
 

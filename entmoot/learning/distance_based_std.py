@@ -152,7 +152,7 @@ class SquaredEuclidean(DistanceMetric):
             diff_to_ref_point_i = quicksum(
                 ( (xi_ref[j] - (c_x[key]-x_shifts[j]) / x_scalers[j]) * \
                     (xi_ref[j] - (c_x[key]-x_shifts[j]) / x_scalers[j]) )
-                for j,key in enumerate(model._cont_var_dict.keys())
+                for j,key in enumerate(model._cont_var_dict)
             )
 
             if add_rhs is None:
@@ -239,7 +239,7 @@ class SquaredEuclidean(DistanceMetric):
             diff_to_ref_point_k = quicksum(
                 ( (xk_ref[j]  - (c_x[key]-x_shifts[j]) / x_scalers[j]) * \
                     (xk_ref[j]  - (c_x[key]-x_shifts[j]) / x_scalers[j]) )
-                for j,key in enumerate(model._cont_var_dict.keys())
+                for j,key in enumerate(model._cont_var_dict)
             )
             big_m_term = model._big_m*(1-b_ref[k_ref])
             if add_rhs is None:
@@ -347,7 +347,7 @@ class Manhattan(DistanceMetric):
         from gurobipy import GRB, quicksum
 
         n_ref_points = len(ref_points)
-        cont_feat_ids = model._cont_var_dict.keys()
+        cont_feat_ids = model._cont_var_dict
 
         # two sets of variables are used to capture positive and negative 
         # parts of manhattan distance
@@ -446,7 +446,7 @@ class Manhattan(DistanceMetric):
         from gurobipy import GRB, quicksum
 
         n_ref_points = len(ref_points)
-        cont_feat_ids = model._cont_var_dict.keys()
+        cont_feat_ids = model._cont_var_dict
 
         # big m is required to formulate the constraints
         model._big_m = \

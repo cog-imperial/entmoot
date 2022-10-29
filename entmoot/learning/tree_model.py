@@ -109,7 +109,7 @@ class EntingRegressor:
         -------
         -
         """
-        if not "min_child_samples" in params.keys():
+        if not "min_child_samples" in params:
             params.update({"min_child_samples":2})
 
         for i in range(len(self.base_estimator)):
@@ -292,15 +292,15 @@ class EntingRegressor:
         next_x = np.empty(len(self.space.dimensions))
 
         # cont features
-        for i in gurobi_model._cont_var_dict.keys():
+        for i in gurobi_model._cont_var_dict:
             next_x[i] = gurobi_model._cont_var_dict[i].x
 
         # cat features
-        for i in gurobi_model._cat_var_dict.keys():
+        for i in gurobi_model._cat_var_dict:
             cat = \
                 [
                     key
-                    for key in gurobi_model._cat_var_dict[i].keys()
+                    for key in gurobi_model._cat_var_dict[i]
                     if int(
                     round(gurobi_model._cat_var_dict[i][key].x, 1)
                 ) == 1
