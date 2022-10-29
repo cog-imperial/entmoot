@@ -63,7 +63,7 @@ def _gaussian_acquisition(X, model,
 
     # Evaluate acquisition function
     if acq_func == "LCB":
-        acq_vals = gaussian_lcb(X, model, kappa, acq_func_kwargs=acq_func_kwargs)
+        acq_vals = gaussian_lcb(X, model, kappa)
     else:
         raise ValueError("Acquisition function not implemented.")
 

@@ -129,8 +129,7 @@ def cook_estimator(
                                            unc_scaling=unc_scaling,
                                            dist_metric=dist_metric,
                                            cat_dist_metric=cat_dist_metric,
-                                           num_obj=num_obj,
-                                           random_state=random_state)
+                                           num_obj=num_obj)
 
         ensemble_type = base_estimator_kwargs.get("ensemble_type", "GBRT")
         lgbm_params = base_estimator_kwargs.get("lgbm_params", {})

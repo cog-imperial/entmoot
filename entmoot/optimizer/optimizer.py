@@ -458,7 +458,6 @@ class Optimizer(object):
 
                 values = _gaussian_acquisition(
                     X=X, model=est,
-                    y_opt=np.min(self.yi),
                     acq_func=self.acq_func,
                     acq_func_kwargs=self.acq_func_kwargs)
                 # Find the minimum of the acquisition function by randomly
@@ -494,7 +493,6 @@ class Optimizer(object):
                 next_x, model_mu, model_std, gurobi_mipgap = \
                     self.models[-1].get_global_next_x(acq_func=self.acq_func,
                                                       acq_func_kwargs=self.acq_func_kwargs,
-                                                      acq_optimizer_kwargs=self.acq_optimizer_kwargs,
                                                       add_model_core=add_model_core,
                                                       weight=weight,
                                                       verbose=self.verbose,
