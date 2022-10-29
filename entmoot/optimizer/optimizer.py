@@ -135,7 +135,7 @@ class Optimizer(object):
         # store and create acquisition function set
         self.acq_func = acq_func
         if acq_func_kwargs is None:
-            self.acq_func_kwargs = dict()
+            self.acq_func_kwargs = {}
         else:
             self.acq_func_kwargs = acq_func_kwargs
 
@@ -200,7 +200,7 @@ class Optimizer(object):
 
         # record other arguments
         if acq_optimizer_kwargs is None:
-            acq_optimizer_kwargs = dict()
+            acq_optimizer_kwargs = {}
 
         self.acq_optimizer_kwargs = acq_optimizer_kwargs
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
