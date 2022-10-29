@@ -100,7 +100,7 @@ class Sobol(InitialPointGenerator):
     .. [5] Art B. Owen. On dropping the first Sobol' point. arXiv 2008.08051,
        2020.
     """
-    def __init__(self, skip=0, randomize=True):
+    def __init__(self, skip: int = 0, randomize: bool = True):
 
         if not (skip & (skip - 1) == 0):
             raise ValueError("The balance properties of Sobol' points require"
@@ -125,7 +125,7 @@ class Sobol(InitialPointGenerator):
         self.v = np.zeros((self.dim_max, self.log_max))
         self.dim_num_save = -1
 
-    def init(self, dim_num):
+    def init(self, dim_num: int):
         self.dim_num_save = dim_num
         self.v = np.zeros((self.dim_max, self.log_max))
         self.v[0:40, 0] = np.transpose([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -226,7 +226,7 @@ class Sobol(InitialPointGenerator):
         self.recipd = 1.0 / (2 * p2)
         self.lastq = np.zeros(dim_num)
 
-    def generate(self, dimensions, n_samples, random_state=None):
+    def generate(self, dimensions, n_samples: int, random_state: int | None = None):
         """Creates samples from Sobol' set.
         Parameters
         ----------
@@ -284,7 +284,7 @@ class Sobol(InitialPointGenerator):
 
         return r
 
-    def _sobol(self, dim_num, seed):
+    def _sobol(self, dim_num: int, seed: int):
         """Generates a new quasirandom Sobol' vector with each call.
         Parameters
         ----------
@@ -367,7 +367,7 @@ class Sobol(InitialPointGenerator):
         return [quasi, seed]
 
 
-def _bit_hi1(n):
+def _bit_hi1(n: int):
     """Returns the position of the high 1 bit base 2 in an integer.
     Parameters
     ----------
@@ -382,7 +382,7 @@ def _bit_hi1(n):
         return len(bin_repr) - most_left_one
 
 
-def _bit_lo0(n):
+def _bit_lo0(n: int):
     """Returns the position of the low 0 bit base 2 in an integer.
     Parameters
     ----------
@@ -396,7 +396,7 @@ def _bit_lo0(n):
     return most_right_zero + 1
 
 
-def _random_shift(dm, random_state=None):
+def _random_shift(dm: np.array, random_state: int | None = None):
     """Random shifting of a vector.
     Randomization of the quasi-MC samples can be achieved in the easiest manner
     by random shift (or the Cranley-Patterson rotation).
