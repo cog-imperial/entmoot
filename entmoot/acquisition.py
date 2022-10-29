@@ -38,10 +38,11 @@ import numpy as np
 import warnings
 import sys
 
-def _gaussian_acquisition(X, model, y_opt=None,
-                          num_obj=1,
-                          acq_func="LCB",
-                          acq_func_kwargs=None):
+
+def _gaussian_acquisition(X, model,
+                          num_obj: int =1,
+                          acq_func: str = "LCB",
+                          acq_func_kwargs: dict = None):
     """
     Wrapper so that the output of this function can be
     directly passed to a minimizer.
@@ -56,7 +57,7 @@ def _gaussian_acquisition(X, model, y_opt=None,
                          " it must be 2-dimensional.".format(X.ndim))
 
     if acq_func_kwargs is None:
-        acq_func_kwargs = dict()
+        acq_func_kwargs = {}
 
     kappa = acq_func_kwargs.get("kappa", 1.96)
 
@@ -68,7 +69,8 @@ def _gaussian_acquisition(X, model, y_opt=None,
 
     return acq_vals
 
-def gaussian_lcb(X, model, kappa=1.96, return_grad=False, acq_func_kwargs=None):
+
+def gaussian_lcb(X, model, kappa: float = 1.96):
     """
     Use the lower confidence bound to estimate the acquisition
     values.
@@ -111,4 +113,3 @@ def gaussian_lcb(X, model, kappa=1.96, return_grad=False, acq_func_kwargs=None):
             return -std
 
         return mu - kappa * std
-
