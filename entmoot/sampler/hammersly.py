@@ -39,6 +39,7 @@ from ..space import Space
 from .base import InitialPointGenerator
 from sklearn.utils import check_random_state
 
+
 class Hammersly(InitialPointGenerator):
     """Creates `Hammersley` sequence samples.
     The Hammersley set is equivalent to the Halton sequence, except for one
@@ -61,12 +62,12 @@ class Hammersly(InitialPointGenerator):
         The (non-)prime base to calculate values along each axis. If
         empty, growing prime values starting from 2 will be used.
     """
-    def __init__(self, min_skip=0, max_skip=0, primes=None):
+    def __init__(self, min_skip: int = 0, max_skip: int = 0, primes=None):
         self.primes = primes
         self.min_skip = min_skip
         self.max_skip = max_skip
 
-    def generate(self, dimensions, n_samples, random_state=None):
+    def generate(self, dimensions, n_samples: int, random_state=None):
         """Creates samples from Hammersly set.
         Parameters
         ----------
