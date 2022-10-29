@@ -1,7 +1,7 @@
 
 <img src="media/entmoot_logo.png" width="400">
 
-`ENTMOOT` (**EN**semble **T**ree **MO**del **O**ptimization **T**ool) is a novel framework to handle tree-based models in Bayesian optimization applications. Gradient-boosted
+`ENTMOOT` (**EN**semble **T**ree **MO**del **O**ptimization **T**ool) is a framework to handle tree-based surrogate models in Bayesian optimization applications. Gradient-boosted
 tree models from `lightgbm` are combined with a distance-based uncertainty 
 measure in a deterministic global optimization framework to optimize black-box functions. More
 details on the method here: https://arxiv.org/abs/2003.04774.
@@ -37,32 +37,13 @@ On Mac, you will also need to install libomp: `brew install libomp`.
 ### Optional
 * gurobi >= 9.0.1
 
-### Creating a virtual environment
-We recommend installing `ENTMOOT` in a [virtual environment](https://docs.python.org/3/library/venv.html). 
 
-To set up a new virtual environment called 'entmoot', run the command
-```
-python3 -m venv entmoot
-```
-in the folder where you want to store the virtual environment.
-Afterwards, activate the environment using
-```
-source entmoot/bin/activate
-```
-It is recommended that you update the pip installation in the virtual environment
-```
-pip install --upgrade pip
-```
 ### Installing ENTMOOT
 Install all required packages by running the command
 ```
 pip install -r requirements.txt
 ```
-Another option is to install all required packages separately using
-```
-pip install numpy scikit-learn pyyaml lightgbm
-```
-To install `ENTMOOT`, run the following command in the virtual environment
+To install `ENTMOOT`, run the following command
 ```
 pip install git+https://github.com/cog-imperial/entmoot
 ```
@@ -72,7 +53,6 @@ The ENTMOOT package can be uninstalled by running
 ```
 pip uninstall entmoot
 ```
-Alternatively, the folder containing the virtual environment can be deleted.
 
 ## Installation - Windows
 The installation on Windows-based systems is similar with some exceptions for
@@ -80,32 +60,12 @@ individual commands. Make sure that `python` and `git` is installed and
 accessible in the shell you are using to install `ENTMOOT`. Follow the 
 instructions by executing all commands in `cmd.exe`.
 
-### Creating a virtual environment
-We recommend installing `ENTMOOT` in a [virtual environment](https://docs.python.org/3/library/venv.html). 
-
-To set up a new virtual environment called 'entmoot', run the command
-```
-python -m venv entmoot
-```
-in the folder where you want to store the virtual environment.
-Afterwards, activate the environment using
-```
-.\entmoot\Scripts\activate.bat
-```
-It is recommended that you update the pip installation in the virtual environment
-```
-pip install --upgrade pip
-```
 ### Installing ENTMOOT
 Install all required packages by running the command
 ```
 pip install -r requirements.txt
 ```
-Another option is to install all required packages separately using
-```
-pip install numpy scikit-learn pyyaml lightgbm
-```
-To install `ENTMOOT`, run the following command in the virtual environment
+To install `ENTMOOT`, run the following command
 ```
 pip install git+https://github.com/cog-imperial/entmoot
 ```
@@ -115,7 +75,6 @@ The ENTMOOT package can be uninstalled by running
 ```
 pip uninstall entmoot
 ```
-Alternatively, the folder containing the virtual environment can be deleted.
 
 ## Installing Gurobi
 To use the `acq_optimizer= 'global'` setting in `ENTMOOT`, the solver 
