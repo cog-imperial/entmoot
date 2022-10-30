@@ -35,6 +35,8 @@ import numpy as np
 from .base import InitialPointGenerator
 from ..space import Space
 from sklearn.utils import check_random_state
+from typing import Union
+
 
 class Halton(InitialPointGenerator):
     """Creates `Halton` sequence samples.
@@ -58,12 +60,12 @@ class Halton(InitialPointGenerator):
         The (non-)prime base to calculate values along each axis. If
         empty or None, growing prime values starting from 2 will be used.
     """
-    def __init__(self, min_skip=0, max_skip=0, primes=None):
+    def __init__(self, min_skip: int = 0, max_skip: int = 0, primes=None):
         self.primes = primes
         self.min_skip = min_skip
         self.max_skip = max_skip
 
-    def generate(self, dimensions, n_samples, random_state=None):
+    def generate(self, dimensions, n_samples: int, random_state=None):
         """Creates samples from Halton set.
         Parameters
         ----------
@@ -124,7 +126,7 @@ class Halton(InitialPointGenerator):
         return out
 
 
-def _van_der_corput_samples(idx, number_base=2):
+def _van_der_corput_samples(idx: Union[int, np.ndarray], number_base: int = 2):
     """Create `Van Der Corput` low discrepancy sequence samples.
     A van der Corput sequence is an example of the simplest one-dimensional
     low-discrepancy sequence over the unit interval; it was first described in
@@ -160,7 +162,7 @@ def _van_der_corput_samples(idx, number_base=2):
     return out
 
 
-def _create_primes(threshold):
+def _create_primes(threshold: int):
     """
     Generate prime values using sieve of Eratosthenes method.
     Parameters

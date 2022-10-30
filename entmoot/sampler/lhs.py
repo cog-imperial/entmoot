@@ -35,8 +35,8 @@ import numpy as np
 from sklearn.utils import check_random_state
 from scipy import spatial
 from entmoot.sampler.base import InitialPointGenerator
-from entmoot.space.space import Space, Categorical
-
+from entmoot.space.space import Space
+from typing import Optional
 
 
 def _random_permute_matrix(h, random_state=None):
@@ -69,13 +69,12 @@ class Lhs(InitialPointGenerator):
     iterations : int
         Defines the number of iterations for optimizing LHS
     """
-    def __init__(self, lhs_type="classic", criterion="maximin",
-                 iterations=1000):
+    def __init__(self, lhs_type: str = "classic", criterion: Optional[str] = "maximin", iterations=1000):
         self.lhs_type = lhs_type
         self.criterion = criterion
         self.iterations = iterations
 
-    def generate(self, dimensions, n_samples, random_state=None):
+    def generate(self, dimensions, n_samples: int, random_state: Optional[int] = None):
         """Creates latin hypercube samples.
 
         Parameters
@@ -158,7 +157,7 @@ class Lhs(InitialPointGenerator):
             space.set_transformer(transformer)
             return h_opt
 
-    def _lhs_normalized(self, n_dim, n_samples, random_state):
+    def _lhs_normalized(self, n_dim, n_samples: int, random_state: Optional[int]):
         rng = check_random_state(random_state)
         x = np.linspace(0, 1, n_samples + 1)
         u = rng.rand(n_samples, n_dim)

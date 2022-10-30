@@ -230,7 +230,7 @@ def add_acq_to_gurobi_model(model, model_mu, model_unc,
     """
     # check inputs
     if acq_func_kwargs is None:
-        acq_func_kwargs = dict()
+        acq_func_kwargs = {}
 
     kappa = acq_func_kwargs.get("kappa", 1.96)
 

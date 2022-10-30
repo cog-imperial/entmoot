@@ -35,14 +35,14 @@ Copyright (c) 2019-2020 Alexander Thebelt.
 """
 
 import os
-from typing import Optional
-from entmoot.space.space import Space
 from gurobipy import Env
 import numpy as np
+from numpy.typing import ArrayLike
 from scipy.optimize import OptimizeResult
 from joblib import dump as dump_
 from joblib import load as load_
 from .space import Space, Dimension
+from typing import Optional
 
 
 def get_gurobi_env():
@@ -129,8 +129,7 @@ def cook_estimator(
                                            unc_scaling=unc_scaling,
                                            dist_metric=dist_metric,
                                            cat_dist_metric=cat_dist_metric,
-                                           num_obj=num_obj,
-                                           random_state=random_state)
+                                           num_obj=num_obj)
 
         ensemble_type = base_estimator_kwargs.get("ensemble_type", "GBRT")
         lgbm_params = base_estimator_kwargs.get("lgbm_params", {})
@@ -179,8 +178,7 @@ def cook_unc_estimator(space: Space,
                     unc_scaling: str,
                     dist_metric: str,
                     cat_dist_metric: str,
-                    num_obj: int = 1,
-                    random_state: Optional[int] = None):
+                    num_obj: int = 1):
     """Cook a distance-based uncertainty estimator.
 
     :param space: Space, defines the search space of variables
@@ -231,6 +229,7 @@ def cook_unc_estimator(space: Space,
 
     return unc_estimator
 
+
 def cook_initial_point_generator(generator, **kwargs):
     """Cook a default initial point generator.
 
@@ -278,6 +277,7 @@ def cook_initial_point_generator(generator, **kwargs):
     generator.set_params(**kwargs)
     return generator
 
+
 def is_listlike(x):
     return isinstance(x, (list, tuple))
 
@@ -303,8 +303,10 @@ def check_x_in_space(x, space):
             raise ValueError("Dimensions of point (%s) and space (%s) do not match"
                              % (x, space.bounds))
 
-def create_result(Xi, yi, space=None, rng=None, specs=None, models=None,
-                    model_mu=None, model_std=None, gurobi_mipgap=None):
+
+def create_result(
+        Xi: list, yi: ArrayLike, space=None, rng=None, specs: Optional[dict] = None, models: Optional[list] = None,
+        model_mu=None, model_std=None, gurobi_mipgap=None):
     """
     Initialize an `OptimizeResult` object.
 
@@ -351,6 +353,7 @@ def create_result(Xi, yi, space=None, rng=None, specs=None, models=None,
     res.random_state = rng
     res.specs = specs
     return res
+
 
 def dump(res, filename, store_objective=True, **kwargs):
     """
@@ -423,7 +426,7 @@ def load(filename, **kwargs):
     """
     return load_(filename, **kwargs)
 
-def normalize_dimensions(dimensions):
+def normalize_dimensions(dimensions: list):
     """Create a ``Space`` where all dimensions are normalized to unit range.
     This is particularly useful for Gaussian process based regressors and is
     used internally by ``gp_minimize``.

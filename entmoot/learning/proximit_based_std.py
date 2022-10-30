@@ -13,7 +13,7 @@ class ProximityMetric(DistanceMetric):
     def get_distance(x_left, x_right):
         pass
 
-    def add_to_gurobi_model(self,model):
+    def add_to_gurobi_model(self, model):
 
         model._alpha = \
             model.addVar(
@@ -36,7 +36,7 @@ class ProximityMetric(DistanceMetric):
             )
         model.update()
 
-    def update(self, Xi, yi, gbm_model, cat_column=[]):
+    def update(self, Xi, gbm_model):
         # collect active leaves for all datapoints
 
         self.gbm_model = gbm_model
@@ -61,7 +61,7 @@ class ProximityMetric(DistanceMetric):
         zeta = kwargs.get("zeta", 0.5)
         self.zeta = zeta
 
-    def predict(self, X, scaled=True):
+    def predict(self, X: np.array):
         """Predict standard estimate at location `X`.
 
         Parameters

@@ -42,12 +42,9 @@ from numpy.testing import assert_array_equal
 from numpy.testing import assert_equal
 from numpy.testing import assert_raises
 
-from entmoot import entmoot_minimize
 from entmoot.benchmarks import Rosenbrock, SimpleCat
 
-from entmoot.learning import EntingRegressor
 from entmoot.optimizer import Optimizer
-from scipy.optimize import OptimizeResult
 
 ESTIMATOR_STRINGS = ("GBRT", "RF")
 

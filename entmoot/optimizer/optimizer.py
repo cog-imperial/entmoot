@@ -135,7 +135,7 @@ class Optimizer(object):
         # store and create acquisition function set
         self.acq_func = acq_func
         if acq_func_kwargs is None:
-            self.acq_func_kwargs = dict()
+            self.acq_func_kwargs = {}
         else:
             self.acq_func_kwargs = acq_func_kwargs
 
@@ -200,7 +200,7 @@ class Optimizer(object):
 
         # record other arguments
         if acq_optimizer_kwargs is None:
-            acq_optimizer_kwargs = dict()
+            acq_optimizer_kwargs = {}
 
         self.acq_optimizer_kwargs = acq_optimizer_kwargs
         self.n_points = acq_optimizer_kwargs.get("n_points", 10000)
@@ -458,7 +458,6 @@ class Optimizer(object):
 
                 values = _gaussian_acquisition(
                     X=X, model=est,
-                    y_opt=np.min(self.yi),
                     acq_func=self.acq_func,
                     acq_func_kwargs=self.acq_func_kwargs)
                 # Find the minimum of the acquisition function by randomly
@@ -494,7 +493,6 @@ class Optimizer(object):
                 next_x, model_mu, model_std, gurobi_mipgap = \
                     self.models[-1].get_global_next_x(acq_func=self.acq_func,
                                                       acq_func_kwargs=self.acq_func_kwargs,
-                                                      acq_optimizer_kwargs=self.acq_optimizer_kwargs,
                                                       add_model_core=add_model_core,
                                                       weight=weight,
                                                       verbose=self.verbose,
