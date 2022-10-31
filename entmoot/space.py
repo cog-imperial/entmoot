@@ -7,9 +7,12 @@ class Space:
 
     def __init__(self, rnd_seed: int = None):
         self._feat_list = []
+        self._obj_list = []
         self._rnd_seed = rnd_seed
 
         if rnd_seed is not None:
+            assert isinstance(rnd_seed, int), \
+                f"Argument 'rnd_seed' needs to be an integer. Got type '{type(rnd_seed)}'."
             np.random.seed(rnd_seed)
             random.seed(rnd_seed)
 
@@ -20,6 +23,10 @@ class Space:
     @property
     def feat_list(self):
         return self._feat_list
+
+    @property
+    def obj_list(self):
+        return self._obj_list
 
     @property
     def rnd_seed(self):
@@ -49,7 +56,7 @@ class Space:
                 assert lb < ub, f"Lower bound '{lb}' of feat_type '{feat_type}' needs to be " \
                                 f"smaller than upper bound. Check feature '{name}'."
 
-                self.feat_list.append(Real(lb=lb, ub=ub, name=name))
+                self._feat_list.append(Real(lb=lb, ub=ub, name=name))
             else:
                 assert isinstance(lb, int) and isinstance(ub, int), \
                     f"Wrong type for bounds of feat_type '{feat_type}'. Expected '(int, int)', " \
@@ -58,10 +65,10 @@ class Space:
                 assert lb < ub, f"Lower bound '{lb}' of feat_type '{feat_type}' needs to be " \
                                 f"smaller than upper bound. Check feature '{name}'."
 
-                self.feat_list.append(Integer(lb=lb, ub=ub, name=name))
+                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))
 
         elif feat_type == "binary":
-            self.feat_list.append(Binary(name=name))
+            self._feat_list.append(Binary(name=name))
 
         elif feat_type == "categorical":
             assert len(bounds) > 1, \
@@ -76,10 +83,16 @@ class Space:
             assert len(bounds) == len(set(bounds)), \
                 f"Categories of feat_type '{feat_type}' are not all unique."
 
-            self.feat_list.append(Categorical(cat_list=bounds, name=name))
+            self._feat_list.append(Categorical(cat_list=bounds, name=name))
 
         else:
             raise IOError(f"No support for feat_type '{feat_type}'. Check feature '{name}'.")
+
+    def add_min_objective(self, name: str = None):
+        if name is None:
+            name = f"obj_{len(self.obj_list)}"
+
+        self._obj_list.append(MinObjective(name=name))
 
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
@@ -114,13 +127,19 @@ class Space:
         return sample_list
 
     def __str__(self):
-        out_str = ["\nspace summary:"]
+        out_str = list(["\nSPACE SUMMARY"])
+        out_str.append(len(out_str[-1][:-1])*"-")
+        out_str.append("features:")
         for feat in self.feat_list:
             if feat.is_cat():
                 out_str.append(f"{feat.name} :: {feat.__class__.__name__} :: {feat.cat_list} ")
             else:
                 out_str.append(
                     f"{feat.name} :: {feat.__class__.__name__} :: ({feat.lb}, {feat.ub}) ")
+
+        out_str.append("\nobjectives:")
+        for obj in self.obj_list:
+            out_str.append(f"{obj.name} :: {obj.__class__.__name__}")
         return "\n".join(out_str)
 
 
@@ -187,3 +206,8 @@ class Binary(FeatureType):
 
     def is_bin(self):
         return True
+
+
+class MinObjective:
+    def __init__(self, name):
+        self.name = name
