@@ -6,7 +6,15 @@ import random
 class Space:
 
     def __init__(self):
-        self.feat_list = []
+        self._feat_list = []
+
+    @property
+    def cat_idx(self):
+        return tuple([i for i, feat in enumerate(self.feat_list) if feat.is_cat()])
+
+    @property
+    def feat_list(self):
+        return self._feat_list
 
     def add_feature(self, feat_type: str, bounds: Tuple = None, name: str = None):
         if name is None:
@@ -95,10 +103,6 @@ class Space:
                     sample.append(random.randint(feat.lb, feat.ub))
             sample_list.append(tuple(sample))
         return sample_list
-
-    @property
-    def cat_idx(self):
-        return tuple([i for i, feat in enumerate(self.feat_list) if feat.is_cat()])
 
     def __str__(self):
         out_str = ["\nspace summary:"]
