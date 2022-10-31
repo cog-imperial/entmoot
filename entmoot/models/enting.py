@@ -12,22 +12,22 @@ class Enting(BaseModel):
             params = {}
 
         # check params values
-        tree_training_params = params.get("tree_training_params", {})
+        tree_training_params = params.get("tree_train_params", {})
 
         # initialize mean model
         self.mean_model = TreeEnsemble(params=tree_training_params)
 
         # initialize unc model
         unc_params = params.get("unc_params", {})
-        dist_metric = unc_params.get("distance_metric", "euclidean_squared")
-        dist_trafo = unc_params.get("distance_transformation", "normalize")
-        acq_sense = unc_params.get("acquisition_sense", "exploration")
+        dist_metric = unc_params.get("dist_metric", "euclidean_squared")
+        dist_trafo = unc_params.get("dist_trafo", "normalize")
+        acq_sense = unc_params.get("acq_sense", "exploration")
 
         assert dist_trafo in ('normalize', 'standardize'), \
-            f"Pick 'distance_transformation' '{dist_trafo}' in '('normalize', 'standardize')'."
+            f"Pick 'dist_trafo' '{dist_trafo}' in '('normalize', 'standardize')'."
 
         assert acq_sense in ('exploration', 'penalty'), \
-            f"Pick 'acquisition_sense' '{acq_sense}' in '('exploration', 'penalty')'."
+            f"Pick 'acq_sense' '{acq_sense}' in '('exploration', 'penalty')'."
 
         # pick distance metric
         if dist_metric == "euclidean_squared":
