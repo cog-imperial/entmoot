@@ -1,4 +1,6 @@
-from typing import Tuple, Set
+from typing import Tuple
+import numpy as np
+import random
 
 
 class Space:
@@ -62,6 +64,46 @@ class Space:
         else:
             raise IOError(f"No support for feat_type '{feat_type}'. Check feature '{name}'.")
 
+    def sample(self, num_samples=1, np_return=True, cat_enc=True):
+        assert np_return and not cat_enc, f"We can't return random sample in np.array format " \
+                                          f"without encoding categorical variables."
+
+        if np_return:
+            # returns np.array for faster processing
+            array_list = []
+            for feat in self.feat_list:
+                if feat.is_real():
+                    array_list.append(
+                        np.random.uniform(low=feat.lb, high=feat.ub, size=num_samples))
+                elif feat.is_cat():
+                    array_list.append(np.random.randint(len(feat.cat_list), size=num_samples))
+                elif feat.is_int() or feat.is_bin():
+                    array_list.append(
+                        np.random.random_integers(low=feat.lb, high=feat.ub, size=num_samples))
+            return np.column_stack(array_list)
+
+        else:
+            # returns list of tuples
+            sample_list = []
+            for _ in range(num_samples):
+                sample = []
+                for feat in self.feat_list:
+                    if feat.is_real():
+                        sample.append(random.uniform(feat.lb, feat.ub))
+                    elif feat.is_cat():
+                        if cat_enc:
+                            sample.append(random.randrange(0, len(feat.cat_list)))
+                        else:
+                            sample.append(random.choice(feat.cat_list))
+                    elif feat.is_int() or feat.is_bin():
+                        sample.append(random.randint(feat.lb, feat.ub))
+                sample_list.append(tuple(sample))
+            return sample_list
+
+    @property
+    def cat_idx(self):
+        return tuple([i for i, feat in enumerate(self.feat_list) if feat.is_cat()])
+
     def __str__(self):
         out_str = ["\nspace summary:"]
         for feat in self.feat_list:
@@ -101,6 +143,18 @@ class Categorical(FeatureType):
     def __init__(self, cat_list, name):
         self.cat_list = cat_list
         self.name = name
+
+        # encode categories
+        self._enc2str, self._str2enc = {}, {}
+        for enc, cat in enumerate(cat_list):
+            self._enc2str[enc] = cat
+            self._str2enc[cat] = enc
+
+    def trafo_str2enc(self, X):
+        raise NotImplementedError()
+
+    def trafo_enc2str(self, X):
+        raise NotImplementedError()
 
     def is_cat(self):
         return True
