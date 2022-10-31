@@ -5,8 +5,13 @@ import random
 
 class Space:
 
-    def __init__(self):
+    def __init__(self, rnd_seed: int = None):
         self._feat_list = []
+        self._rnd_seed = rnd_seed
+
+        if rnd_seed is not None:
+            np.random.seed(rnd_seed)
+            random.seed(rnd_seed)
 
     @property
     def cat_idx(self):
@@ -15,6 +20,10 @@ class Space:
     @property
     def feat_list(self):
         return self._feat_list
+
+    @property
+    def rnd_seed(self):
+        return self._rnd_seed
 
     def add_feature(self, feat_type: str, bounds: Tuple = None, name: str = None):
         if name is None:
