@@ -22,6 +22,7 @@ class Enting(BaseModel):
         dist_metric = unc_params.get("dist_metric", "euclidean_squared")
         dist_trafo = unc_params.get("dist_trafo", "normalize")
         acq_sense = unc_params.get("acq_sense", "exploration")
+        self._beta = unc_params.get("beta", 1.96)
 
         assert dist_trafo in ('normalize', 'standardize'), \
             f"Pick 'dist_trafo' '{dist_trafo}' in '('normalize', 'standardize')'."
