@@ -6,9 +6,13 @@ class Space:
     def __init__(self):
         self.feat_list = []
 
-    def add_feature(self, feat_type: str, bounds: Tuple, name: str = None):
+    def add_feature(self, feat_type: str, bounds: Tuple = None, name: str = None):
         if name is None:
             name = f"feat_{len(self.feat_list)}"
+
+        if bounds is None and feat_type in ("real", "integer", "categorical"):
+            raise IOError(
+                "Please provide bounds for feature types in '(real, integer, categorical)'")
 
         # perform basic input checks and define features of space
         if feat_type in ("real", "integer"):
@@ -58,9 +62,29 @@ class Space:
         else:
             raise IOError(f"No support for feat_type '{feat_type}'. Check feature '{name}'.")
 
+    def __str__(self):
+        out_str = ["\nspace summary:"]
+        for feat in self.feat_list:
+            if feat.is_cat():
+                out_str.append(f"{feat.name} :: {feat.__class__.__name__} :: {feat.cat_list} ")
+            else:
+                out_str.append(
+                    f"{feat.name} :: {feat.__class__.__name__} :: ({feat.lb}, {feat.ub}) ")
+        return "\n".join(out_str)
+
 
 class FeatureType:
-    pass
+    def is_real(self):
+        return False
+
+    def is_cat(self):
+        return False
+
+    def is_int(self):
+        return False
+
+    def is_bin(self):
+        return False
 
 
 class Real(FeatureType):
@@ -69,11 +93,17 @@ class Real(FeatureType):
         self.ub = ub
         self.name = name
 
+    def is_real(self):
+        return True
+
 
 class Categorical(FeatureType):
     def __init__(self, cat_list, name):
         self.cat_list = cat_list
         self.name = name
+
+    def is_cat(self):
+        return True
 
 
 class Integer(FeatureType):
@@ -82,7 +112,15 @@ class Integer(FeatureType):
         self.ub = ub
         self.name = name
 
+    def is_int(self):
+        return True
+
 
 class Binary(FeatureType):
     def __init__(self, name):
+        self.lb = 0
+        self.ub = 1
         self.name = name
+
+    def is_bin(self):
+        return True
