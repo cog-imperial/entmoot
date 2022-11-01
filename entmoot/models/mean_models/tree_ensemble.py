@@ -1,4 +1,6 @@
 from entmoot.models.base_model import BaseModel
+from entmoot.models.mean_models.lgbm_utils import read_lgbm_tree_model_dict
+from entmoot.models.mean_models.meta_tree_ensemble import MetaTreeModel
 import warnings
 import numpy as np
 
@@ -39,12 +41,19 @@ class TreeEnsemble(BaseModel):
             self._train_params = params["train_params"]
 
         self._tree_list = None
+        self._meta_tree_list = []
 
     @property
     def tree_list(self):
         assert self._tree_list is not None, \
             "No tree model is trained yet. Call '.fit(X, y)' first."
         return self._tree_list
+
+    @property
+    def meta_tree_list(self):
+        assert len(self._meta_tree_list) > 0, \
+            "No tree model is trained yet. Call '.fit(X, y)' first."
+        return self._meta_tree_list
 
     def fit(self, X, y):
 
@@ -120,3 +129,28 @@ class TreeEnsemble(BaseModel):
             tree_pred.append(tree_model.predict(X))
 
         return np.squeeze(np.column_stack(tree_pred))
+
+    def _update_meta_tree_list(self):
+        self._meta_tree_list = []
+
+        # get model information
+        for tree_model in self.tree_list:
+            if self._train_lib == "lgbm":
+                tree_model_dict = tree_model.dump_model()
+            elif self._train_lib == "catboost":
+                raise NotImplementedError()
+            elif self._train_lib == "xgboost":
+                raise NotImplementedError()
+            else:
+                raise IOError(f"Parameter 'train_lib' for tree ensembles needs to be "
+                              f"in '('lgbm', 'catboost', 'xgboost')'.")
+
+            # order tree_model_dict
+            ordered_tree_model_dict = \
+                read_lgbm_tree_model_dict(tree_model_dict, cat_idx=self._problem_config.cat_idx)
+
+            # populate meta_tree_model
+            self._meta_tree_list.append(MetaTreeModel(ordered_tree_model_dict))
+
+    def _add_gurobipy_model(self, model):
+        self._update_meta_tree_list()
