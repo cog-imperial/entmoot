@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 
-class Space:
+class ProblemConfig:
 
     def __init__(self, rnd_seed: int = None):
         self._feat_list = []
@@ -127,7 +127,7 @@ class Space:
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
     def __str__(self):
-        out_str = list(["\nSPACE SUMMARY"])
+        out_str = list(["\nPROBLEM SUMMARY"])
         out_str.append(len(out_str[-1][:-1])*"-")
         out_str.append("features:")
         for feat in self.feat_list:

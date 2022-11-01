@@ -1,6 +1,6 @@
 class BaseModel:
 
-    def __init__(self, space, num_obj, params):
+    def __init__(self, problem_config, num_obj, params):
         raise NotImplementedError()
 
     def predict(self, X):

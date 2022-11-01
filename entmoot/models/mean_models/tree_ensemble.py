@@ -5,14 +5,14 @@ import numpy as np
 
 class TreeEnsemble(BaseModel):
 
-    def __init__(self, space, params=None):
+    def __init__(self, problem_config, params=None):
 
         if params is None:
             params = {}
 
-        self._space = space
+        self._problem_config = problem_config
         self._train_lib = params.get("train_lib", "lgbm")
-        self._rnd_seed = space.rnd_seed
+        self._rnd_seed = problem_config.rnd_seed
 
         assert self._train_lib in ('lgbm', 'catboost', 'xgboost'), \
             f"Parameter 'train_lib' for tree ensembles needs to be " \
@@ -52,22 +52,22 @@ class TreeEnsemble(BaseModel):
         if X.ndim == 1:
             X = np.atleast_2d(X)
 
-        assert X.shape[-1] == len(self._space.feat_list), \
+        assert X.shape[-1] == len(self._problem_config.feat_list), \
             f"Argument 'X' has wrong dimensions. " \
-            f"Expected '(num_samples, {len(self._space.feat_list)})', got '{X.shape}'."
+            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
 
         if y.ndim == 1:
             y = np.atleast_2d(y)
 
-        assert y.shape[-1] == len(self._space.obj_list), \
+        assert y.shape[-1] == len(self._problem_config.obj_list), \
             f"Argument 'y' has wrong dimensions. " \
-            f"Expected '(num_samples, {len(self._space.obj_list)})', got '{y.shape}'."
+            f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
 
         # train tree models for every objective
         if self._tree_list is None:
             self._tree_list = []
 
-        for i, obj in enumerate(self._space.obj_list):
+        for i, obj in enumerate(self._problem_config.obj_list):
             if self._train_lib == "lgbm":
                 tree_model = self._train_lgbm(X, y[:, i])
             elif self._train_lib == "catboost":
@@ -85,15 +85,15 @@ class TreeEnsemble(BaseModel):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            if self._space.cat_idx:
+            if self._problem_config.cat_idx:
                 # train for categorial vars
                 train_data = lgb.Dataset(X, label=y,
-                                         categorical_feature=self._space.cat_idx,
+                                         categorical_feature=self._problem_config.cat_idx,
                                          free_raw_data=False,
                                          params={'verbose': -1})
 
                 tree_model = lgb.train(self._train_params, train_data,
-                                       categorical_feature=self._space.cat_idx,
+                                       categorical_feature=self._problem_config.cat_idx,
                                        verbose_eval=False)
             else:
                 # train for non-categorical vars
@@ -110,9 +110,9 @@ class TreeEnsemble(BaseModel):
         if X.ndim == 1:
             X = np.atleast_2d(X)
 
-        assert X.shape[-1] == len(self._space.feat_list), \
+        assert X.shape[-1] == len(self._problem_config.feat_list), \
             f"Argument 'X' has wrong dimensions. " \
-            f"Expected '(num_samples, {len(self._space.feat_list)})', got '{X.shape}'."
+            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
 
         # predict vals
         tree_pred = []
