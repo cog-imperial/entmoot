@@ -106,7 +106,7 @@ class Space:
             elif feat.is_int() or feat.is_bin():
                 array_list.append(
                     np.random.random_integers(low=feat.lb, high=feat.ub, size=num_samples))
-        return np.column_stack(array_list)
+        return np.squeeze(np.column_stack(array_list))
 
     def get_rnd_sample_list(self, num_samples=1, cat_enc=False):
         # returns list of tuples
@@ -124,7 +124,7 @@ class Space:
                 elif feat.is_int() or feat.is_bin():
                     sample.append(random.randint(feat.lb, feat.ub))
             sample_list.append(tuple(sample))
-        return sample_list
+        return sample_list if len(sample_list) > 1 else sample_list[0]
 
     def __str__(self):
         out_str = list(["\nSPACE SUMMARY"])
