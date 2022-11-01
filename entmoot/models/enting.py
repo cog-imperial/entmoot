@@ -6,18 +6,18 @@ from entmoot.models.uncertainty_models.l2_distance import L2Distance
 
 
 class Enting(BaseModel):
-    def __init__(self, space, params=None):
+    def __init__(self, problem_config, params=None):
 
         if params is None:
             params = {}
 
-        self._space = space
+        self._problem_config = problem_config
 
         # check params values
         tree_training_params = params.get("tree_train_params", {})
 
         # initialize mean model
-        self.mean_model = TreeEnsemble(space=space, params=tree_training_params)
+        self.mean_model = TreeEnsemble(problem_config=problem_config, params=tree_training_params)
 
         # initialize unc model
         unc_params = params.get("unc_params", {})
