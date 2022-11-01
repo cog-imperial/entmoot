@@ -126,9 +126,43 @@ class ProblemConfig:
             sample_list.append(tuple(sample))
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
+    def get_gurobi_model_core(self, env=None):
+        import gurobipy as gur
+
+        # initialize gurobi model
+        if env is None:
+            model = gur.Model()
+        else:
+            model = gur.Model(env=env)
+
+        # initalize var space
+        model._all_feat = {}
+
+        for i, feat in enumerate(self.feat_list):
+            if feat.is_real():
+                model._all_feat[i] = \
+                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='C')
+            elif feat.is_cat():
+                model._all_feat[i] = {}
+                for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
+                    comb_name = f"{feat.name}_{cat}"
+                    model._all_feat[i][enc] = \
+                        model.addVar(name=comb_name, vtype='B')
+            elif feat.is_int():
+                model._all_feat[i] = \
+                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='I')
+
+            elif feat.is_bin():
+                model._all_feat[i] = \
+                    model.addVar(name=feat.name, vtype='B')
+
+        model.update()
+        return model
+
+
     def __str__(self):
         out_str = list(["\nPROBLEM SUMMARY"])
-        out_str.append(len(out_str[-1][:-1])*"-")
+        out_str.append(len(out_str[-1][:-1]) * "-")
         out_str.append("features:")
         for feat in self.feat_list:
             if feat.is_cat():
@@ -169,20 +203,30 @@ class Real(FeatureType):
 
 class Categorical(FeatureType):
     def __init__(self, cat_list, name):
-        self.cat_list = cat_list
+        self._cat_list = cat_list
         self.name = name
 
         # encode categories
         self._enc2str, self._str2enc = {}, {}
+        self._enc_cat_list = []
         for enc, cat in enumerate(cat_list):
+            self._enc_cat_list.append(enc)
             self._enc2str[enc] = cat
             self._str2enc[cat] = enc
 
-    def trafo_str2enc(self, X):
-        raise NotImplementedError()
+    @property
+    def cat_list(self):
+        return self._cat_list
 
-    def trafo_enc2str(self, X):
-        raise NotImplementedError()
+    @property
+    def enc_cat_list(self):
+        return self._enc_cat_list
+
+    def trafo_str2enc(self, xi):
+        return self._str2enc[xi]
+
+    def trafo_enc2str(self, xi):
+        return self._enc2str[xi]
 
     def is_cat(self):
         return True
