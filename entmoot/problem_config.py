@@ -136,25 +136,25 @@ class ProblemConfig:
             model = gur.Model(env=env)
 
         # initalize var space
-        model._all_feat = {}
+        model._all_feat = []
 
         for i, feat in enumerate(self.feat_list):
             if feat.is_real():
-                model._all_feat[i] = \
-                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='C')
+                model._all_feat.append(
+                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='C'))
             elif feat.is_cat():
-                model._all_feat[i] = {}
+                model._all_feat.append(dict())
                 for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
                     comb_name = f"{feat.name}_{cat}"
                     model._all_feat[i][enc] = \
                         model.addVar(name=comb_name, vtype='B')
             elif feat.is_int():
-                model._all_feat[i] = \
-                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='I')
+                model._all_feat.append(
+                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='I'))
 
             elif feat.is_bin():
-                model._all_feat[i] = \
-                    model.addVar(name=feat.name, vtype='B')
+                model._all_feat.append(
+                    model.addVar(name=feat.name, vtype='B'))
 
         model.update()
         return model
