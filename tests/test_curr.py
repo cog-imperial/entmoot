@@ -53,3 +53,4 @@ def test_tree_model_definition():
     # Test 1: pyomo with gurobi yields same results as gurobipy
     # Test 2: pyomo with arbitrary solver should find good points on benchmark problems
     # Test 3: Compare BO-Loops
+    # TODO: Write function that compares a gurobi and a pyomo model (number of variables by category, constraints,...)
