@@ -6,13 +6,13 @@ import pytest
 def test_tree_model_definition():
     def test_func(X):
         X = np.atleast_2d(X)
-        return np.sin(X[:,0])
+        return np.sin(X[:, 0])
 
     def test_func_multi_obj(X):
         X = np.atleast_2d(X)
-        y0 = np.sin(X[:,0])
+        y0 = np.sin(X[:, 0])
         y1 = np.cos(X[:, 0])
-        return np.squeeze(np.column_stack([y0,y1]))
+        return np.squeeze(np.column_stack([y0, y1]))
 
     # define problem
     problem_config = ProblemConfig()
@@ -23,6 +23,7 @@ def test_tree_model_definition():
     problem_config.add_feature('categorical', ("blue", "orange", "gray"))
     problem_config.add_feature('integer', (5, 6))
     problem_config.add_feature('binary')
+
     problem_config.add_min_objective()
     problem_config.add_min_objective()
 
@@ -35,6 +36,13 @@ def test_tree_model_definition():
     tree = TreeEnsemble(problem_config)
     tree.fit(rnd_sample, pred)
 
-    # build model
-    model_core = problem_config.get_gurobi_model_core()
-    tree._add_gurobipy_model(model_core)
+    # build Gurobi model
+    model_core_gurobi = problem_config.get_gurobi_model_core()
+    tree._add_gurobipy_model(model_core_gurobi)
+
+    # build Pyomo model
+    model_core_pyomo = problem_config.get_pyomo_model_core()
+
+    # Test 1: pyomo with gurobi yields same results as gurobipy
+    # Test 2: pyomo with arbitrary solver should find good points on benchmark problems
+    # Test 3: Compare BO-Loops
