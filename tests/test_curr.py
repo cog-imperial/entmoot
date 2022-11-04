@@ -38,7 +38,6 @@ def test_tree_model_definition():
 
     # build Gurobi core model
     model_core_gurobi = problem_config.get_gurobi_model_core()
-
     # build Pyomo core model
     model_core_pyomo = problem_config.get_pyomo_model_core()
 
@@ -47,7 +46,8 @@ def test_tree_model_definition():
 
     # Enrich Gurobi model by constraints from tree model
     tree._add_to_gurobipy_model(model_core_gurobi)
-
+    # Enrich Pyomo model by constraints from tree model
+    tree._add_to_pyomo_model(model_core_pyomo)
 
 
     # Test 1: pyomo with gurobi yields same results as gurobipy

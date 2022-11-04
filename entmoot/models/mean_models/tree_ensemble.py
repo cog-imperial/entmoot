@@ -327,3 +327,65 @@ class TreeEnsemble(BaseModel):
         )
 
         model.update()
+
+    def _add_to_pyomo_model(self, model):
+        import pyomo.environ as pyo
+        self._update_meta_tree_dict()
+
+        # attach tree info
+        model._num_trees = lambda obj_name: self._meta_tree_dict[obj_name].num_trees
+
+        # attach leaf info
+        model._leaves = lambda obj_name, tree: \
+            tuple(self._meta_tree_dict[obj_name].get_leaf_encodings(tree))
+        model._leaf_weight = lambda obj_name, tree, leaf: \
+            self._meta_tree_dict[obj_name].get_leaf_weight(tree, leaf)
+        model._leaf_vars = lambda obj_name, tree, leaf: tuple(
+            var for var in self._meta_tree_dict[obj_name].get_participating_variables(tree, leaf))
+
+        # attach breakpoint info
+        var_break_points = [tree_model.get_var_break_points()
+                            for tree_model in self._meta_tree_dict.values()]
+        model._breakpoints = {}
+        model._breakpoint_index = []
+
+        for idx, feat in enumerate(self._problem_config.feat_list):
+            if feat.is_cat():
+                continue
+            else:
+                splits = set()
+                for vb in var_break_points:
+                    try:
+                        splits = splits.union(set(vb[idx]))
+                    except KeyError:
+                        pass
+                if splits:
+                    model._breakpoints[idx] = sorted(splits)
+                    model._breakpoint_index.append(idx)
+
+        # define indexing helper functions
+        def tree_index(model_obj):
+            for obj in self._problem_config.obj_list:
+                for tree in range(model_obj._num_trees(obj.name)):
+                    yield obj.name, tree
+
+        def leaf_index(model_obj):
+            for label, tree in tree_index(model_obj):
+                for leaf in model_obj._leaves(label, tree):
+                    yield label, tree, leaf
+
+        def interval_index(model_obj):
+            for var in model_obj._breakpoint_index:
+                for j in range(len(model_obj._breakpoints[var])):
+                    yield var, j
+
+        def split_index(model_obj, meta_tree_dict):
+            for label, tree in tree_index(model_obj):
+                for encoding in meta_tree_dict[label].get_branch_encodings(tree):
+                    yield label, tree, encoding
+
+        # add leaf variables
+        model._z = pyo.Var(leaf_index(model), domain=pyo.NonNegativeReals)
+
+        # add split variables
+        model._nu = pyo.Var(interval_index(model), domain=pyo.Binary)
