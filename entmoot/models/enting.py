@@ -43,7 +43,7 @@ class Enting(BaseModel):
             raise IOError(f"Uncertainty type '{dist_metric}' for {self.__class__.__name__} model "
                           f"is not supported. Check 'params['uncertainty_type']'.")
 
-    def _add_gurobipy_model(core_model, gurobi_env):
+    def _add_to_gurobipy_model(core_model, gurobi_env):
         raise NotImplementedError()
 
     def _add_pyomo_model(core_model):
