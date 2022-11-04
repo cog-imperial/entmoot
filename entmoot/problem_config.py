@@ -151,12 +151,60 @@ class ProblemConfig:
             elif feat.is_int():
                 model._all_feat.append(
                     model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype='I'))
-
             elif feat.is_bin():
                 model._all_feat.append(
                     model.addVar(name=feat.name, vtype='B'))
 
         model.update()
+        return model
+
+    def get_pyomo_model_core(self):
+        import pyomo.environ as pyo
+
+        # initialize Pyomo model
+        model = pyo.ConcreteModel()
+
+        # Initialize var space
+        model._all_feat = []
+
+        # Define some auxiliary dictionaries
+        index_to_var_domain = {}
+        index_to_var_bounds = {}
+        for i, feat in enumerate(self.feat_list):
+            if feat.is_real():
+                index_to_var_domain[i] = pyo.Reals
+                index_to_var_bounds[i] = (feat.lb, feat.ub)
+            elif feat.is_cat():
+                for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
+                    # We encode the index of this variable by (i, enc, cat), where 'i' is the position in the list of
+                    # features, 'enc' is the corresponding encoded numerical value and 'cat' is the category
+                    index_to_var_domain[i, enc, cat] = pyo.Binary
+            elif feat.is_int():
+                index_to_var_domain[i] = pyo.Integers
+                index_to_var_bounds[i] = (feat.lb, feat.ub)
+            elif feat.is_bin():
+                index_to_var_domain[i] = pyo.Binary
+
+        # Build Pyomo index set from dictionary keys
+        # Why strings?? Well, pyomo doesn't support lists where some indices are multidimensional, but this is handy
+        # for encoded categorical features
+        model.I = pyo.Set(initialize=[str(x) for x in index_to_var_domain])
+
+        # These auxiliary functions are needed, because Pyomo does not accept the dictionaries instead. The 'model'
+        # argument is needed as well, but not explicitly used.
+        # We hve the eval-statement eval(i) instead of just i, because the indices are strings for reasons explained
+        # above :(
+        def i_to_dom(model, i):
+            return index_to_var_domain[eval(i)]
+        def i_to_bounds(model, i):
+            if eval(i) in index_to_var_bounds:
+                return index_to_var_bounds[eval(i)]
+            else:
+                return (None, None)
+
+        # Define decision variables for Pyomo model
+        model.x = pyo.Var(model.I, domain=i_to_dom, bounds=i_to_bounds)
+
         return model
 
 
