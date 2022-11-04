@@ -36,12 +36,19 @@ def test_tree_model_definition():
     tree = TreeEnsemble(problem_config)
     tree.fit(rnd_sample, pred)
 
-    # build Gurobi model
+    # build Gurobi core model
     model_core_gurobi = problem_config.get_gurobi_model_core()
-    tree._add_gurobipy_model(model_core_gurobi)
 
-    # build Pyomo model
+    # build Pyomo core model
     model_core_pyomo = problem_config.get_pyomo_model_core()
+
+    # Assert that both models contain the same number of variables:
+    assert len(model_core_gurobi.getVars()) == len(model_core_pyomo.x)
+
+    # Enrich Gurobi model by constraints from tree model
+    tree._add_to_gurobipy_model(model_core_gurobi)
+
+
 
     # Test 1: pyomo with gurobi yields same results as gurobipy
     # Test 2: pyomo with arbitrary solver should find good points on benchmark problems
