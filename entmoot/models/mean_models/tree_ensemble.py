@@ -389,3 +389,11 @@ class TreeEnsemble(BaseModel):
 
         # add split variables
         model._nu = pyo.Var(interval_index(model), domain=pyo.Binary)
+
+        def single_leaf_rule(model_obj, label, tree):
+            z, leaves = model_obj._z, model_obj._leaves
+            return sum(z[label, tree, leaf] for leaf in leaves(label, tree)) == 1
+
+        model.single_leaf_constraint = pyo.Constraint(
+            [(label, tree) for (label, tree) in tree_index(model)], rule=single_leaf_rule
+        )
