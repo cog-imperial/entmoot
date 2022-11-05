@@ -451,3 +451,12 @@ class TreeEnsemble(BaseModel):
             [(label, tree, encoding) for (label, tree, encoding) in split_index(model, self.meta_tree_dict)],
             rule=right_split_r
         )
+
+        # add split order constraints
+        def y_order_r(model_obj, i, j):
+            return model_obj._nu[i, j] <= model_obj._nu[i, j + 1]
+
+        model.y_order_constraints = pyo.Constraint(
+            [(var, j) for (var, j) in interval_index(model) if j != len(model._breakpoints[var]) - 1],
+            rule=y_order_r
+        )
