@@ -460,3 +460,11 @@ class TreeEnsemble(BaseModel):
             [(var, j) for (var, j) in interval_index(model) if j != len(model._breakpoints[var]) - 1],
             rule=y_order_r
         )
+
+        # add cat var constraints
+        def cat_sums(model_obj, i):
+            return sum(model_obj._all_feat[i][cat] for cat in model_obj._all_feat[i]) == 1
+
+        model.categorical_sum_constraints = pyo.Constraint(
+            [var for var in self._problem_config.cat_idx], rule = cat_sums
+        )
