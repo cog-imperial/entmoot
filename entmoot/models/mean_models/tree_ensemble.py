@@ -398,6 +398,10 @@ class TreeEnsemble(BaseModel):
             [(label, tree) for (label, tree) in tree_index(model)], rule=single_leaf_rule
         )
 
+        # We hide the dictionary in the model data since we will need it some functions (e.g.left_split_r()), but
+        # the function is not allowed to have the dict as an argument since otherwise Pyomo would not accept it as rule.
+        model.meta_tree_dict = self.meta_tree_dict
+
         # add left split constraints
         def left_split_r(model_obj, label, tree, split_enc):
             meta_tree_dict = model.meta_tree_dict
@@ -418,13 +422,32 @@ class TreeEnsemble(BaseModel):
                     for leaf in meta_tree_dict[label].get_left_leaves(tree, split_enc)
                 ) <= sum(model_obj._all_feat[split_var][cat] for cat in split_val)
 
-        # We hide the dictionary in the model data since we will need it in the function left_split_r() above, but
-        # the function is not allowed to have the dict as an argument since otherwise Pyomo would not accept it as rule.
-        model.meta_tree_dict = self.meta_tree_dict
-
         model.left_split_constraints = pyo.Constraint(
             [(label, tree, encoding) for (label, tree, encoding) in split_index(model, self.meta_tree_dict)],
             rule=left_split_r
         )
 
-        pass
+        # add right split constraints
+        def right_split_r(model_obj, label, tree, split_enc):
+            meta_tree_dict = model_obj.meta_tree_dict
+            split_var, split_val = \
+                meta_tree_dict[label].get_branch_partition_pair(tree, split_enc)
+
+            if not isinstance(split_val, list):
+                # non-cat vars
+                nu_val = model_obj._breakpoints[split_var].index(split_val)
+                return sum(
+                    model_obj._z[label, tree, leaf]
+                    for leaf in meta_tree_dict[label].get_right_leaves(tree, split_enc)
+                ) <= 1 - model_obj._nu[split_var, nu_val]
+            else:
+                # cat vars
+                return sum(
+                    model_obj._z[label, tree, leaf]
+                    for leaf in meta_tree_dict[label].get_right_leaves(tree, split_enc)
+                ) <= 1 - sum(model_obj._all_feat[split_var][cat] for cat in split_val)
+
+        model.right_split_constraints = pyo.Constraint(
+            [(label, tree, encoding) for (label, tree, encoding) in split_index(model, self.meta_tree_dict)],
+            rule=right_split_r
+        )
