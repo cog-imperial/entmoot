@@ -468,3 +468,22 @@ class TreeEnsemble(BaseModel):
         model.categorical_sum_constraints = pyo.Constraint(
             [var for var in self._problem_config.cat_idx], rule = cat_sums
         )
+
+        # add split / space linking constraints
+        def var_lower_r(model_obj, i, j):
+            lb = model_obj._all_feat[i].lb
+            j_bound = model_obj._breakpoints[i][j]
+            return model_obj._all_feat[i] >= lb + (j_bound - lb) * (1 - model_obj._nu[i, j])
+
+        def var_upper_r(model_obj, i, j):
+            ub = model_obj._all_feat[i].ub
+            j_bound = model_obj._breakpoints[i][j]
+            return model_obj._all_feat[i] <= ub + (j_bound - ub) * (model_obj._nu[i, j])
+
+        model.linking_constraints_lower = pyo.Constraint(
+            [(var, j) for (var, j) in interval_index(model)], rule=var_lower_r
+        )
+
+        model.linking_constraints_upper = pyo.Constraint(
+            [(var, j) for (var, j) in interval_index(model)], rule=var_upper_r
+        )
