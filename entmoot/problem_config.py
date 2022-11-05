@@ -204,6 +204,22 @@ class ProblemConfig:
 
         # Define decision variables for Pyomo model
         model.x = pyo.Var(model.I, domain=i_to_dom, bounds=i_to_bounds)
+        # We store the decision variables corresponding to the features in the list _all_feat in order to follow a
+        # similar strategy to the gurobi model. Can be replaced in the future by a more direct approach.
+        for i_str in model.x:
+            i = eval(i_str)
+            if type(i) is int:
+                model._all_feat.append(model.x[i_str])
+            elif type(i) is tuple:
+                if i[1] == 0:
+                    model._all_feat.append([])
+                    model._all_feat[-1].append(model.x[i_str])
+                elif i[1] > 0:
+                    model._all_feat[-1].append(model.x[i_str])
+                else:
+                    raise TypeError
+            else:
+                raise TypeError
 
         return model
 
