@@ -1,6 +1,7 @@
 from entmoot.problem_config import ProblemConfig
 import numpy as np
 import pytest
+import pyomo.environ as pyo
 
 @pytest.mark.fast_test
 def test_tree_model_definition():
@@ -49,8 +50,7 @@ def test_tree_model_definition():
     # Enrich Pyomo model by constraints from tree model
     tree._add_to_pyomo_model(model_core_pyomo)
 
-
-    # Test 1: pyomo with gurobi yields same results as gurobipy
-    # Test 2: pyomo with arbitrary solver should find good points on benchmark problems
-    # Test 3: Compare BO-Loops
-    # TODO: Write function that compares a gurobi and a pyomo model (number of variables by category, constraints,...)
+    # Assert that both models contain the same number of variables:
+    assert len(model_core_gurobi.getVars()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Var))
+    # Assert that both models contain the same number of constraints:
+    assert len(model_core_gurobi.getConstrs()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
