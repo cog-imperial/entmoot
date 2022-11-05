@@ -212,10 +212,10 @@ class ProblemConfig:
                 model._all_feat.append(model.x[i_str])
             elif type(i) is tuple:
                 if i[1] == 0:
-                    model._all_feat.append([])
-                    model._all_feat[-1].append(model.x[i_str])
+                    model._all_feat.append({})
+                    model._all_feat[-1][i[2]] = model.x[i_str]
                 elif i[1] > 0:
-                    model._all_feat[-1].append(model.x[i_str])
+                    model._all_feat[-1][i[2]] = model.x[i_str]
                 else:
                     raise TypeError
             else:
