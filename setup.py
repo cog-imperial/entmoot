@@ -15,7 +15,7 @@ setup(
     license=about['__license__'],
     version=about['__version__'],
     url='https://github.com/cog-imperial/entmoot',
-    packages=find_packages(exclude=['tests','docs']),
+    packages=find_packages(exclude=['tests', 'docs']),
     install_requires=[
         'numpy>=1.18.4',
         'scikit-learn>=0.21.3',
