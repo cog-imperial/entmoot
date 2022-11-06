@@ -1,6 +1,3 @@
-import collections as coll
-
-
 class MetaTreeModel:
     def __init__(self, tree_list: list):
         self._num_trees = len(tree_list)
@@ -169,6 +166,7 @@ class TreeNode(TreeType):
             yield from next_node.get_right_leaves(encoding[1:])
         else:
             yield from self.right.get_leaf_encodings('1')
+
 
 class LeafNode(TreeType):
     def __init__(self,

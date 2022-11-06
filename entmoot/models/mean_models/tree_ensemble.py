@@ -17,8 +17,8 @@ class TreeEnsemble(BaseModel):
         self._rnd_seed = problem_config.rnd_seed
 
         assert self._train_lib in ('lgbm', 'catboost', 'xgboost'), \
-            f"Parameter 'train_lib' for tree ensembles needs to be " \
-            f"in '('lgbm', 'catboost', 'xgboost')'."
+            "Parameter 'train_lib' for tree ensembles needs to be " \
+            "in '('lgbm', 'catboost', 'xgboost')'."
 
         if "train_params" not in params:
             # default training params
@@ -62,14 +62,14 @@ class TreeEnsemble(BaseModel):
             X = np.atleast_2d(X)
 
         assert X.shape[-1] == len(self._problem_config.feat_list), \
-            f"Argument 'X' has wrong dimensions. " \
+            "Argument 'X' has wrong dimensions. " \
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
 
         if y.ndim == 1:
             y = np.atleast_2d(y)
 
         assert y.shape[-1] == len(self._problem_config.obj_list), \
-            f"Argument 'y' has wrong dimensions. " \
+            "Argument 'y' has wrong dimensions. " \
             f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
 
         # train tree models for every objective
@@ -84,8 +84,8 @@ class TreeEnsemble(BaseModel):
             elif self._train_lib == "xgboost":
                 raise NotImplementedError()
             else:
-                raise IOError(f"Parameter 'train_lib' for tree ensembles needs to be "
-                              f"in '('lgbm', 'catboost', 'xgboost')'.")
+                raise IOError("Parameter 'train_lib' for tree ensembles needs to be "
+                              "in '('lgbm', 'catboost', 'xgboost')'.")
             self._tree_dict[obj.name] = tree_model
 
     def _train_lgbm(self, X, y):
@@ -120,7 +120,7 @@ class TreeEnsemble(BaseModel):
             X = np.atleast_2d(X)
 
         assert X.shape[-1] == len(self._problem_config.feat_list), \
-            f"Argument 'X' has wrong dimensions. " \
+            "Argument 'X' has wrong dimensions. " \
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
 
         # predict vals
@@ -143,8 +143,8 @@ class TreeEnsemble(BaseModel):
             elif self._train_lib == "xgboost":
                 raise NotImplementedError()
             else:
-                raise IOError(f"Parameter 'train_lib' for tree ensembles needs to be "
-                              f"in '('lgbm', 'catboost', 'xgboost')'.")
+                raise IOError("Parameter 'train_lib' for tree ensembles needs to be "
+                              "in '('lgbm', 'catboost', 'xgboost')'.")
 
             # order tree_model_dict
             ordered_tree_model_dict = \
@@ -466,7 +466,7 @@ class TreeEnsemble(BaseModel):
             return sum(model_obj._all_feat[i][cat] for cat in model_obj._all_feat[i]) == 1
 
         model.categorical_sum_constraints = pyo.Constraint(
-            [var for var in self._problem_config.cat_idx], rule = cat_sums
+            [var for var in self._problem_config.cat_idx], rule=cat_sums
         )
 
         # add split / space linking constraints

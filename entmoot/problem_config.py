@@ -188,7 +188,7 @@ class ProblemConfig:
         # Build Pyomo index set from dictionary keys
         # Why strings?? Well, pyomo doesn't support lists where some indices are multidimensional, but this is handy
         # for encoded categorical features
-        model.I = pyo.Set(initialize=[str(x) for x in index_to_var_domain])
+        model.indices_features = pyo.Set(initialize=[str(x) for x in index_to_var_domain])
 
         # These auxiliary functions are needed, because Pyomo does not accept the dictionaries instead. The 'model'
         # argument is needed as well, but not explicitly used.
@@ -196,6 +196,7 @@ class ProblemConfig:
         # above :(
         def i_to_dom(model, i):
             return index_to_var_domain[eval(i)]
+
         def i_to_bounds(model, i):
             if eval(i) in index_to_var_bounds:
                 return index_to_var_bounds[eval(i)]
@@ -203,7 +204,7 @@ class ProblemConfig:
                 return (None, None)
 
         # Define decision variables for Pyomo model
-        model.x = pyo.Var(model.I, domain=i_to_dom, bounds=i_to_bounds)
+        model.x = pyo.Var(model.indices_features, domain=i_to_dom, bounds=i_to_bounds)
         # We store the decision variables corresponding to the features in the list _all_feat in order to follow a
         # similar strategy to the gurobi model. Can be replaced in the future by a more direct approach.
         for i_str in model.x:
@@ -222,7 +223,6 @@ class ProblemConfig:
                 raise TypeError
 
         return model
-
 
     def __str__(self):
         out_str = list(["\nPROBLEM SUMMARY"])

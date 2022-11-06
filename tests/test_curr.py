@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 import pyomo.environ as pyo
 
+
 @pytest.mark.fast_test
 def test_tree_model_definition():
     def test_func(X):
