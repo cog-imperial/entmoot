@@ -1,3 +1,4 @@
+[![Python package](https://github.com/cog-imperial/entmoot/actions/workflows/python-package.yml/badge.svg?branch=entmoot-v2)](https://github.com/cog-imperial/entmoot/actions/workflows/python-package.yml)
 
 <img src="media/entmoot_logo.png" width="400">
 
