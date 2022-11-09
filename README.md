@@ -1,4 +1,5 @@
 [![Tests](https://github.com/cog-imperial/entmoot/actions/workflows/python-package.yml/badge.svg?branch=entmoot-v2)](https://github.com/cog-imperial/entmoot/actions/workflows/python-package.yml)
+[![Read the Docs](https://readthedocs.org/projects/entmoot/badge/?version=latest)](https://entmoot.readthedocs.io/en/latest/)
 
 <img src="media/entmoot_logo.png" width="400">
 
