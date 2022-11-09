@@ -1,3 +1,3 @@
-How to install it
+Notebooks
 =================
 Test
