@@ -102,7 +102,6 @@ class TreeEnsemble(BaseModel):
         tree_pred = []
         for obj in self._problem_config.obj_list:
             tree_pred.append(self.tree_dict[obj.name].predict(X))
-
         return np.squeeze(np.column_stack(tree_pred))
 
     def _update_meta_tree_dict(self):
