@@ -22,6 +22,8 @@ class Enting(BaseModel):
         self.unc_model = DistanceBasedUncertainty(problem_config=problem_config, params=unc_params)
 
     def fit(self, X, y):
+        X = self._problem_config.encode(X)
+
         # check dims of X and y
         if X.ndim == 1:
             X = np.atleast_2d(X)
@@ -41,6 +43,8 @@ class Enting(BaseModel):
         self.unc_model.fit(X, y)
 
     def predict(self, X):
+        X = self._problem_config.encode(X)
+
         # check dims of X
         if X.ndim == 1:
             X = np.atleast_2d(X)
@@ -51,7 +55,7 @@ class Enting(BaseModel):
 
         mean_pred = self.mean_model.predict(X)
         unc_pred = self.unc_model.predict(X)
-        return mean_pred + unc_pred
+        return list(zip(mean_pred, unc_pred))
 
     def _add_to_gurobipy_model(core_model, gurobi_env):
         raise NotImplementedError()
