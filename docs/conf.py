@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../../entmoot/'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Entmoot'
+project = 'ENTMOOT'
 copyright = '2022, Alexander Thebelt, Nathan Sudermann-Merx'
 author = 'Alexander Thebelt, Nathan Sudermann-Merx'
 
