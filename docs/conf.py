@@ -12,7 +12,9 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../entmoot'), os.path.abspath('..'), os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../entmoot'))
+sys.path.insert(1, os.path.abspath('..'))
+sys.path.insert(2, os.path.abspath('../..'))
 
 
 # -- Project information -----------------------------------------------------
