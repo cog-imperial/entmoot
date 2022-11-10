@@ -1,3 +1,3 @@
-First steps
-===========
+Getting started
+===============
 ballaballa
