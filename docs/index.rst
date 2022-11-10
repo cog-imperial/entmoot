@@ -42,7 +42,7 @@ This small example illustrates how to use ENTMOOT.
    Installation <installation>
    Getting Started <quickstart>
    Examples <notebooks>
-   API Reference <apidoc/modules>
+   API Reference <apidoc/entmoot>
 
 Authors
 ~~~~~~~
