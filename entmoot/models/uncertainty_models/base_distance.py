@@ -4,24 +4,13 @@ import numpy as np
 
 class BaseDistance(BaseModel):
 
-    def __init__(self, problem_config, params=None):
-        if params is None:
-            params = {}
-
+    def __init__(self, problem_config, acq_sense, dist_trafo):
         self._problem_config = problem_config
-        self._acq_sense = params.get("acq_sense", "exploration")
-        self._dist_trafo = params.get("dist_trafo", "normal")
+        self._acq_sense = acq_sense
+        self._dist_trafo = dist_trafo
 
         self._shift, self._scale = None, None
-        self._non_cat_x, self._cat_x = None, None
-
-        assert self._dist_trafo in ('normal', 'standard'), \
-            "Parameter 'dist_trafo' for uncertainty model needs to be " \
-            "in '('normal', 'standard')'."
-
-        assert self._acq_sense in ('exploration', 'penalty'), \
-            "Parameter 'acq_sense' for uncertainty model needs to be " \
-            "in '('exploration', 'penalty')'."
+        self._X = None
 
     @property
     def shift(self):
@@ -31,19 +20,11 @@ class BaseDistance(BaseModel):
     def scale(self):
         return self._scale
 
-    @property
-    def non_cat_x(self):
-        return self._non_cat_x
-
-    @property
-    def cat_x(self):
-        return self._cat_x
-
     def _get_distance(self, x_left, x_right):
         raise NotImplementedError()
 
     def predict(self, X):
-        raise NotImplementedError()
+        return self._get_distance(self._X_trafo, X)
 
     def _array_predict(self, X):
         raise NotImplementedError()
@@ -54,14 +35,13 @@ class BaseDistance(BaseModel):
             self._shift = np.asarray(self._problem_config.non_cat_lb)
             self._scale = np.asarray(self._problem_config.non_cat_bnd_diff)
         elif self._dist_trafo == "standard":
-            self._shift = np.mean(np.asarray(X[:, self._problem_config.non_cat_idx]), axis=0)
-            self._scale = np.std(np.asarray(X[:, self._problem_config.non_cat_idx]), axis=0)
+            self._shift = np.mean(np.asarray(X), axis=0)
+            self._scale = np.std(np.asarray(X), axis=0)
         else:
             raise IOError("Parameter 'dist_trafo' for uncertainty model needs to be "
                           "in '('normal', 'standard')'.")
 
-        self._non_cat_x = X[:, self._problem_config.non_cat_idx]
-        self._cat_x = X[:, self._problem_config.cat_idx]
+        self._X_trafo = (X - self._shift) / self._scale
 
     def _add_to_gurobipy_model(self, model_core):
         raise NotImplementedError()
