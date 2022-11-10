@@ -1,7 +1,7 @@
-from entmoot.models.uncertainty_models.base_distance import BaseDistance
+from entmoot.models.uncertainty_models.base_distance import NonCatDistance
 import numpy as np
 
-class EuclideanSquaredDistance(BaseDistance):
+class EuclideanSquaredDistance(NonCatDistance):
 
     def _get_distance(self, x_left, x_right):
         if x_left.ndim == 1:
