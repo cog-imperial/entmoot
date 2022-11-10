@@ -1,7 +1,7 @@
-from entmoot.models.base_model import BaseModel
+from entmoot.models.uncertainty_models.base_distance import NonCatDistance
 
 
-class L2Distance(BaseModel):
+class L2Distance(NonCatDistance):
 
     def __init__(self, dist_trafo, acq_sense):
         raise NotImplementedError()

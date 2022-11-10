@@ -1,9 +1,7 @@
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
-from entmoot.models.uncertainty_models.euclidean_squared_distance import EuclideanSquaredDistance
-from entmoot.models.uncertainty_models.l1_distance import L1Distance
-from entmoot.models.uncertainty_models.l2_distance import L2Distance
-
+from entmoot.models.uncertainty_models.distance_based_uncertainty import DistanceBasedUncertainty
+import numpy as np
 
 class Enting(BaseModel):
     def __init__(self, problem_config, params=None):
@@ -21,27 +19,43 @@ class Enting(BaseModel):
 
         # initialize unc model
         unc_params = params.get("unc_params", {})
-        dist_metric = unc_params.get("dist_metric", "euclidean_squared")
-        dist_trafo = unc_params.get("dist_trafo", "normalize")
-        acq_sense = unc_params.get("acq_sense", "exploration")
-        self._beta = unc_params.get("beta", 1.96)
+        self.unc_model = DistanceBasedUncertainty(problem_config=problem_config, params=unc_params)
 
-        assert dist_trafo in ('normalize', 'standardize'), \
-            f"Pick 'dist_trafo' '{dist_trafo}' in '('normalize', 'standardize')'."
+    def fit(self, X, y):
+        X = self._problem_config.encode(X)
 
-        assert acq_sense in ('exploration', 'penalty'), \
-            f"Pick 'acq_sense' '{acq_sense}' in '('exploration', 'penalty')'."
+        # check dims of X and y
+        if X.ndim == 1:
+            X = np.atleast_2d(X)
 
-        # pick distance metric
-        if dist_metric == "euclidean_squared":
-            self.unc_model = EuclideanSquaredDistance(dist_trafo=dist_trafo, acq_sense=acq_sense)
-        elif dist_metric == "l1":
-            self.unc_model = L1Distance(dist_trafo=dist_trafo, acq_sense=acq_sense)
-        elif dist_metric == "l2":
-            self.unc_model = L2Distance(dist_trafo=dist_trafo, acq_sense=acq_sense)
-        else:
-            raise IOError(f"Uncertainty type '{dist_metric}' for {self.__class__.__name__} model "
-                          f"is not supported. Check 'params['uncertainty_type']'.")
+        assert X.shape[-1] == len(self._problem_config.feat_list), \
+            "Argument 'X' has wrong dimensions. " \
+            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
+
+        if y.ndim == 1:
+            y = np.atleast_2d(y)
+
+        assert y.shape[-1] == len(self._problem_config.obj_list), \
+            "Argument 'y' has wrong dimensions. " \
+            f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
+
+        self.mean_model.fit(X, y)
+        self.unc_model.fit(X, y)
+
+    def predict(self, X):
+        X = self._problem_config.encode(X)
+
+        # check dims of X
+        if X.ndim == 1:
+            X = np.atleast_2d(X)
+
+        assert X.shape[-1] == len(self._problem_config.feat_list), \
+            "Argument 'X' has wrong dimensions. " \
+            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
+
+        mean_pred = self.mean_model.predict(X)
+        unc_pred = self.unc_model.predict(X)
+        return list(zip(mean_pred, unc_pred))
 
     def _add_to_gurobipy_model(core_model, gurobi_env):
         raise NotImplementedError()

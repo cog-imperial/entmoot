@@ -56,22 +56,6 @@ class TreeEnsemble(BaseModel):
         return self._meta_tree_dict
 
     def fit(self, X, y):
-
-        # check dims of X and y
-        if X.ndim == 1:
-            X = np.atleast_2d(X)
-
-        assert X.shape[-1] == len(self._problem_config.feat_list), \
-            "Argument 'X' has wrong dimensions. " \
-            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
-
-        if y.ndim == 1:
-            y = np.atleast_2d(y)
-
-        assert y.shape[-1] == len(self._problem_config.obj_list), \
-            "Argument 'y' has wrong dimensions. " \
-            f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
-
         # train tree models for every objective
         if self._tree_dict is None:
             self._tree_dict = {}
@@ -114,15 +98,6 @@ class TreeEnsemble(BaseModel):
         return tree_model
 
     def predict(self, X):
-
-        # check dims of X
-        if X.ndim == 1:
-            X = np.atleast_2d(X)
-
-        assert X.shape[-1] == len(self._problem_config.feat_list), \
-            "Argument 'X' has wrong dimensions. " \
-            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
-
         # predict vals
         tree_pred = []
         for obj in self._problem_config.obj_list:
