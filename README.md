@@ -8,6 +8,12 @@ tree models from `lightgbm` are combined with a distance-based uncertainty
 measure in a deterministic global optimization framework to optimize black-box functions. More
 details on the method here: https://arxiv.org/abs/2003.04774.
 
+## Documentation
+
+The docs can be found here: https://entmoot.readthedocs.io/
+
+## How to reference ENTMOOT
+
 When using any `ENTMOOT` for any publications please reference this software package as:
 ```
 @article{thebelt2021entmoot,
@@ -25,7 +31,6 @@ When using any `ENTMOOT` for any publications please reference this software pac
 ## Authors
 * **[Alexander Thebelt](https://optimisation.doc.ic.ac.uk/person/alexander-thebelt/)** ([ThebTron](https://github.com/ThebTron)) - Imperial College London
 * **[Nathan Sudermann-Merx](https://www.mannheim.dhbw.de/profile/sudermann-merx)** ([spiralulam](https://github.com/spiralulam)) - Cooperative State University Mannheim
-* **[David Walz](https://www.linkedin.com/in/walzds/?originalSubdomain=de)** ([DavidWalz](https://github.com/DavidWalz)) - BASF SE
 ## License
 The ENTMOOT package is released under the BSD 3-Clause License. Please refer to the [LICENSE](https://github.com/cog-imperial/entmoot/blob/master/LICENSE) file for details.
 
