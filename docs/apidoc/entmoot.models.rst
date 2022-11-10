@@ -1,5 +1,5 @@
-entmoot.models package
-======================
+ENTMOOT Surrogate Models
+========================
 
 Subpackages
 -----------

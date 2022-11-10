@@ -1,4 +1,4 @@
-entmoot.optimizers package
+ENTMOOT Optimizers
 ==========================
 
 Submodules

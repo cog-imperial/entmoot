@@ -1,4 +1,4 @@
-entmoot.models.uncertainty\_models package
+ENTMOOT Uncertainty Models
 ==========================================
 
 Submodules
