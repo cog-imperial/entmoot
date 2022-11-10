@@ -25,6 +25,14 @@ class ProblemConfig:
         return tuple([i for i, feat in enumerate(self.feat_list) if not feat.is_cat()])
 
     @property
+    def non_cat_lb(self):
+        return tuple([feat.lb for i, feat in enumerate(self.feat_list) if not feat.is_cat()])
+
+    @property
+    def non_cat_ub(self):
+        return tuple([feat.ub for i, feat in enumerate(self.feat_list) if not feat.is_cat()])
+
+    @property
     def feat_list(self):
         return self._feat_list
 
