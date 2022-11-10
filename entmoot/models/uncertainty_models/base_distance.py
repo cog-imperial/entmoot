@@ -41,7 +41,7 @@ class NonCatDistance(BaseModel):
     def _array_predict(self, X):
         raise NotImplementedError()
 
-    def fit(self, X, y):
+    def fit(self, X):
         non_cat_x = X[:, self._problem_config.non_cat_idx]
 
         # define shift and scalar values for non-cat feats
@@ -57,7 +57,7 @@ class NonCatDistance(BaseModel):
 
         self._x_trafo = self._trafo(non_cat_x)
 
-    def _add_to_gurobipy_model(self, model_core):
+    def get_gurobipy_model_constr(self, model_core):
         raise NotImplementedError()
 
     def _add_pyomo_model(self, model_core):
@@ -104,7 +104,7 @@ class CatDistance(BaseModel):
     def _sim_mat_rule(self, x_left, x_right, cat_idx):
         raise NotImplementedError()
 
-    def fit(self, X, y):
+    def fit(self, X):
         # generate similarity matrix for all data points
         self._sim_map = {}
 
@@ -114,7 +114,7 @@ class CatDistance(BaseModel):
 
             # creates similarity entries for all categories of all categorical features
             mat = np.fromfunction(
-                np.vectorize(self._sim_mat_rule,),
+                np.vectorize(self._sim_mat_rule, ),
                 (len(all_cats), len(all_cats)),
                 dtype=int, cat_idx=idx
             )
@@ -122,9 +122,20 @@ class CatDistance(BaseModel):
 
         self._cache_x = X
 
+    def get_gurobipy_model_constr_terms(self, model):
+        feat = model._all_feat
+        constr_list = []
+        for xi in self.cache_x:
+            constr = 0
 
-    def _add_to_gurobipy_model(self, model_core):
-        raise NotImplementedError()
+            # iterate through all categories to check which distances are active
+            for idx in self._problem_config.cat_idx:
+                for cat in self._problem_config.feat_list[idx].enc_cat_list:
+                    sim = self.sim_map[idx][cat, int(xi[idx])]
+                    constr += (1 - sim) * feat[idx][cat]
+
+            constr_list.append(constr)
+        return constr_list
 
     def _add_pyomo_model(self, model_core):
         raise NotImplementedError()

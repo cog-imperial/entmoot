@@ -9,6 +9,7 @@ from entmoot.models.uncertainty_models.of_distance import OfDistance
 
 import numpy as np
 
+
 class DistanceBasedUncertainty(BaseModel):
 
     def __init__(self, problem_config, params):
@@ -21,7 +22,9 @@ class DistanceBasedUncertainty(BaseModel):
 
         self._beta = params.get("beta", 1.96)
         self._non_cat_x, self._cat_x = None, None
-        self._y_variance = None
+        self._dist_bound = None
+        self._acq_sense = acq_sense
+        self._num_cache_x = None
 
         if dist_trafo == "standard":
             assert len(self._problem_config.obj_list) == 1, \
@@ -73,12 +76,20 @@ class DistanceBasedUncertainty(BaseModel):
                 f"Categorical uncertainty metric '{cat_metric}' for {self.__class__.__name__} "
                 f"model is not supported. Check 'params['uncertainty_type']'.")
 
+    @property
+    def num_cache_x(self):
+        assert self._num_cache_x is not None, \
+            f"Uncertainty model needs fit function call before it can predict."
+        return self._num_cache_x
 
     def fit(self, X, y):
         if self._dist_has_var_bound:
-            self._y_variance = np.var(y)
-        self.non_cat_unc_model.fit(X, y)
-        self.cat_unc_model.fit(X, y)
+            self._dist_bound = abs(np.var(y) * self._bound_coeff)
+
+        self._num_cache_x = len(X)
+
+        self.non_cat_unc_model.fit(X)
+        self.cat_unc_model.fit(X)
 
     def predict(self, X):
         comb_pred = []
@@ -89,9 +100,33 @@ class DistanceBasedUncertainty(BaseModel):
 
             # the standard trafo case has a bound on the prediction
             if self._dist_has_var_bound:
-                dist_bound = abs(self._y_variance*self._bound_coeff)
-                if dist_pred > dist_bound:
-                    dist_pred = dist_bound
+                if dist_pred > self._dist_bound:
+                    dist_pred = self._dist_bound
 
             comb_pred.append(dist_pred)
         return np.asarray(comb_pred)
+
+    def add_to_gurobipy_model(self, model):
+        from gurobipy import GRB
+
+        # define main uncertainty variables
+        if self._dist_has_var_bound:
+            dist_bound = self._dist_bound
+        else:
+            dist_bound = GRB.INFINITY
+
+        model._unc = model.addVar(
+            lb=0.0, ub=dist_bound, name="uncertainty", vtype="C"
+        )
+
+        # get constr terms for non-categorical and categorical contributions
+        non_cat_terms = self.non_cat_unc_model.get_gurobipy_model_constr_terms(model)
+        cat_terms = self.cat_unc_model.get_gurobipy_model_constr_terms(model)
+
+        for i, (term1, term2) in enumerate(zip(non_cat_terms, cat_terms)):
+            model.addQConstr(
+                model._unc <= (term1 + term2) * self._dist_coeff,
+                name=f"unc_x_{i}"
+            )
+
+        model.update()

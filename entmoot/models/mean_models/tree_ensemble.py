@@ -127,7 +127,7 @@ class TreeEnsemble(BaseModel):
             # populate meta_tree_model
             self._meta_tree_dict[obj.name] = MetaTreeModel(ordered_tree_model_dict)
 
-    def _add_to_gurobipy_model(self, model):
+    def add_to_gurobipy_model(self, model):
         from gurobipy import GRB, quicksum
         self._update_meta_tree_dict()
 

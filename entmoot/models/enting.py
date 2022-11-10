@@ -63,22 +63,11 @@ class Enting(BaseModel):
 
         return comb_pred
 
-    def _add_to_gurobipy_model(core_model, gurobi_env):
-        raise NotImplementedError()
+    def add_to_gurobipy_model(self, core_model):
+        self.mean_model.add_to_gurobipy_model(core_model)
+        self.unc_model.add_to_gurobipy_model(core_model)
 
-    def _add_pyomo_model(core_model):
-        raise NotImplementedError()
-
-    def _add_gurobipy_mean(core_model, gurobi_env):
-        raise NotImplementedError()
-
-    def _add_gurobipy_uncertainty(core_model, gurobi_env):
-        raise NotImplementedError()
-
-    def _add_pyomo_mean(core_model, gurobi_env):
-        raise NotImplementedError()
-
-    def _add_pyomo_uncertainty(core_model, gurobi_env):
+    def _add_pyomo_model(self, core_model):
         raise NotImplementedError()
 
     def update_params(params):
