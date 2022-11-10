@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 import random
 
@@ -48,6 +48,30 @@ class ProblemConfig:
     @property
     def rnd_seed(self):
         return self._rnd_seed
+
+    def _encode_xi(self, xi: List):
+        return np.asarray([feat.encode(xi[idx]) for idx, feat in enumerate(self.feat_list)])
+
+    def _decode_xi(self, xi: List):
+        return np.asarray([feat.decode(xi[idx]) for idx, feat in enumerate(self.feat_list)])
+
+    def encode(self, X: List):
+        if len(X) == 0:
+            return []
+        elif len(X) == 1:
+            return self._encode_xi(X)
+        else:
+            enc = [self._encode_xi(xi) for xi in X]
+            return np.asarray(enc)
+
+    def decode(self, X: List):
+        if len(X) == 0:
+            return []
+        elif len(X) == 1:
+            return self._decode_xi(X)
+        else:
+            dec = [self._decode_xi(xi) for xi in X]
+            return np.asarray(dec)
 
     def add_feature(self, feat_type: str, bounds: Tuple = None, name: str = None):
         if name is None:
@@ -271,6 +295,13 @@ class FeatureType:
     def is_bin(self):
         return False
 
+    def encode(self, xi):
+        return xi
+
+    def decode(self, xi):
+        return xi
+
+
 
 class Real(FeatureType):
     def __init__(self, lb, ub, name):
@@ -303,10 +334,10 @@ class Categorical(FeatureType):
     def enc_cat_list(self):
         return self._enc_cat_list
 
-    def trafo_str2enc(self, xi):
+    def encode(self, xi):
         return self._str2enc[xi]
 
-    def trafo_enc2str(self, xi):
+    def decode(self, xi):
         return self._enc2str[xi]
 
     def is_cat(self):
