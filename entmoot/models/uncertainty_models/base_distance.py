@@ -10,9 +10,10 @@ class BaseDistance(BaseModel):
 
         self._problem_config = problem_config
         self._acq_sense = params.get("acq_sense", "exploration")
-        self._dist_trafo = params.get("dist_trafo", "standard")
+        self._dist_trafo = params.get("dist_trafo", "normal")
 
         self._shift, self._scale = None, None
+        self._non_cat_x, self._cat_x = None, None
 
         assert self._dist_trafo in ('normal', 'standard'), \
             "Parameter 'dist_trafo' for uncertainty model needs to be " \
@@ -29,6 +30,14 @@ class BaseDistance(BaseModel):
     @property
     def scale(self):
         return self._scale
+
+    @property
+    def non_cat_x(self):
+        return self._non_cat_x
+
+    @property
+    def cat_x(self):
+        return self._cat_x
 
     def _get_distance(self, x_left, x_right):
         raise NotImplementedError()
@@ -50,8 +59,9 @@ class BaseDistance(BaseModel):
         else:
             raise IOError("Parameter 'dist_trafo' for uncertainty model needs to be "
                           "in '('normal', 'standard')'.")
-        self._X = X
-        self._y = y
+
+        self._non_cat_x = X[:, self._problem_config.non_cat_idx]
+        self._cat_x = X[:, self._problem_config.cat_idx]
 
     def _add_to_gurobipy_model(self, model_core):
         raise NotImplementedError()
