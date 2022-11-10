@@ -1,12 +1,7 @@
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
-from entmoot.models.uncertainty_models.euclidean_squared_distance import EuclideanSquaredDistance
-from entmoot.models.uncertainty_models.l1_distance import L1Distance
-from entmoot.models.uncertainty_models.l2_distance import L2Distance
-
-from entmoot.models.uncertainty_models.overlap_distance import OverlapDistance
-from entmoot.models.uncertainty_models.goodall4_distance import Goodall4Distance
-from entmoot.models.uncertainty_models.of_distance import OfDistance
+from entmoot.models.uncertainty_models.distance_based_uncertainty import DistanceBasedUncertainty
+import numpy as np
 
 class Enting(BaseModel):
     def __init__(self, problem_config, params=None):
@@ -24,56 +19,39 @@ class Enting(BaseModel):
 
         # initialize unc model
         unc_params = params.get("unc_params", {})
-        dist_metric = unc_params.get("dist_metric", "euclidean_squared")
-        dist_trafo = unc_params.get("dist_trafo", "normalize")
-        acq_sense = unc_params.get("acq_sense", "exploration")
-        cat_metric = unc_params.get("cat_metric", "overlap")
-        self._beta = unc_params.get("beta", 1.96)
-        self._non_cat_x, self._cat_x = None, None
+        self.unc_model = DistanceBasedUncertainty(problem_config=problem_config, params=unc_params)
 
-        assert dist_trafo in ('normal', 'standard'), \
-            f"Pick 'dist_trafo' '{dist_trafo}' in '('normalize', 'standardize')'."
+    def fit(self, X, y):
+        # check dims of X and y
+        if X.ndim == 1:
+            X = np.atleast_2d(X)
 
-        assert acq_sense in ('exploration', 'penalty'), \
-            f"Pick 'acq_sense' '{acq_sense}' in '('exploration', 'penalty')'."
+        assert X.shape[-1] == len(self._problem_config.feat_list), \
+            "Argument 'X' has wrong dimensions. " \
+            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
 
-        # pick distance metric for non-cat features
-        if dist_metric == "euclidean_squared":
-            self.non_cat_unc_model = EuclideanSquaredDistance(
-                problem_config=self._problem_config, acq_sense=acq_sense, dist_trafo=dist_trafo)
-        elif dist_metric == "l1":
-            self.non_cat_unc_model = L1Distance(
-                problem_config=self._problem_config, acq_sense=acq_sense, dist_trafo=dist_trafo)
-        elif dist_metric == "l2":
-            self.non_cat_unc_model = L2Distance(
-                problem_config=self._problem_config, acq_sense=acq_sense, dist_trafo=dist_trafo)
-        else:
-            raise IOError(f"Non-categorical uncertainty metric '{dist_metric}' for "
-                          f"{self.__class__.__name__} model is not supported. "
-                          f"Check 'params['uncertainty_type']'.")
+        if y.ndim == 1:
+            y = np.atleast_2d(y)
 
-        # pick distance metric for cat features
-        if cat_metric == "overlap":
-            self.cat_unc_model = OverlapDistance(
-                problem_config=self._problem_config, acq_sense=acq_sense)
-        elif cat_metric == "of":
-            self.cat_unc_model = L1Distance(
-                problem_config=self._problem_config, acq_sense=acq_sense)
-        elif cat_metric == "goodall4":
-            self.cat_unc_model = L2Distance(
-                problem_config=self._problem_config, acq_sense=acq_sense)
-        else:
-            raise IOError(
-                f"Categorical uncertainty metric '{cat_metric}' for {self.__class__.__name__} "
-                f"model is not supported. Check 'params['uncertainty_type']'.")
+        assert y.shape[-1] == len(self._problem_config.obj_list), \
+            "Argument 'y' has wrong dimensions. " \
+            f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
 
-    @property
-    def non_cat_x(self):
-        return self._non_cat_x
+        self.mean_model.fit(X, y)
+        self.unc_model.fit(X, y)
 
-    @property
-    def cat_x(self):
-        return self._cat_x
+    def predict(self, X):
+        # check dims of X
+        if X.ndim == 1:
+            X = np.atleast_2d(X)
+
+        assert X.shape[-1] == len(self._problem_config.feat_list), \
+            "Argument 'X' has wrong dimensions. " \
+            f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
+
+        mean_pred = self.mean_model.predict(X)
+        unc_pred = self.unc_model.predict(X)
+        return mean_pred + unc_pred
 
     def _add_to_gurobipy_model(core_model, gurobi_env):
         raise NotImplementedError()
