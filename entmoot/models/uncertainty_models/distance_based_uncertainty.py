@@ -18,11 +18,27 @@ class DistanceBasedUncertainty(BaseModel):
         dist_trafo = params.get("dist_trafo", "normal")
         acq_sense = params.get("acq_sense", "exploration")
         cat_metric = params.get("cat_metric", "overlap")
+
         self._beta = params.get("beta", 1.96)
         self._non_cat_x, self._cat_x = None, None
+        self._y_variance = None
 
-        assert dist_trafo in ('normal', 'standard'), \
-            f"Pick 'dist_trafo' '{dist_trafo}' in '('normal', 'standard')'."
+        if dist_trafo == "standard":
+            assert len(self._problem_config.obj_list) == 1, \
+                "Distance transformation 'standard' can only be used for single objective problems."
+
+            assert len(self._problem_config.cat_idx) == 0, \
+                "Distance transformation 'standard' can only be used for non-categorical problems."
+
+            self._dist_has_var_bound = True
+            self._bound_coeff = params.get("bound_coeff", 0.5)
+            self._dist_coeff = 1.0
+        elif dist_trafo == "normal":
+            self._dist_has_var_bound = False
+            self._bound_coeff = None
+            self._dist_coeff = 1 / len(self._problem_config.feat_list)
+        else:
+            raise IOError(f"Pick 'dist_trafo' '{dist_trafo}' in '('normal', 'standard')'.")
 
         assert acq_sense in ('exploration', 'penalty'), \
             f"Pick 'acq_sense' '{acq_sense}' in '('exploration', 'penalty')'."
@@ -57,7 +73,10 @@ class DistanceBasedUncertainty(BaseModel):
                 f"Categorical uncertainty metric '{cat_metric}' for {self.__class__.__name__} "
                 f"model is not supported. Check 'params['uncertainty_type']'.")
 
+
     def fit(self, X, y):
+        if self._dist_has_var_bound:
+            self._y_variance = np.var(y)
         self.non_cat_unc_model.fit(X, y)
         self.cat_unc_model.fit(X, y)
 
@@ -66,7 +85,13 @@ class DistanceBasedUncertainty(BaseModel):
         for xi in X:
             non_cat_pred = self.non_cat_unc_model.predict(xi)
             cat_pred = self.cat_unc_model.predict(xi)
-            comb_pred.append(
-                np.min(non_cat_pred + cat_pred) / len(self._problem_config.feat_list)
-            )
+            dist_pred = np.min(non_cat_pred + cat_pred) * self._dist_coeff
+
+            # the standard trafo case has a bound on the prediction
+            if self._dist_has_var_bound:
+                dist_bound = abs(self._y_variance*self._bound_coeff)
+                if dist_pred > dist_bound:
+                    dist_pred = dist_bound
+
+            comb_pred.append(dist_pred)
         return np.asarray(comb_pred)
