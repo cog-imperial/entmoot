@@ -24,6 +24,7 @@ class DistanceBasedUncertainty(BaseModel):
         self._non_cat_x, self._cat_x = None, None
         self._dist_bound = None
         self._acq_sense = acq_sense
+        self._dist_metric = dist_metric
         self._num_cache_x = None
 
         if dist_trafo == "standard":
@@ -124,9 +125,16 @@ class DistanceBasedUncertainty(BaseModel):
         cat_term_list = self.cat_unc_model.get_gurobipy_model_constr_terms(model)
 
         for i, (non_cat_term, cat_term) in enumerate(zip(non_cat_term_list, cat_term_list)):
-            model.addQConstr(
-                model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
-                name=f"unc_x_{i}"
-            )
+            if self._dist_metric == "l2":
+                # take sqrt for l2 distance
+                model.addQConstr(
+                    model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                    name=f"unc_x_{i}"
+                )
+            else:
+                model.addQConstr(
+                    model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                    name=f"unc_x_{i}"
+                )
 
         model.update()
