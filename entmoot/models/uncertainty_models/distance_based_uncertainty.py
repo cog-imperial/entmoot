@@ -120,12 +120,12 @@ class DistanceBasedUncertainty(BaseModel):
         )
 
         # get constr terms for non-categorical and categorical contributions
-        non_cat_terms = self.non_cat_unc_model.get_gurobipy_model_constr_terms(model)
-        cat_terms = self.cat_unc_model.get_gurobipy_model_constr_terms(model)
+        non_cat_term_list = self.non_cat_unc_model.get_gurobipy_model_constr_terms(model)
+        cat_term_list = self.cat_unc_model.get_gurobipy_model_constr_terms(model)
 
-        for i, (term1, term2) in enumerate(zip(non_cat_terms, cat_terms)):
+        for i, (non_cat_term, cat_term) in enumerate(zip(non_cat_term_list, cat_term_list)):
             model.addQConstr(
-                model._unc <= (term1 + term2) * self._dist_coeff,
+                model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
                 name=f"unc_x_{i}"
             )
 
