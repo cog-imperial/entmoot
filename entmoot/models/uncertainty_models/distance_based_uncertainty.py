@@ -67,10 +67,10 @@ class DistanceBasedUncertainty(BaseModel):
             self.cat_unc_model = OverlapDistance(
                 problem_config=self._problem_config, acq_sense=acq_sense)
         elif cat_metric == "of":
-            self.cat_unc_model = L1Distance(
+            self.cat_unc_model = OfDistance(
                 problem_config=self._problem_config, acq_sense=acq_sense)
         elif cat_metric == "goodall4":
-            self.cat_unc_model = L2Distance(
+            self.cat_unc_model = Goodall4Distance(
                 problem_config=self._problem_config, acq_sense=acq_sense)
         else:
             raise IOError(
