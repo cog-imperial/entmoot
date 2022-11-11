@@ -1,4 +1,4 @@
-entmoot.models.mean\_models package
+ENTMOOT Mean Models
 ===================================
 
 Submodules
