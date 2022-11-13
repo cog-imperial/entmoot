@@ -7,6 +7,7 @@ Requirements
 * scikit-learn >= 0.21.3
 * pyyaml >= 5.3.1
 * lightgbm >= 2.3.1
+
 In addition, you will need the commercial solver Gurobi or the open source framework Pyomo (which has also APIs to
 non-commercial solvers), i.e. one of the following packages should be installed.
 
