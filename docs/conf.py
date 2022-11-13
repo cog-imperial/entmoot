@@ -22,6 +22,7 @@ __location__ = os.path.join(
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.join(__location__, "../src"))
+sys.path.insert(1, os.path.abspath('../../entmoot'))
 
 # -- Run sphinx-apidoc -------------------------------------------------------
 # This hack is necessary since RTD does not issue `sphinx-apidoc` before running
@@ -35,11 +36,6 @@ try:  # for Sphinx >= 1.7
     from sphinx.ext import apidoc
 except ImportError:
     from sphinx import apidoc
-
-#sys.path.insert(0, os.path.abspath('../entmoot'))
-#sys.path.insert(1, os.path.abspath('..'))
-#sys.path.insert(2, os.path.abspath('../..'))
-
 
 # -- Project information -----------------------------------------------------
 
