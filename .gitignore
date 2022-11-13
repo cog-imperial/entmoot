@@ -10,3 +10,4 @@ __pycache__
 .pytest_cache
 .DS_Store
 env
+/docs/notebooks/.ipynb_checkpoints/
