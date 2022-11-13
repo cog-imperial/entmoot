@@ -19,8 +19,8 @@ __location__ = os.path.join(
 )
 
 sys.path.insert(0, os.path.join(__location__, "../../entmoot"))
-sys.path.insert(0, os.path.join(__location__, "../entmoot"))
-sys.path.insert(0, os.path.join(__location__, ".."))
+sys.path.insert(1, os.path.join(__location__, "../entmoot"))
+sys.path.insert(2, os.path.join(__location__, ".."))
 
 # -- Run sphinx-apidoc -------------------------------------------------------
 # This hack is necessary since RTD does not issue `sphinx-apidoc` before running
