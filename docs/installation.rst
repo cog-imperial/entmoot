@@ -16,24 +16,33 @@ non-commercial solvers), i.e. one of the following packages should be installed.
 Installing ENTMOOT
 ------------------
 Install all required packages by running the command
+
 .. code-block:: python
+
     pip install -r requirements.txt
 
 To install ENTMOOT, run the following command
+
 .. code-block:: python
+
     pip install git+https://github.com/cog-imperial/entmoot
 
 Uninstalling ENTMOOT
 --------------------
 The ENTMOOT package can be uninstalled by running
+
 .. code-block:: python
-pip uninstall entmoot
+
+    pip uninstall entmoot
 
 Installation - Linux & Mac OS
 -----------------------------
 On Mac, you also need to install libomp:
+
 .. code-block:: python
+
     brew install libomp
+
 Installing Gurobi
 -----------------
 To use the :code:`acq_optimizer= 'global'` setting in :code:`ENTMOOT`, the solver
