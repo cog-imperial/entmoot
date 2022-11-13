@@ -40,7 +40,6 @@ This small example illustrates how to use ENTMOOT.
    :caption: Contents:
 
    Installation <installation>
-   Getting Started <quickstart>
    Examples <notebooks>
    API Reference <apidoc/entmoot>
 
