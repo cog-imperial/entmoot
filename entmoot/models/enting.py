@@ -67,7 +67,7 @@ class Enting(BaseModel):
         self.mean_model.add_to_gurobipy_model(core_model)
         self.unc_model.add_to_gurobipy_model(core_model)
 
-    def _add_pyomo_model(self, core_model):
+    def _add_to_pyomo_model(self, core_model):
         raise NotImplementedError()
 
     def update_params(params):

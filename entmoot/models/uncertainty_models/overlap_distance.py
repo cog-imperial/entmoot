@@ -8,5 +8,5 @@ class OverlapDistance(CatDistance):
     def _array_predict(self, X):
         raise NotImplementedError()
 
-    def _add_pyomo_model(self, model_core):
+    def _add_to_pyomo_model(self, model_core):
         raise NotImplementedError()

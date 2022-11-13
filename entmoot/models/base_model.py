@@ -15,5 +15,5 @@ class BaseModel:
     def _add_to_gurobipy_model(self, model_core):
         raise NotImplementedError()
 
-    def _add_pyomo_model(self, model_core):
+    def _add_to_pyomo_model(self, model_core):
         raise NotImplementedError()
