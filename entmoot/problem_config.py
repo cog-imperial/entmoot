@@ -149,7 +149,9 @@ class ProblemConfig:
                     np.random.random_integers(low=feat.lb, high=feat.ub, size=num_samples))
         return np.squeeze(np.column_stack(array_list))
 
-    def get_rnd_sample_list(self, num_samples=1, cat_enc=False):
+    def get_rnd_sample_list(self, num_samples=1, cat_enc=False, seed=73):
+        # Set seed in order to get reproducible results
+        random.seed(seed)
         # returns list of tuples
         sample_list = []
         for _ in range(num_samples):
