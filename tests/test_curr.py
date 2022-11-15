@@ -45,15 +45,15 @@ def test_tree_model_definition():
     # build Gurobi core model
     model_core_gurobi = problem_config.get_gurobi_model_core()
     # build Pyomo core model
-    # model_core_pyomo = problem_config.get_pyomo_model_core()
+    model_core_pyomo = problem_config.get_pyomo_model_core()
 
     # Assert that both models contain the same number of variables:
-    # assert len(model_core_gurobi.getVars()) == len(model_core_pyomo.x)
+    assert len(model_core_gurobi.getVars()) == len(model_core_pyomo.x)
 
-    # Enrich Gurobi model by constraints from tree model
+    # Enrich Gurobi and Pyomo models by constraints from tree model and objective function. The objective function
+    # contains an acquisition and an uncertainty part.
     enting.add_to_gurobipy_model(model_core_gurobi)
-    # Enrich Pyomo model by constraints from tree model
-    # tree._add_to_pyomo_model(model_core_pyomo)
+    enting.add_to_pyomo_model(model_core_pyomo)
 
     # Assert that both models contain the same number of variables:
     # assert len(model_core_gurobi.getVars()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Var))
