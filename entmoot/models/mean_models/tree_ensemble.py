@@ -305,14 +305,14 @@ class TreeEnsemble(BaseModel):
             def obj_leaf_index(model_obj, obj_name):
                 for tree in range(model_obj._num_trees(obj_name)):
                     for leaf in model_obj._leaves(obj_name, tree):
-                        yield (tree, leaf)
+                        yield tree, leaf
 
             model._mu = []
 
             for obj in self._problem_config.obj_list:
                 weighted_sum = quicksum(
                     model._leaf_weight(obj.name, tree, leaf) *
-                    model._z[obj, tree, leaf]
+                    model._z[obj.name, tree, leaf]
                     for tree, leaf in obj_leaf_index(model, obj.name)
                 )
 

@@ -67,11 +67,14 @@ class Enting(BaseModel):
             "Argument 'X' has wrong dimensions. " \
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
 
-        mean_pred = self.mean_model.predict(X)
+        mean_pred = self.mean_model.predict(X).tolist()
         unc_pred = self.unc_model.predict(X)
-        comb_pred = [(tuple(mean), unc)
+
+        comb_pred = [(mean, unc)
                      for mean, unc in zip(mean_pred, unc_pred)]
 
+        import sys
+        sys.exit()
         return comb_pred
 
     def predict_pareto(self):
@@ -91,7 +94,6 @@ class Enting(BaseModel):
         self.mean_model.add_to_gurobipy_model(core_model, add_mu_var=True)
         self.unc_model.add_to_gurobipy_model(core_model)
 
-    def _add_to_pyomo_model(self, core_model):
         # single objective case
         if len(self._problem_config.obj_list) == 1:
             core_model.setObjective(core_model._mu[0] + self._beta * core_model._unc)
