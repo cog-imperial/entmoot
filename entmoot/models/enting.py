@@ -72,9 +72,6 @@ class Enting(BaseModel):
 
         comb_pred = [(mean, unc)
                      for mean, unc in zip(mean_pred, unc_pred)]
-
-        import sys
-        sys.exit()
         return comb_pred
 
     def predict_pareto(self):
