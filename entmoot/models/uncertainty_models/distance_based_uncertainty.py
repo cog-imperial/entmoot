@@ -17,13 +17,11 @@ class DistanceBasedUncertainty(BaseModel):
 
         dist_metric = params.get("dist_metric", "euclidean_squared")
         dist_trafo = params.get("dist_trafo", "normal")
-        acq_sense = params.get("acq_sense", "exploration")
         cat_metric = params.get("cat_metric", "overlap")
+        acq_sense = params.get("acq_sense", "exploration")
 
-        self._beta = params.get("beta", 1.96)
         self._non_cat_x, self._cat_x = None, None
         self._dist_bound = None
-        self._acq_sense = acq_sense
         self._dist_metric = dist_metric
         self._num_cache_x = None
 
@@ -43,9 +41,6 @@ class DistanceBasedUncertainty(BaseModel):
             self._dist_coeff = 1 / len(self._problem_config.feat_list)
         else:
             raise IOError(f"Pick 'dist_trafo' '{dist_trafo}' in '('normal', 'standard')'.")
-
-        assert acq_sense in ('exploration', 'penalty'), \
-            f"Pick 'acq_sense' '{acq_sense}' in '('exploration', 'penalty')'."
 
         # pick distance metric for non-cat features
         if dist_metric == "euclidean_squared":

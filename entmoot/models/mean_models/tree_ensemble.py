@@ -127,7 +127,7 @@ class TreeEnsemble(BaseModel):
             # populate meta_tree_model
             self._meta_tree_dict[obj.name] = MetaTreeModel(ordered_tree_model_dict)
 
-    def add_to_gurobipy_model(self, model):
+    def add_to_gurobipy_model(self, model, add_mu_var=True):
         from gurobipy import GRB, quicksum
         self._update_meta_tree_dict()
 
@@ -299,6 +299,32 @@ class TreeEnsemble(BaseModel):
              for (var, j) in interval_index(model)),
             name="var_upper"
         )
+
+        if add_mu_var:
+            # add mu variables for all objectives
+            def obj_leaf_index(model_obj, obj_name):
+                for tree in range(model_obj._num_trees(obj_name)):
+                    for leaf in model_obj._leaves(obj_name, tree):
+                        yield (tree, leaf)
+
+            model._mu = []
+
+            for obj in self._problem_config.obj_list:
+                weighted_sum = quicksum(
+                    model._leaf_weight(obj.name, tree, leaf) *
+                    model._z[obj, tree, leaf]
+                    for tree, leaf in obj_leaf_index(model, obj.name)
+                )
+
+                model._mu.append(
+                    model.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY,
+                                 name=f"mean_obj_{obj.name}", vtype='C')
+                )
+
+                model.addConstr(
+                    model._mu[-1] == weighted_sum,
+                    name=f"mean_obj_{obj.name}_tree_link"
+                )
 
         model.update()
 
