@@ -328,7 +328,7 @@ class TreeEnsemble(BaseModel):
 
         model.update()
 
-    def add_to_pyomo_model(self, model):
+    def add_to_pyomo_model(self, model, add_mu_var: bool = True):
         import pyomo.environ as pyo
         self._update_meta_tree_dict()
 
@@ -487,3 +487,28 @@ class TreeEnsemble(BaseModel):
         model.linking_constraints_upper = pyo.Constraint(
             [(var, j) for (var, j) in interval_index(model)], rule=var_upper_r
         )
+
+        if add_mu_var:
+            # add mu variables for all objectives
+            def obj_leaf_index(model_obj, obj_name):
+                for tree in range(model_obj._num_trees(obj_name)):
+                    for leaf in model_obj._leaves(obj_name, tree):
+                        yield tree, leaf
+
+            objective_names = [obj.name for obj in self._problem_config.obj_list]
+
+            model._mu = pyo.Var(objective_names, domain=pyo.Reals)
+
+            for obj_name in objective_names:
+                weighted_sum = sum(
+                    model._leaf_weight(obj_name, tree, leaf) *
+                    model._z[obj_name, tree, leaf]
+                    for tree, leaf in obj_leaf_index(model, obj_name)
+                )
+
+                model.current_obj_name = obj_name
+
+                def mu_objectives(model_obj):
+                    return model_obj._mu[model.current_obj_name] == weighted_sum
+
+                model.constraints_mu_objectives = pyo.Constraint(rule=mu_objectives(model))

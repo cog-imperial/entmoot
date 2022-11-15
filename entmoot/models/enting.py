@@ -99,7 +99,7 @@ class Enting(BaseModel):
 
     def add_to_pyomo_model(self, core_model):
 
-        self.mean_model.add_to_pyomo_model(core_model)
+        self.mean_model.add_to_pyomo_model(core_model, add_mu_var=True)
 
     def update_params(params):
         raise NotImplementedError()
