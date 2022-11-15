@@ -328,7 +328,7 @@ class TreeEnsemble(BaseModel):
 
         model.update()
 
-    def _add_to_pyomo_model(self, model):
+    def add_to_pyomo_model(self, model):
         import pyomo.environ as pyo
         self._update_meta_tree_dict()
 

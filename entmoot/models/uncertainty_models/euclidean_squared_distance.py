@@ -28,5 +28,5 @@ class EuclideanSquaredDistance(NonCatDistance):
             constr_list.append(constr)
         return constr_list
 
-    def _add_to_pyomo_model(self, model_core):
+    def add_to_pyomo_model(self, model_core):
         raise NotImplementedError()

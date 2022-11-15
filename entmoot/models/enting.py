@@ -97,8 +97,9 @@ class Enting(BaseModel):
 
         # TODO: obj trafo build into model mu and returned by tree model
 
-    def _add_pyomo_model(self, core_model):
-        raise NotImplementedError()
+    def add_to_pyomo_model(self, core_model):
+
+        self.mean_model.add_to_pyomo_model(core_model)
 
     def update_params(params):
         raise NotImplementedError()
