@@ -42,6 +42,7 @@ class TreeEnsemble(BaseModel):
 
         self._tree_dict = None
         self._meta_tree_dict = {}
+        self._min_y, self._max_y = None, None
 
     @property
     def tree_dict(self):
@@ -55,11 +56,24 @@ class TreeEnsemble(BaseModel):
             "No tree model is trained yet. Call '.fit(X, y)' first."
         return self._meta_tree_dict
 
+    @property
+    def min_y(self):
+        return self._min_y
+
+    @property
+    def max_y(self):
+        return self._max_y
+
     def fit(self, X, y):
         # train tree models for every objective
         if self._tree_dict is None:
             self._tree_dict = {}
 
+        # cache min/max vals for normalization
+        self._min_y = np.min(y, axis=0)
+        self._max_y = np.max(y, axis=0)
+
+        # train tree models for every objective
         for i, obj in enumerate(self._problem_config.obj_list):
             if self._train_lib == "lgbm":
                 tree_model = self._train_lgbm(X, y[:, i])
@@ -127,7 +141,7 @@ class TreeEnsemble(BaseModel):
             # populate meta_tree_model
             self._meta_tree_dict[obj.name] = MetaTreeModel(ordered_tree_model_dict)
 
-    def add_to_gurobipy_model(self, model, add_mu_var=True):
+    def add_to_gurobipy_model(self, model, add_mu_var=True, normalize_mean=False):
         from gurobipy import GRB, quicksum
         self._update_meta_tree_dict()
 
@@ -307,23 +321,28 @@ class TreeEnsemble(BaseModel):
                     for leaf in model_obj._leaves(obj_name, tree):
                         yield tree, leaf
 
-            model._mu = []
+            model._aux_mu = []
 
-            for obj in self._problem_config.obj_list:
+            for idx, obj in enumerate(self._problem_config.obj_list):
                 weighted_sum = quicksum(
                     model._leaf_weight(obj.name, tree, leaf) *
                     model._z[obj.name, tree, leaf]
                     for tree, leaf in obj_leaf_index(model, obj.name)
                 )
 
-                model._mu.append(
+                model._aux_mu.append(
                     model.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY,
-                                 name=f"mean_obj_{obj.name}", vtype='C')
+                                 name=f"aux_mean_obj_{obj.name}", vtype='C')
                 )
 
+                if normalize_mean:
+                    shift, scale = self.min_y[idx], self.max_y[idx] - self.min_y[idx]
+                else:
+                    shift, scale = 0.0, 1.0
+
                 model.addConstr(
-                    model._mu[-1] == weighted_sum,
-                    name=f"mean_obj_{obj.name}_tree_link"
+                    model._aux_mu[-1] == (weighted_sum - shift) / scale,
+                    name=f"aux_mean_obj_{obj.name}_tree_link"
                 )
 
         model.update()

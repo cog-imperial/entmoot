@@ -3,6 +3,7 @@ from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.uncertainty_models.distance_based_uncertainty import DistanceBasedUncertainty
 import numpy as np
 
+
 class Enting(BaseModel):
     def __init__(self, problem_config, params=None):
 
@@ -84,18 +85,33 @@ class Enting(BaseModel):
             acq_pred.append(mean + self._beta * unc)
         return acq_pred
 
-
     def add_to_gurobipy_model(self, core_model):
         from gurobipy import GRB
+        from entmoot.utils import sample
 
-        self.mean_model.add_to_gurobipy_model(core_model, add_mu_var=True)
+        # add uncertainty model part
         self.unc_model.add_to_gurobipy_model(core_model)
 
-        # single objective case
-        if len(self._problem_config.obj_list) == 1:
-            core_model.setObjective(core_model._mu[0] + self._beta * core_model._unc)
+        core_model._mu = core_model.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY,
+                                           name=f"mean_obj", vtype='C')
 
-        # TODO: obj trafo build into model mu and returned by tree model
+        if len(self._problem_config.obj_list) == 1:
+            # single objective case
+            self.mean_model.add_to_gurobipy_model(core_model, add_mu_var=True)
+            core_model.addConstr(core_model._mu == core_model._aux_mu[0])
+        else:
+            # multi-objective case
+            self.mean_model.add_to_gurobipy_model(core_model, add_mu_var=True, normalize_mean=True)
+            moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
+
+            for idx, obj in enumerate(self._problem_config.obj_list):
+                core_model.addConstr(
+                    core_model._mu >= moo_weights[idx] * core_model._aux_mu[idx],
+                    name=f"weighted_mean_obj_{idx}"
+            )
+
+        core_model.setObjective(core_model._mu + self._beta * core_model._unc)
+        core_model.update()
 
     def add_to_pyomo_model(self, core_model):
         import pyomo.environ as pyo
