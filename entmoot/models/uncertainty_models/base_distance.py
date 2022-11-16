@@ -60,7 +60,7 @@ class NonCatDistance(BaseModel):
     def get_gurobipy_model_constr(self, model_core):
         raise NotImplementedError()
 
-    def add_to_pyomo_model(self, model_core):
+    def get_pyomo_model_constr(self, model_core):
         raise NotImplementedError()
 
 
@@ -137,5 +137,17 @@ class CatDistance(BaseModel):
             constr_list.append(constr)
         return constr_list
 
-    def add_to_pyomo_model(self, model_core):
-        raise NotImplementedError()
+    def get_pyomo_model_constr_terms(self, model):
+        feat = model._all_feat
+        constr_list = []
+        for xi in self.cache_x:
+            constr = 0
+
+            # iterate through all categories to check which distances are active
+            for idx in self._problem_config.cat_idx:
+                for cat in self._problem_config.feat_list[idx].enc_cat_list:
+                    sim = self.sim_map[idx][cat, int(xi[idx])]
+                    constr += (1 - sim) * feat[idx][cat]
+
+            constr_list.append(constr)
+        return constr_list

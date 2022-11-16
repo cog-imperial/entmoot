@@ -98,8 +98,19 @@ class Enting(BaseModel):
         # TODO: obj trafo build into model mu and returned by tree model
 
     def add_to_pyomo_model(self, core_model):
+        import pyomo.environ as pyo
 
         self.mean_model.add_to_pyomo_model(core_model, add_mu_var=True)
+        self.unc_model.add_to_pyomo_model(core_model)
+
+        # single objective case
+        if len(self._problem_config.obj_list) == 1:
+            # Get objective name
+            obj_name = self._problem_config.obj_list[0].name
+            # Define objective function
+            core_model.obj = pyo.Objective(
+                expr=core_model._mu[obj_name] + self._beta * core_model._unc, sense=pyo.minimize
+            )
 
     def update_params(params):
         raise NotImplementedError()

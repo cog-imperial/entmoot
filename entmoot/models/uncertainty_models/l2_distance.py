@@ -28,5 +28,16 @@ class L2Distance(NonCatDistance):
             constr_list.append(constr)
         return constr_list
 
-    def add_to_pyomo_model(self, model_core):
-        raise NotImplementedError()
+    def get_pyomo_model_constr_terms(self, model):
+
+        feat = model._all_feat
+
+        constr_list = []
+        for xi in self.x_trafo:
+            constr = sum(
+                (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i]) *
+                (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i])
+                for i, idx in enumerate(self._problem_config.non_cat_idx)
+            )
+            constr_list.append(constr)
+        return constr_list

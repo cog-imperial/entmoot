@@ -133,3 +133,49 @@ class DistanceBasedUncertainty(BaseModel):
                 )
 
         model.update()
+
+    def add_to_pyomo_model(self, model):
+        import pyomo.environ as pyo
+        # define main uncertainty variables
+        if self._dist_has_var_bound:
+            dist_bound = self._dist_bound
+        else:
+            dist_bound = float("inf")
+
+        model._unc = pyo.Var(bounds=(0, dist_bound), domain=pyo.Reals)
+
+        # get constr terms for non-categorical and categorical contributions
+        non_cat_term_list = self.non_cat_unc_model.get_pyomo_model_constr_terms(model)
+        cat_term_list = self.cat_unc_model.get_pyomo_model_constr_terms(model)
+
+        model.indices_constrs_cat_noncat_contr = list(zip(non_cat_term_list, cat_term_list))
+
+        def rule_constr_cat_noncat_quadr(model_obj, non_cat_term, cat_term):
+            # take sqrt for l2 distance
+            return model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff
+
+        def rule_constr_cat_noncat(model_obj, non_cat_term, cat_term):
+            return model._unc <= (non_cat_term + cat_term) * self._dist_coeff
+
+        if self._dist_metric == "l2":
+            # TODO: Fix issue that this list is not hashable
+            model.constrs_cat_noncat_contr = pyo.Constraint(
+                model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat_quadr
+            )
+        else:
+            model.constrs_cat_noncat_contr = pyo.Constraint(
+                model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat
+            )
+
+        for i, (non_cat_term, cat_term) in enumerate(zip(non_cat_term_list, cat_term_list)):
+            if self._dist_metric == "l2":
+                # take sqrt for l2 distance
+                model.addQConstr(
+                    model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                    name=f"unc_x_{i}"
+                )
+            else:
+                model.addQConstr(
+                    model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                    name=f"unc_x_{i}"
+                )
