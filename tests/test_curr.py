@@ -2,6 +2,7 @@ from entmoot.problem_config import ProblemConfig
 import numpy as np
 import pytest
 import pyomo.environ as pyo
+import os
 
 
 @pytest.mark.fast_test
@@ -34,7 +35,9 @@ def test_tree_model_definition_multiobj_l2():
 
     # fit tree ensemble
     from entmoot.models.enting import Enting
-    params = {"unc_params": {"dist_metric": "l2"}}
+    params = {
+        "unc_params": {"dist_metric": "l2"}
+    }
     enting = Enting(problem_config, params=params)
     enting.fit(rnd_sample, pred)
 
@@ -61,17 +64,24 @@ def test_tree_model_definition_multiobj_l2():
     assert len(model_core_gurobi.getConstrs()) + len(model_core_gurobi.getQConstrs()) == \
            sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
-    model_core_gurobi.params.NonConvex = 2
-    model_core_gurobi.params.MIPGap = 0.0
-    model_core_gurobi.optimize()
+    compare_pyomogurobi_gurobipy_optimization_results(model_core_gurobi, model_core_pyomo)
+
+
+@pytest.mark.skipif("CICD_ACTIVE" in os.environ)
+def compare_pyomogurobi_gurobipy_optimization_results(model_gurobipy, model_pyomo):
 
     gurobi_solver = pyo.SolverFactory("gurobi")
     gurobi_solver.options["NonCOnvex"] = 2
     gurobi_solver.options["MIPGap"] = 0.0
-    gurobi_solver.solve(model_core_pyomo)
+    gurobi_solver.solve(model_pyomo)
+
+    model_gurobipy.params.NonConvex = 2
+    model_gurobipy.params.MIPGap = 0.0
+    model_gurobipy.optimize()
 
     # Activate this line code as soon as it is possible to fix the moo_weights
-    # assert round(pyo.value(model_core_pyomo.obj), 5) == round(model_core_gurobi.ObjVal, 5)
+    # assert round(pyo.value(model_pyomo.obj), 5) == round(model_gurobipy.ObjVal, 5)
+
 
 
 @pytest.mark.fast_test
