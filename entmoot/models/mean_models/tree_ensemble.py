@@ -347,7 +347,7 @@ class TreeEnsemble(BaseModel):
 
         model.update()
 
-    def add_to_pyomo_model(self, model, add_mu_var: bool = True):
+    def add_to_pyomo_model(self, model, add_mu_var: bool = True, normalize_mean: bool = False):
         import pyomo.environ as pyo
         self._update_meta_tree_dict()
 
@@ -516,18 +516,26 @@ class TreeEnsemble(BaseModel):
 
             objective_names = [obj.name for obj in self._problem_config.obj_list]
 
-            model._mu = pyo.Var(objective_names, domain=pyo.Reals)
+            model._aux_mu = pyo.Var(objective_names, domain=pyo.Reals)
 
-            for obj_name in objective_names:
-                weighted_sum = sum(
+            weighted_sum = {}
+            shift = {}
+            scale = {}
+
+            for idx, obj_name in enumerate(objective_names):
+                weighted_sum[obj_name] = sum(
                     model._leaf_weight(obj_name, tree, leaf) *
                     model._z[obj_name, tree, leaf]
                     for tree, leaf in obj_leaf_index(model, obj_name)
                 )
 
-                model.current_obj_name = obj_name
+                if normalize_mean:
+                    shift[obj_name], scale[obj_name] = self.min_y[idx], self.max_y[idx] - self.min_y[idx]
+                else:
+                    shift, scale = 0.0, 1.0
 
-                def mu_objectives(model_obj):
-                    return model_obj._mu[model.current_obj_name] == weighted_sum
 
-                model.constraints_mu_objectives = pyo.Constraint(rule=mu_objectives(model))
+            def mu_objectives(model_obj, name):
+                return model_obj._aux_mu[name] == (weighted_sum[name] - shift[name]) / scale[name]
+
+            model.constraints_mu_objectives = pyo.Constraint(objective_names, rule=mu_objectives)
