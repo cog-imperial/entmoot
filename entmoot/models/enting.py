@@ -115,18 +115,37 @@ class Enting(BaseModel):
 
     def add_to_pyomo_model(self, core_model):
         import pyomo.environ as pyo
+        from entmoot.utils import sample
 
-        self.mean_model.add_to_pyomo_model(core_model, add_mu_var=True)
+        # add uncertainty model part
         self.unc_model.add_to_pyomo_model(core_model)
 
-        # single objective case
+        core_model._mu = pyo.Var(domain=pyo.Reals)
+
         if len(self._problem_config.obj_list) == 1:
+            # single objective case
+            self.mean_model.add_to_pyomo_model(core_model, add_mu_var=True)
             # Get objective name
             obj_name = self._problem_config.obj_list[0].name
-            # Define objective function
-            core_model.obj = pyo.Objective(
-                expr=core_model._mu[obj_name] + self._beta * core_model._unc, sense=pyo.minimize
+            core_model.constraint_link_mu_auxmu = pyo.Constraint(expr=core_model._aux_mu[obj_name] == core_model._mu)
+        else:
+            # multi-objective case
+            self.mean_model.add_to_pyomo_model(core_model, add_mu_var=True, normalize_mean=True)
+            moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
+
+            objectives_position_name = list(enumerate([obj.name for obj in self._problem_config.obj_list]))
+
+            def constrs_weights_auxmus(model, pos, objname):
+                return model._mu >= moo_weights[pos] * core_model._aux_mu[objname]
+
+            core_model.constr_coupling_mu_auxmu = pyo.Constraint(
+                objectives_position_name, rule=constrs_weights_auxmus,
             )
+
+        # Define objective function
+        core_model.obj = pyo.Objective(
+            expr=core_model._mu + self._beta * core_model._unc, sense=pyo.minimize
+        )
 
     def update_params(params):
         raise NotImplementedError()

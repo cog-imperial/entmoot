@@ -148,17 +148,19 @@ class DistanceBasedUncertainty(BaseModel):
         non_cat_term_list = self.non_cat_unc_model.get_pyomo_model_constr_terms(model)
         cat_term_list = self.cat_unc_model.get_pyomo_model_constr_terms(model)
 
-        model.indices_constrs_cat_noncat_contr = list(zip(non_cat_term_list, cat_term_list))
+        model.terms_constrs_cat_noncat_contr = list(zip(non_cat_term_list, cat_term_list))
+        model.indices_constrs_cat_noncat_contr = list(range(len(non_cat_term_list)))
 
-        def rule_constr_cat_noncat_quadr(model_obj, non_cat_term, cat_term):
+        def rule_constr_cat_noncat_quadr(model_obj, i):
             # take sqrt for l2 distance
+            non_cat_term, cat_term = model.terms_constrs_cat_noncat_contr[i]
             return model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff
 
-        def rule_constr_cat_noncat(model_obj, non_cat_term, cat_term):
+        def rule_constr_cat_noncat(model_obj, i):
+            non_cat_term, cat_term = model.terms_constrs_cat_noncat_contr[i]
             return model._unc <= (non_cat_term + cat_term) * self._dist_coeff
 
         if self._dist_metric == "l2":
-            # TODO: Fix issue that this list is not hashable
             model.constrs_cat_noncat_contr = pyo.Constraint(
                 model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat_quadr
             )
@@ -166,16 +168,3 @@ class DistanceBasedUncertainty(BaseModel):
             model.constrs_cat_noncat_contr = pyo.Constraint(
                 model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat
             )
-
-        for i, (non_cat_term, cat_term) in enumerate(zip(non_cat_term_list, cat_term_list)):
-            if self._dist_metric == "l2":
-                # take sqrt for l2 distance
-                model.addQConstr(
-                    model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
-                    name=f"unc_x_{i}"
-                )
-            else:
-                model.addQConstr(
-                    model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
-                    name=f"unc_x_{i}"
-                )
