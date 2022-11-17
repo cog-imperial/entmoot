@@ -16,7 +16,7 @@ def test_tree_model_definition_multiobj_l2():
         return np.squeeze(np.column_stack([y0,y1]))
 
     # define problem
-    problem_config = ProblemConfig()
+    problem_config = ProblemConfig(rnd_seed=73)
 
     problem_config.add_feature('real', (5.0, 6.0))
     problem_config.add_feature('real', (4.6, 6.0))
@@ -29,7 +29,7 @@ def test_tree_model_definition_multiobj_l2():
     problem_config.add_min_objective()
 
     # sample data
-    rnd_sample = problem_config.get_rnd_sample_list(num_samples=20, seed=73)
+    rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
     pred = test_func_multi_obj(rnd_sample)
 
     # fit tree ensemble
