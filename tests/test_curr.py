@@ -64,11 +64,12 @@ def test_tree_model_definition_multiobj_l2():
     assert len(model_core_gurobi.getConstrs()) + len(model_core_gurobi.getQConstrs()) == \
            sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
-    compare_pyomogurobi_gurobipy_optimization_results(model_core_gurobi, model_core_pyomo)
+    return model_core_gurobi, model_core_pyomo
 
 
-@pytest.mark.skipif("CICD_ACTIVE" in os.environ)
-def compare_pyomogurobi_gurobipy_optimization_results(model_gurobipy, model_pyomo):
+@pytest.mark.skipif("CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines")
+def test_compare_pyomogurobi_gurobipy_optimization_results():
+    model_gurobipy, model_pyomo = test_tree_model_definition_multiobj_l2()
 
     gurobi_solver = pyo.SolverFactory("gurobi")
     gurobi_solver.options["NonCOnvex"] = 2
@@ -80,7 +81,7 @@ def compare_pyomogurobi_gurobipy_optimization_results(model_gurobipy, model_pyom
     model_gurobipy.optimize()
 
     # Activate this line code as soon as it is possible to fix the moo_weights
-    # assert round(pyo.value(model_pyomo.obj), 5) == round(model_gurobipy.ObjVal, 5)
+    assert round(pyo.value(model_pyomo.obj), 5) == round(model_gurobipy.ObjVal, 5)
 
 
 
