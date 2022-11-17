@@ -53,12 +53,13 @@ def test_tree_model_definition_multiobj_l2():
     # Enrich Gurobi and Pyomo models by constraints from tree model and objective function. The objective function
     # contains an acquisition and an uncertainty part.
     enting.add_to_gurobipy_model(model_core_gurobi)
-    # enting.add_to_pyomo_model(model_core_pyomo)
+    enting.add_to_pyomo_model(model_core_pyomo)
 
     # Assert that both models contain the same number of variables:
-    # assert len(model_core_gurobi.getVars()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Var))
+    assert len(model_core_gurobi.getVars()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Var))
     # Assert that both models contain the same number of constraints:
-    # assert len(model_core_gurobi.getConstrs()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
+    assert len(model_core_gurobi.getConstrs()) + len(model_core_gurobi.getQConstrs()) == \
+           sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
 
 @pytest.mark.fast_test
