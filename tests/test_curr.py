@@ -61,6 +61,17 @@ def test_tree_model_definition_multiobj_l2():
     assert len(model_core_gurobi.getConstrs()) + len(model_core_gurobi.getQConstrs()) == \
            sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
+    model_core_gurobi.params.NonConvex = 2
+    model_core_gurobi.params.MIPGap = 0.0
+    model_core_gurobi.optimize()
+
+    gurobi_solver = pyo.SolverFactory("gurobi")
+    gurobi_solver.options["NonCOnvex"] = 2
+    gurobi_solver.options["MIPGap"] = 0.0
+    gurobi_solver.solve(model_core_pyomo)
+
+    assert round(pyo.value(model_core_pyomo.obj), 1) == round(model_core_gurobi.ObjVal, 1)
+
 
 @pytest.mark.fast_test
 def test_tree_model_definition_singleobj_l2():
