@@ -147,6 +147,8 @@ def test_tree_model_definition_multiobj_l1():
         model_core_gurobi.getQConstrs()
     ) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
+    # TODO: Check, if model.aux_pos and model.aux_neg are mutually exclusive positive
+
     return model_core_gurobi, model_core_pyomo
 
 

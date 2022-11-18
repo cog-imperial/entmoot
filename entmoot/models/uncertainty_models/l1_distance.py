@@ -95,6 +95,9 @@ class L1Distance(NonCatDistance):
             indices_l1_sos1_constraints, var=[model.aux_pos, model.aux_neg], sos=1
         )
 
-        # TODO: SOS1 and return list of constraints
+        constr_list = [
+            sum(model.aux_pos[data_idx, idx]  + model.aux_neg[data_idx, idx] for idx in self._problem_config.non_cat_idx)
+            for (data_idx, _) in enumerate(self.x_trafo)
+        ]
 
-        raise NotImplementedError()
+        return constr_list
