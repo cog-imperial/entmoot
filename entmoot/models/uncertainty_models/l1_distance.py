@@ -58,4 +58,23 @@ class L1Distance(NonCatDistance):
         return constr_list
 
     def get_pyomo_model_constr_terms(self, model):
+        import pyomo.environ as pyo
+
+        feat = model._all_feat
+
+        # define auxiliary variables
+        feat_dict = {idx: self._problem_config.feat_list[idx]
+                     for idx in self._problem_config.non_cat_idx}
+
+        indices_aux_vars = [(i, j) for i in range(len(self.x_trafo)) for j in feat_dict]
+        model.aux_pos = pyo.Var(indices_aux_vars, domain=pyo.NonNegativeReals)
+        model.aux_neg = pyo.Var(indices_aux_vars, domain=pyo.NonNegativeReals)
+
+        indices_l1_constraints = [
+            (data_idx, xi, i, idx) for data_idx, xi in enumerate(self.x_trafo)
+            for i, idx in enumerate(self._problem_config.non_cat_idx)
+        ]
+
+
+
         raise NotImplementedError()
