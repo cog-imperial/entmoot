@@ -10,17 +10,17 @@ def test_tree_model_definition_multiobj_l2():
     def test_func_multi_obj(X):
         y0 = np.sin([xi[0] for xi in X])
         y1 = np.cos([xi[0] for xi in X])
-        return np.squeeze(np.column_stack([y0,y1]))
+        return np.squeeze(np.column_stack([y0, y1]))
 
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
 
-    problem_config.add_feature('real', (5.0, 6.0))
-    problem_config.add_feature('real', (4.6, 6.0))
-    problem_config.add_feature('real', (5.0, 6.0))
-    problem_config.add_feature('categorical', ("blue", "orange", "gray"))
-    problem_config.add_feature('integer', (5, 6))
-    problem_config.add_feature('binary')
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("real", (4.6, 6.0))
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("categorical", ("blue", "orange", "gray"))
+    problem_config.add_feature("integer", (5, 6))
+    problem_config.add_feature("binary")
 
     problem_config.add_min_objective()
     problem_config.add_min_objective()
@@ -31,9 +31,8 @@ def test_tree_model_definition_multiobj_l2():
 
     # fit tree ensemble
     from entmoot.models.enting import Enting
-    params = {
-        "unc_params": {"dist_metric": "l2"}
-    }
+
+    params = {"unc_params": {"dist_metric": "l2"}}
     enting = Enting(problem_config, params=params)
     enting.fit(rnd_sample, pred)
 
@@ -55,15 +54,20 @@ def test_tree_model_definition_multiobj_l2():
     enting.add_to_pyomo_model(model_core_pyomo)
 
     # Assert that both models contain the same number of variables:
-    assert len(model_core_gurobi.getVars()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Var))
+    assert len(model_core_gurobi.getVars()) == sum(
+        len(x) for x in model_core_pyomo.component_objects(pyo.Var)
+    )
     # Assert that both models contain the same number of constraints:
-    assert len(model_core_gurobi.getConstrs()) + len(model_core_gurobi.getQConstrs()) == \
-           sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
+    assert len(model_core_gurobi.getConstrs()) + len(
+        model_core_gurobi.getQConstrs()
+    ) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
     return model_core_gurobi, model_core_pyomo
 
 
-@pytest.mark.skipif("CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines")
+@pytest.mark.skipif(
+    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
+)
 def test_compare_pyomogurobi_gurobipy_optimization_results():
     model_gurobipy, model_pyomo = test_tree_model_definition_multiobj_l2()
 
@@ -96,12 +100,12 @@ def test_tree_model_definition_multiobj_l1():
 
     problem_config = ProblemConfig(rnd_seed=73)
 
-    problem_config.add_feature('real', (5.0, 6.0))
-    problem_config.add_feature('real', (4.6, 6.0))
-    problem_config.add_feature('real', (5.0, 6.0))
-    problem_config.add_feature('categorical', ("blue", "orange", "gray"))
-    problem_config.add_feature('integer', (5, 6))
-    problem_config.add_feature('binary')
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("real", (4.6, 6.0))
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("categorical", ("blue", "orange", "gray"))
+    problem_config.add_feature("integer", (5, 6))
+    problem_config.add_feature("binary")
 
     problem_config.add_min_objective()
     problem_config.add_min_objective()
@@ -112,9 +116,8 @@ def test_tree_model_definition_multiobj_l1():
 
     # fit tree ensemble
     from entmoot.models.enting import Enting
-    params = {
-        "unc_params": {"dist_metric": "l1"}
-    }
+
+    params = {"unc_params": {"dist_metric": "l1"}}
     enting = Enting(problem_config, params=params)
     enting.fit(rnd_sample, pred)
 
@@ -136,12 +139,16 @@ def test_tree_model_definition_multiobj_l1():
     enting.add_to_pyomo_model(model_core_pyomo)
 
     # Assert that both models contain the same number of variables:
-    assert len(model_core_gurobi.getVars()) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Var))
+    assert len(model_core_gurobi.getVars()) == sum(
+        len(x) for x in model_core_pyomo.component_objects(pyo.Var)
+    )
     # Assert that both models contain the same number of constraints:
-    assert len(model_core_gurobi.getConstrs()) + len(model_core_gurobi.getQConstrs()) == \
-           sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
+    assert len(model_core_gurobi.getConstrs()) + len(
+        model_core_gurobi.getQConstrs()
+    ) == sum(len(x) for x in model_core_pyomo.component_objects(pyo.Constraint))
 
     return model_core_gurobi, model_core_pyomo
+
 
 @pytest.mark.fast_test
 def test_tree_model_definition_singleobj_l1():

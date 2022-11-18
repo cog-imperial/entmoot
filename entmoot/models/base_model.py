@@ -1,5 +1,4 @@
 class BaseModel:
-
     def __init__(self, problem_config, num_obj, params):
         raise NotImplementedError()
 

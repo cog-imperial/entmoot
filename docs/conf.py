@@ -37,9 +37,9 @@ except ImportError:
 
 # -- Project information -----------------------------------------------------
 
-project = 'ENTMOOT'
-copyright = '2022, Alexander Thebelt, Nathan Sudermann-Merx'
-author = 'Alexander Thebelt, Nathan Sudermann-Merx'
+project = "ENTMOOT"
+copyright = "2022, Alexander Thebelt, Nathan Sudermann-Merx"
+author = "Alexander Thebelt, Nathan Sudermann-Merx"
 
 
 # -- General configuration ---------------------------------------------------
@@ -47,17 +47,15 @@ author = 'Alexander Thebelt, Nathan Sudermann-Merx'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'sphinx.ext.autodoc', 'nbsphinx'
-]
+extensions = ["sphinx.ext.autodoc", "nbsphinx"]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -65,15 +63,12 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # Path to the entmoot logo
 html_logo = "../media/entmoot_logo.png"
 
-html_theme_options = {
-    'logo_only': True,
-    'style_nav_header_background': "white"
-}
+html_theme_options = {"logo_only": True, "style_nav_header_background": "white"}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

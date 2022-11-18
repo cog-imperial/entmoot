@@ -1,8 +1,8 @@
 from entmoot.models.uncertainty_models.base_distance import NonCatDistance
 import numpy as np
 
-class EuclideanSquaredDistance(NonCatDistance):
 
+class EuclideanSquaredDistance(NonCatDistance):
     def _get_distance(self, x_left, x_right):
         if x_left.ndim == 1:
             dist = np.sum((x_left - x_right) ** 2)
@@ -21,8 +21,8 @@ class EuclideanSquaredDistance(NonCatDistance):
         constr_list = []
         for xi in self.x_trafo:
             constr = quicksum(
-                (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i]) *
                 (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i])
+                * (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i])
                 for i, idx in enumerate(self._problem_config.non_cat_idx)
             )
             constr_list.append(constr)

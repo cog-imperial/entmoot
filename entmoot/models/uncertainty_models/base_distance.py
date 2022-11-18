@@ -3,7 +3,6 @@ import numpy as np
 
 
 class NonCatDistance(BaseModel):
-
     def __init__(self, problem_config, acq_sense, dist_trafo):
         self._problem_config = problem_config
         self._acq_sense = acq_sense
@@ -22,8 +21,9 @@ class NonCatDistance(BaseModel):
 
     @property
     def x_trafo(self):
-        assert self._x_trafo is not None, \
-            f"Uncertainty model needs fit function call before it can predict."
+        assert (
+            self._x_trafo is not None
+        ), f"Uncertainty model needs fit function call before it can predict."
         return self._x_trafo
 
     def _get_distance(self, x_left, x_right):
@@ -33,9 +33,7 @@ class NonCatDistance(BaseModel):
         return (non_cat_x - self._shift) / self._scale
 
     def predict(self, xi):
-        non_cat_x = self._trafo(
-            np.atleast_2d(xi)[:, self._problem_config.non_cat_idx]
-        )
+        non_cat_x = self._trafo(np.atleast_2d(xi)[:, self._problem_config.non_cat_idx])
         return self._get_distance(self.x_trafo, non_cat_x)
 
     def _array_predict(self, X):
@@ -52,8 +50,10 @@ class NonCatDistance(BaseModel):
             self._shift = np.mean(np.asarray(non_cat_x), axis=0)
             self._scale = np.std(np.asarray(non_cat_x), axis=0)
         else:
-            raise IOError("Parameter 'dist_trafo' for uncertainty model needs to be "
-                          "in '('normal', 'standard')'.")
+            raise IOError(
+                "Parameter 'dist_trafo' for uncertainty model needs to be "
+                "in '('normal', 'standard')'."
+            )
 
         self._x_trafo = self._trafo(non_cat_x)
 
@@ -65,7 +65,6 @@ class NonCatDistance(BaseModel):
 
 
 class CatDistance(BaseModel):
-
     def __init__(self, problem_config, acq_sense):
         self._problem_config = problem_config
         self._acq_sense = acq_sense
@@ -75,14 +74,16 @@ class CatDistance(BaseModel):
 
     @property
     def cache_x(self):
-        assert self._cache_x is not None, \
-            f"Uncertainty model needs fit function call before it can predict."
+        assert (
+            self._cache_x is not None
+        ), f"Uncertainty model needs fit function call before it can predict."
         return self._cache_x
 
     @property
     def sim_map(self):
-        assert self._sim_map is not None, \
-            f"Uncertainty model needs fit function call before it can predict."
+        assert (
+            self._sim_map is not None
+        ), f"Uncertainty model needs fit function call before it can predict."
         return self._sim_map
 
     def predict(self, xi):
@@ -114,9 +115,12 @@ class CatDistance(BaseModel):
 
             # creates similarity entries for all categories of all categorical features
             mat = np.fromfunction(
-                np.vectorize(self._sim_mat_rule, ),
+                np.vectorize(
+                    self._sim_mat_rule,
+                ),
                 (len(all_cats), len(all_cats)),
-                dtype=int, cat_idx=idx
+                dtype=int,
+                cat_idx=idx,
             )
             self._sim_map[idx] = mat
 

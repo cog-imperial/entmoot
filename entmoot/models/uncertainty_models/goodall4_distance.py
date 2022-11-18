@@ -1,7 +1,7 @@
 from entmoot.models.uncertainty_models.base_distance import CatDistance
 
-class Goodall4Distance(CatDistance):
 
+class Goodall4Distance(CatDistance):
     def __init__(self, problem_config, acq_sense):
         pass
 
