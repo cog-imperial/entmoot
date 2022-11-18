@@ -72,9 +72,24 @@ class L1Distance(NonCatDistance):
         model.aux_neg = pyo.Var(indices_aux_vars, domain=pyo.NonNegativeReals)
 
         indices_l1_constraints = [
-            (data_idx, xi, i, idx)
-            for data_idx, xi in enumerate(self.x_trafo)
+            (data_idx, i, idx)
+            for data_idx, _ in enumerate(self.x_trafo)
             for i, idx in enumerate(self._problem_config.non_cat_idx)
         ]
+
+        def rule_contrs_l1_pos_neg_contr(modelobj, data_idx, i, idx):
+            xi = self.x_trafo[data_idx]
+            return (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i]) == \
+                   modelobj.aux_pos[data_idx, idx] - modelobj.aux_neg[data_idx, idx]
+
+        model.contrs_l1_pos_neg_contr = pyo.Constraint(
+            indices_l1_constraints, rule=rule_contrs_l1_pos_neg_contr
+        )
+
+        indices_l1_sos1_constraints = [(data_idx, idx) for (data_idx, i, idx) in indices_l1_constraints]
+
+        model.constrs_l1_sos1 = pyo.SOSConstraint(indices_l1_sos1_constraints, var=[model.aux_pos, model.aux_neg], sos=1)
+
+        # TODO: SOS1 and return list of constraints
 
         raise NotImplementedError()
