@@ -88,6 +88,42 @@ def test_compare_pyomogurobi_gurobipy_optimization_results_multi_obj_l2():
 def test_tree_model_definition_singleobj_l2():
     pass
 
+@pytest.mark.fast_test
+def test_simple_solve_multiobj_l2():
+    def test_func_multi_obj(X):
+        y0 = np.sin([xi[0] for xi in X])
+        y1 = np.cos([xi[0] for xi in X])
+        return np.squeeze(np.column_stack([y0, y1]))
+
+        # define problem
+
+    problem_config = ProblemConfig(rnd_seed=73)
+
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("real", (4.6, 6.0))
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("categorical", ("blue", "orange", "gray"))
+    problem_config.add_feature("integer", (5, 6))
+    problem_config.add_feature("binary")
+
+    problem_config.add_min_objective()
+    problem_config.add_min_objective()
+
+    # sample data
+    rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
+    pred = test_func_multi_obj(rnd_sample)
+
+    # fit tree ensemble
+    from entmoot.models.enting import Enting
+
+    params = {"unc_params": {"dist_metric": "l1"}}
+    enting = Enting(problem_config, params=params)
+    enting.fit(rnd_sample, pred)
+
+    # get optimization solver
+    from entmoot.optimizers.gurobi_opt import GurobiOptimizer
+    opt = GurobiOptimizer(problem_config)
+    opt.solve(enting, weights=(0.5, 0.5))
 
 @pytest.mark.fast_test
 def test_tree_model_definition_multiobj_l1():

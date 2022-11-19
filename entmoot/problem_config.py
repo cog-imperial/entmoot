@@ -231,6 +231,22 @@ class ProblemConfig:
         model.update()
         return model
 
+    def copy_gurobi_model_core(self, model_core):
+        copy_model_core = model_core.copy()
+        copy_model_core._all_feat = []
+
+        # transfer feature var list to model copy
+        for i, feat in enumerate(self.feat_list):
+            if feat.is_cat():
+                copy_model_core._all_feat.append(dict())
+                for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
+                    var_name = model_core._all_feat[i][enc].VarName
+                    copy_model_core._all_feat[i][enc] = copy_model_core.getVarByName(var_name)
+            else:
+                var_name = model_core._all_feat[i].VarName
+                copy_model_core._all_feat.append(copy_model_core.getVarByName(var_name))
+        return copy_model_core
+
     def get_pyomo_model_core(self):
         import pyomo.environ as pyo
 

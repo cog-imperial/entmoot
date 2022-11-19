@@ -97,7 +97,7 @@ class Enting(BaseModel):
             acq_pred.append(mean + self._beta * unc)
         return acq_pred
 
-    def add_to_gurobipy_model(self, core_model):
+    def add_to_gurobipy_model(self, core_model, weights=None):
         from gurobipy import GRB
         from entmoot.utils import sample
 
@@ -117,7 +117,10 @@ class Enting(BaseModel):
             self.mean_model.add_to_gurobipy_model(
                 core_model, add_mu_var=True, normalize_mean=True
             )
-            moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
+            if weights is not None:
+                moo_weights = weights
+            else:
+                moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
 
             for idx, obj in enumerate(self._problem_config.obj_list):
                 core_model.addConstr(

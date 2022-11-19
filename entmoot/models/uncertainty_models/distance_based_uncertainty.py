@@ -25,6 +25,7 @@ class DistanceBasedUncertainty(BaseModel):
         self._dist_bound = None
         self._dist_metric = dist_metric
         self._num_cache_x = None
+        self._acq_sense = acq_sense
 
         if dist_trafo == "standard":
             assert (
@@ -155,6 +156,9 @@ class DistanceBasedUncertainty(BaseModel):
                     model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
                     name=f"unc_x_{i}",
                 )
+
+        if self._acq_sense == "exploration":
+            model.params.NonConvex = 2
 
         model.update()
 
