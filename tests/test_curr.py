@@ -88,7 +88,9 @@ def test_compare_pyomogurobi_gurobipy_optimization_results_multi_obj_l2():
 def test_tree_model_definition_singleobj_l2():
     pass
 
-@pytest.mark.fast_test
+@pytest.mark.skipif(
+    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
+)
 def test_simple_solve_multiobj_l2():
     def test_func_multi_obj(X):
         y0 = np.sin([xi[0] for xi in X])
@@ -125,9 +127,7 @@ def test_simple_solve_multiobj_l2():
     opt = GurobiOptimizer(problem_config)
     opt.solve(enting, weights=(0.5, 0.5))
 
-@pytest.mark.skipif(
-    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
-)
+@pytest.mark.fast_test
 def test_tree_model_definition_multiobj_l1():
     def test_func_multi_obj(X):
         y0 = np.sin([xi[0] for xi in X])
