@@ -32,7 +32,6 @@ class L1Distance(NonCatDistance):
         constr_list = []
         for data_idx, xi in enumerate(self.x_trafo):
             for i, idx in enumerate(self._problem_config.non_cat_idx):
-
                 # capture positive and negative contributions
                 model.addConstr(
                     (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i])
@@ -87,16 +86,37 @@ class L1Distance(NonCatDistance):
             indices_l1_constraints, rule=rule_contrs_l1_pos_neg_contr
         )
 
-        indices_l1_sos1_constraints = [
-            (data_idx, idx) for (data_idx, i, idx) in indices_l1_constraints
-        ]
+        model.l1_bigm = {
+            (data_idx, idx): max(
+                abs(self.x_trafo[data_idx][i] - (feat[idx].ub - self.shift[i]) / self.scale[i]),
+                abs(self.x_trafo[data_idx][i] - (feat[idx].lb - self.shift[i]) / self.scale[i])
+            ) for (data_idx, i, idx) in indices_l1_constraints
+        }
 
-        model.constrs_l1_sos1 = pyo.SOSConstraint(
-            indices_l1_sos1_constraints, var=[model.aux_pos, model.aux_neg], sos=1
+        model.indices_bigm = list(model.l1_bigm.keys())
+
+        model.y_pos_bigm = pyo.Var(model.indices_bigm, domain=pyo.Binary)
+        model.y_neg_bigm = pyo.Var(model.indices_bigm, domain=pyo.Binary)
+
+        def bigm_ub_pos(modelobj, data_idx, idx):
+            return modelobj.aux_pos[data_idx, idx] <= model.l1_bigm[data_idx, idx] * model.y_pos_bigm[data_idx, idx]
+        def bigm_ub_neg(modelobj, data_idx, idx):
+            return modelobj.aux_neg[data_idx, idx] <= model.l1_bigm[data_idx, idx] * model.y_neg_bigm[data_idx, idx]
+        model.constrs_l1_bigm_ub_pos = pyo.Constraint(
+            model.indices_bigm, rule=bigm_ub_pos
+        )
+        model.constrs_l1_bigm_ub_neg = pyo.Constraint(
+            model.indices_bigm, rule=bigm_ub_neg
+        )
+
+        def binaries_mutually_exclusive(modelobj, data_idx, idx):
+            return model.y_pos_bigm[data_idx, idx] + model.y_neg_bigm[data_idx, idx] == 1
+        model.constrs_l1_bigm_mut_excl = pyo.Constraint(
+            model.indices_bigm, rule=binaries_mutually_exclusive
         )
 
         constr_list = [
-            sum(model.aux_pos[data_idx, idx]  + model.aux_neg[data_idx, idx] for idx in self._problem_config.non_cat_idx)
+            sum(model.aux_pos[data_idx, idx] + model.aux_neg[data_idx, idx] for idx in self._problem_config.non_cat_idx)
             for (data_idx, _) in enumerate(self.x_trafo)
         ]
 
