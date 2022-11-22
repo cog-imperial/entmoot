@@ -131,7 +131,7 @@ class Enting(BaseModel):
         core_model.setObjective(core_model._mu + self._beta * core_model._unc)
         core_model.update()
 
-    def add_to_pyomo_model(self, core_model):
+    def add_to_pyomo_model(self, core_model, weights=None):
         import pyomo.environ as pyo
         from entmoot.utils import sample
 
@@ -153,7 +153,10 @@ class Enting(BaseModel):
             self.mean_model.add_to_pyomo_model(
                 core_model, add_mu_var=True, normalize_mean=True
             )
-            moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
+            if weights is not None:
+                moo_weights = weights
+            else:
+                moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
 
             objectives_position_name = list(
                 enumerate([obj.name for obj in self._problem_config.obj_list])
