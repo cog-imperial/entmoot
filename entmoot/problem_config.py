@@ -247,6 +247,9 @@ class ProblemConfig:
                 copy_model_core._all_feat.append(copy_model_core.getVarByName(var_name))
         return copy_model_core
 
+    def copy_pyomo_model_core(self, model_core):
+        raise NotImplementedError
+
     def get_pyomo_model_core(self):
         import pyomo.environ as pyo
 
