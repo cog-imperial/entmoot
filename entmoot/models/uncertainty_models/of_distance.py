@@ -1,18 +1,16 @@
 from entmoot.models.uncertainty_models.base_distance import CatDistance
+import numpy as np
+from math import log
 
 
 class OfDistance(CatDistance):
-    def __init__(self, problem_config, acq_sense):
-        pass
 
-    def _get_distance(self, x_left, x_right):
-        raise NotImplementedError()
+    def _get_of_frac(self, cat_rows, cat_left, cat_right):
+        count_cat_left = np.sum(cat_rows == cat_left)
+        count_cat_right = np.sum(cat_rows == cat_right)
+        n_rows = len(cat_rows)
+        return 1 / (1 + log(n_rows / count_cat_left) * log(n_rows / count_cat_right))
 
-    def _array_predict(self, X):
-        raise NotImplementedError()
-
-    def add_to_gurobipy_model(self, model_core):
-        raise NotImplementedError()
-
-    def add_to_pyomo_model(self, model_core):
-        raise NotImplementedError()
+    def _sim_mat_rule(self, x_left, x_right, cat_idx):
+        return self._get_of_frac(self._cache_x[:, cat_idx], x_left, x_right) \
+            if x_left != x_right else 1.0
