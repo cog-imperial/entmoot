@@ -626,7 +626,7 @@ class TreeEnsemble(BaseModel):
                         self.max_y[idx] - self.min_y[idx],
                     )
                 else:
-                    shift, scale = 0.0, 1.0
+                    shift[obj_name], scale[obj_name] = 0.0, 1.0
 
             def mu_objectives(model_obj, name):
                 return (
