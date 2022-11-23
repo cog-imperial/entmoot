@@ -71,6 +71,7 @@ class CatDistance(BaseModel):
 
         self._cat_x = None
         self._sim_map = None
+        self._cache_x = None
 
     @property
     def cache_x(self):
@@ -99,13 +100,12 @@ class CatDistance(BaseModel):
         dist_vec = (-1) * sim_vec + len(self._problem_config.cat_idx)
         return dist_vec
 
-    def _array_predict(self, X):
-        raise NotImplementedError()
-
     def _sim_mat_rule(self, x_left, x_right, cat_idx):
         raise NotImplementedError()
 
     def fit(self, X):
+        self._cache_x = X
+
         # generate similarity matrix for all data points
         self._sim_map = {}
 
@@ -123,8 +123,6 @@ class CatDistance(BaseModel):
                 cat_idx=idx,
             )
             self._sim_map[idx] = mat
-
-        self._cache_x = X
 
     def get_gurobipy_model_constr_terms(self, model):
         feat = model._all_feat
