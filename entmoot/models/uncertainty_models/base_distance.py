@@ -117,11 +117,13 @@ class CatDistance(BaseModel):
             mat = np.fromfunction(
                 np.vectorize(
                     self._sim_mat_rule,
+                    otypes=[float]
                 ),
                 (len(all_cats), len(all_cats)),
                 dtype=int,
                 cat_idx=idx,
             )
+            print(mat)
             self._sim_map[idx] = mat
 
     def get_gurobipy_model_constr_terms(self, model):

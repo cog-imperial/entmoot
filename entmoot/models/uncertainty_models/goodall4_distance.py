@@ -9,4 +9,4 @@ class Goodall4Distance(CatDistance):
 
     def _sim_mat_rule(self, x_left, x_right, cat_idx):
         return self._get_pk2(self._cache_x[:, cat_idx], x_left) \
-            if x_left == x_right else 0
+            if x_left == x_right else 0.0
