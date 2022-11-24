@@ -123,7 +123,6 @@ class CatDistance(BaseModel):
                 dtype=int,
                 cat_idx=idx,
             )
-            print(mat)
             self._sim_map[idx] = mat
 
     def get_gurobipy_model_constr_terms(self, model):
