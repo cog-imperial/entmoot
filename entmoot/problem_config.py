@@ -64,15 +64,13 @@ class ProblemConfig:
         )
 
     def _decode_xi(self, xi: List):
-        return np.asarray(
-            [feat.decode(xi[idx]) for idx, feat in enumerate(self.feat_list)]
-        )
+        return [feat.decode(xi[idx]) for idx, feat in enumerate(self.feat_list)]
 
     def encode(self, X: List):
         if len(X) == 0:
             return []
         elif len(X) == 1:
-            return self._encode_xi(X)
+            return self._encode_xi(X[0])
         else:
             enc = [self._encode_xi(xi) for xi in X]
             return np.asarray(enc)
@@ -81,7 +79,7 @@ class ProblemConfig:
         if len(X) == 0:
             return []
         elif len(X) == 1:
-            return self._decode_xi(X)
+            return self._decode_xi(X[0])
         else:
             dec = [self._decode_xi(xi) for xi in X]
             return np.asarray(dec)
@@ -408,12 +406,18 @@ class Integer(FeatureType):
     def is_int(self):
         return True
 
+    def decode(self, xi):
+        return int(xi)
+
 
 class Binary(FeatureType):
     def __init__(self, name):
         self.lb = 0
         self.ub = 1
         self.name = name
+
+    def decode(self, xi):
+        return abs(int(xi))
 
     def is_bin(self):
         return True
