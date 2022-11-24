@@ -129,7 +129,7 @@ class TreeEnsemble(BaseModel):
         tree_pred = []
         for obj in self._problem_config.obj_list:
             tree_pred.append(self.tree_dict[obj.name].predict(X))
-        return np.squeeze(np.column_stack(tree_pred))
+        return np.column_stack(tree_pred)
 
     def _update_meta_tree_dict(self):
         self._meta_tree_dict = {}
@@ -371,6 +371,7 @@ class TreeEnsemble(BaseModel):
                         yield tree, leaf
 
             model._aux_mu = []
+            model._uncscaled_mu = []
 
             for idx, obj in enumerate(self._problem_config.obj_list):
                 weighted_sum = quicksum(
@@ -388,6 +389,15 @@ class TreeEnsemble(BaseModel):
                     )
                 )
 
+                model._uncscaled_mu.append(
+                    model.addVar(
+                        lb=-GRB.INFINITY,
+                        ub=GRB.INFINITY,
+                        name=f"unscaled_mean_obj_{obj.name}",
+                        vtype="C",
+                    )
+                )
+
                 if normalize_mean:
                     shift, scale = self.min_y[idx], self.max_y[idx] - self.min_y[idx]
                 else:
@@ -396,6 +406,11 @@ class TreeEnsemble(BaseModel):
                 model.addConstr(
                     model._aux_mu[-1] == (weighted_sum - shift) / scale,
                     name=f"aux_mean_obj_{obj.name}_tree_link",
+                )
+
+                model.addConstr(
+                    model._uncscaled_mu[-1] == (model._aux_mu[-1]*scale) + shift,
+                    name=f"unscaled_mean_obj_{obj.name}_tree_link",
                 )
 
         model.update()
