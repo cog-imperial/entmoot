@@ -148,7 +148,7 @@ class DistanceBasedUncertainty(BaseModel):
                 # take sqrt for l2 distance
                 model.addQConstr(
                     model._unc * model._unc
-                    <= (non_cat_term + cat_term) * self._dist_coeff,
+                    <= (non_cat_term + cat_term) * self._dist_coeff ** 2,
                     name=f"unc_x_{i}",
                 )
             else:
@@ -186,7 +186,7 @@ class DistanceBasedUncertainty(BaseModel):
             # take sqrt for l2 distance
             non_cat_term, cat_term = model.terms_constrs_cat_noncat_contr[i]
             return (
-                model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff
+                model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff ** 2
             )
 
         def rule_constr_cat_noncat(model_obj, i):
