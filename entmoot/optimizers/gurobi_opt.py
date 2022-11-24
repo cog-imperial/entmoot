@@ -6,6 +6,14 @@ class GurobiOptimizer:
     def __init__(self, problem_config: ProblemConfig, params: dict = None) -> float:
         self._params = {} if params is None else params
         self._problem_config = problem_config
+        self._curr_sol = None
+
+    @property
+    def curr_sol(self):
+        assert (
+            self._curr_sol is not None
+        ), "No solution was generated yet."
+        return self._curr_sol
 
     def solve(self, tree_model: Enting, model_core: gur.Model = None, weights: tuple = None):
         if model_core is None:
@@ -31,10 +39,27 @@ class GurobiOptimizer:
         # Solve optimization model
         opt_model.optimize()
 
+        # update current solution
+        self._curr_sol = self._get_sol(opt_model)
+
         return opt_model.ObjVal
 
-    def get_next_x(self):
-        raise NotImplementedError()
+    def _get_sol(self, solved_model):
+        res = []
+        for idx, feat in enumerate(self._problem_config.feat_list):
+            curr_var = solved_model._all_feat[idx]
+            if feat.is_cat():
+                # find active category
+                sol_cat = [int(round(curr_var[enc_cat].x))
+                           for enc_cat in feat.enc_cat_list].index(1)
+                res.append(sol_cat)
+            else:
+                res.append(curr_var.x)
+        print(res)
+
+        return self._problem_config.decode([res])
+
+
 
     def sample_feas(self, model_core: gur.Model, num_points):
         raise NotImplementedError()
