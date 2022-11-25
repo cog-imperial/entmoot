@@ -3,7 +3,7 @@ from numpy.typing import ArrayLike
 from typing import Iterable
 
 
-def multi_obj_categorical(X: ArrayLike, n_obj: int = 2) -> np.ndarray:
+def eval_multi_obj_cat_testfunc(X: ArrayLike, n_obj: int = 2) -> np.ndarray:
     """
     Benchmark function with at least four input variables and one or two outputs
     :param X: Usually a numpy array or a list of tuples. Each row (or tuple) consists of at least four entries with the
