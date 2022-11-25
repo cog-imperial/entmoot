@@ -47,7 +47,7 @@ class PyomoOptimizer:
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
-        return pyo.value(opt_model.obj)
+        return self.get_curr_sol, pyo.value(opt_model.obj), [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu]
 
     def _get_sol(self, solved_model):
         res = []

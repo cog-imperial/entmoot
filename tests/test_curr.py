@@ -54,15 +54,17 @@ def test_compare_pyomo_gurobipy_multiobj():
         # Build GurobiOptimizer object and solve optimization problem
         params_gurobi = {"NonConvex": 2, "MIPGap": 0}
         opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-        optval_gur = opt_gur.solve(enting, weights=(0.5, 0.5))
+        X_opt_gur, y_opt_gur, _ = opt_gur.solve(enting)
 
         # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
         params_pyo = {"solver_name": "gurobi", "solver_options": {"NonConvex": 2, "MIPGap": 0}}
-        pyo_opt = PyomoOptimizer(problem_config, params=params_pyo)
-        optval_pyo = pyo_opt.solve(enting, weights=(0.5, 0.5))
+        opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+        X_opt_pyo, y_opt_pyo, _ = opt_pyo.solve(enting)
 
-        assert round(optval_gur, 2) == round(optval_pyo, 2)
-
+        # Compare optimal values (e.g. objective values) ...
+        assert round(y_opt_gur, 2) == round(y_opt_pyo, 2)
+        # ... and optimal points (e.g. feature variables)
+        assert [round(x, 5) for x in X_opt_gur[2:]] == [round(x, 5) for x in X_opt_pyo[2:]]
 
 @pytest.mark.fast_test
 @pytest.mark.skipif(
@@ -93,14 +95,17 @@ def test_compare_pyomo_gurobipy_singleobj():
         # Build GurobiOptimizer object and solve optimization problem
         params_gurobi = {"NonConvex": 2, "MIPGap": 0}
         opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-        optval_gur = opt_gur.solve(enting)
+        X_opt_gur, y_opt_gur, _ = opt_gur.solve(enting)
 
         # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
         params_pyo = {"solver_name": "gurobi", "solver_options": {"NonConvex": 2, "MIPGap": 0}}
-        pyo_opt = PyomoOptimizer(problem_config, params=params_pyo)
-        optval_pyo = pyo_opt.solve(enting)
+        opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+        X_opt_pyo, y_opt_pyo, _ = opt_pyo.solve(enting)
 
-        assert round(optval_gur, 2) == round(optval_pyo, 2)
+        # Compare optimal values (e.g. objective values) ...
+        assert round(y_opt_gur, 2) == round(y_opt_pyo, 2)
+        # ... and optimal points (e.g. feature variables)
+        assert [round(x, 5) for x in X_opt_gur[2:]] == [round(x, 5) for x in X_opt_pyo[2:]]
 
 
 def test_tree_model_vs_opt_model():
@@ -126,12 +131,14 @@ def test_tree_model_vs_opt_model():
     # Build GurobiOptimizer object and solve optimization problem
     params_gurobi = {"NonConvex": 2, "MIPGap": 0}
     opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-    optval_gur = opt_gur.solve(enting)
+    X_opt_gur, y_opt_gur, y_opt_unscaled_gur = opt_gur.solve(enting)
 
     # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
     params_pyo = {"solver_name": "gurobi", "solver_options": {"NonConvex": 2, "MIPGap": 0}}
-    pyo_opt = PyomoOptimizer(problem_config, params=params_pyo)
-    optval_pyo = pyo_opt.solve(enting)
+    opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+    X_opt_pyo, y_opt_pyo, y_opt_unscaled_pyo = opt_pyo.solve(enting)
 
-    # TODO: This line of code is not working
-    # print(enting.predict(opt_gur.get_curr_sol))
+    pred_mean, pred_std = enting.predict([X_opt_pyo])[0]
+
+    # TODO: Find reason for different values
+    # assert y_opt_unscaled_pyo == pred_mean

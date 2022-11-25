@@ -43,7 +43,7 @@ class GurobiOptimizer:
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
-        return opt_model.ObjVal
+        return self.get_curr_sol, opt_model.ObjVal, opt_model._unscaled_mu
 
     def _get_sol(self, solved_model):
         res = []
