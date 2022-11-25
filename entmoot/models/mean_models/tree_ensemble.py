@@ -371,7 +371,7 @@ class TreeEnsemble(BaseModel):
                         yield tree, leaf
 
             model._aux_mu = []
-            model._uncscaled_mu = []
+            model._unscaled_mu = []
 
             for idx, obj in enumerate(self._problem_config.obj_list):
                 weighted_sum = quicksum(
@@ -389,7 +389,7 @@ class TreeEnsemble(BaseModel):
                     )
                 )
 
-                model._uncscaled_mu.append(
+                model._unscaled_mu.append(
                     model.addVar(
                         lb=-GRB.INFINITY,
                         ub=GRB.INFINITY,
@@ -409,7 +409,7 @@ class TreeEnsemble(BaseModel):
                 )
 
                 model.addConstr(
-                    model._uncscaled_mu[-1] == (model._aux_mu[-1]*scale) + shift,
+                    model._unscaled_mu[-1] == (model._aux_mu[-1] * scale) + shift,
                     name=f"unscaled_mean_obj_{obj.name}_tree_link",
                 )
 
@@ -623,6 +623,7 @@ class TreeEnsemble(BaseModel):
             objective_names = [obj.name for obj in self._problem_config.obj_list]
 
             model._aux_mu = pyo.Var(objective_names, domain=pyo.Reals)
+            model._unscaled_mu = pyo.Var(objective_names, domain=pyo.Reals)
 
             weighted_sum = {}
             shift = {}
@@ -651,4 +652,11 @@ class TreeEnsemble(BaseModel):
 
             model.constraints_mu_objectives = pyo.Constraint(
                 objective_names, rule=mu_objectives
+            )
+
+            def link_unscaled_mu_auxmu(model_obj: pyo.ConcreteModel, name: str):
+                return model_obj._unscaled_mu[name] == (model._aux_mu[name] * scale[name]) + shift[name]
+
+            model.constraints_mu_objectives = pyo.Constraint(
+                objective_names, rule=link_unscaled_mu_auxmu
             )
