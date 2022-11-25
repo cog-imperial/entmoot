@@ -657,6 +657,6 @@ class TreeEnsemble(BaseModel):
             def link_unscaled_mu_auxmu(model_obj: pyo.ConcreteModel, name: str):
                 return model_obj._unscaled_mu[name] == (model._aux_mu[name] * scale[name]) + shift[name]
 
-            model.constraints_mu_objectives = pyo.Constraint(
+            model.constraints_link_unscaled_mu_auxmu = pyo.Constraint(
                 objective_names, rule=link_unscaled_mu_auxmu
             )
