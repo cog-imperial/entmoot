@@ -2,6 +2,7 @@ from entmoot.problem_config import ProblemConfig
 from entmoot.models.enting import Enting
 import gurobipy as gur
 
+
 class GurobiOptimizer:
     def __init__(self, problem_config: ProblemConfig, params: dict = None) -> float:
         self._params = {} if params is None else params
@@ -9,7 +10,7 @@ class GurobiOptimizer:
         self._curr_sol = None
 
     @property
-    def curr_sol(self):
+    def get_curr_sol(self):
         assert (
             self._curr_sol is not None
         ), "No solution was generated yet."
@@ -50,8 +51,7 @@ class GurobiOptimizer:
             curr_var = solved_model._all_feat[idx]
             if feat.is_cat():
                 # find active category
-                sol_cat = [int(round(curr_var[enc_cat].x))
-                           for enc_cat in feat.enc_cat_list].index(1)
+                sol_cat = [int(round(curr_var[enc_cat].x)) for enc_cat in feat.enc_cat_list].index(1)
                 res.append(sol_cat)
             else:
                 res.append(curr_var.x)
