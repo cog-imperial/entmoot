@@ -1,3 +1,4 @@
+from entmoot import ProblemConfig
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
@@ -7,7 +8,45 @@ import numpy as np
 
 
 class Enting(BaseModel):
-    def __init__(self, problem_config, params=None):
+    """
+    This class contains a nice living space for your tree model. You can fit your model, use it for predictions and
+    provide information that are needed to build optimization models that incorporate the tree structure of your model.
+
+    Example:
+        .. code-block:: python
+
+            from entmoot import ProblemConfig
+            import numpy as np
+            import random
+
+            # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
+            problem_config = ProblemConfig()
+            problem_config.add_feature("real", (-2, 3))
+            problem_config.add_min_objective()
+
+            # Create training data using the randomly disturbed function f(x) = x^2 + 1 + eps
+            X_train = np.linspace(-2, 3, 10)
+            y_train = [x**2 + 1 + random.uniform(-0.2, 0.2) for x in X_train]
+
+            # Define enting object and corresponding parameters
+            params = {"unc_params": {"dist_metric": "l1"}}
+            enting = Enting(problem_config, params=params)
+            # Fit tree model
+            enting.fit(X_train, y_train)
+            # Compute the predictions for training data and see that light gbm fitted a step function
+            # with three steps
+            enting.predict(X_train)
+
+            # Define parameters needed during optimization
+            params_pyo = {"solver_name": "gurobi", "solver_options": {"MIPGap": 0}}
+            # Build PyomoOptimizer object. This step will internally call the methods
+            # add_to_pyomo_model() or add_to_gurobipy_model(), resp., depending on the choice
+            # of your optimizer
+            opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+            # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
+            X_opt_pyo, _, _ = opt_pyo.solve(enting)
+    """
+    def __init__(self, problem_config: ProblemConfig, params: dict = None):
 
         if params is None:
             params = {}
@@ -42,7 +81,7 @@ class Enting(BaseModel):
             problem_config=problem_config, params=unc_params
         )
 
-    def fit(self, X, y):
+    def fit(self, X: np.ndarray, y: np.ndarray):
         # encode categorical features
         X = self._problem_config.encode(X)
 
@@ -68,7 +107,7 @@ class Enting(BaseModel):
         self.mean_model.fit(X, y)
         self.unc_model.fit(X, y)
 
-    def predict(self, X):
+    def predict(self, X: np.ndarray):
         # encode categorical features
         X = self._problem_config.encode(X)
 
@@ -90,14 +129,14 @@ class Enting(BaseModel):
     def predict_pareto(self):
         pass
 
-    def predict_acq(self, X):
+    def predict_acq(self, X: np.ndarray):
         acq_pred = []
         comb_pred = self.predict(X)
         for mean, unc in comb_pred:
             acq_pred.append(mean + self._beta * unc)
         return acq_pred
 
-    def add_to_gurobipy_model(self, core_model, weights=None):
+    def add_to_gurobipy_model(self, core_model, weights: tuple = None):
         from gurobipy import GRB
         from entmoot.utils import sample
 
@@ -131,7 +170,7 @@ class Enting(BaseModel):
         core_model.setObjective(core_model._mu + self._beta * core_model._unc)
         core_model.update()
 
-    def add_to_pyomo_model(self, core_model, weights=None):
+    def add_to_pyomo_model(self, core_model, weights: tuple = None):
         import pyomo.environ as pyo
         from entmoot.utils import sample
 
@@ -175,5 +214,5 @@ class Enting(BaseModel):
             expr=core_model._mu + self._beta * core_model._unc, sense=pyo.minimize
         )
 
-    def update_params(params):
+    def update_params(params: dict):
         raise NotImplementedError()
