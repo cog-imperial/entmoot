@@ -1,10 +1,10 @@
-from entmoot.problem_config import ProblemConfig
-from entmoot.models.enting import Enting
-from entmoot.optimizers.gurobi_opt import GurobiOptimizer
-from entmoot.optimizers.pyomo_opt import PyomoOptimizer
-import pytest
-import os
+from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
 from entmoot.benchmarks import eval_multi_obj_cat_testfunc
+
+import numpy as np
+import os
+import pytest
+import random
 
 
 def build_multi_obj_categorical_problem(problem_config: ProblemConfig, n_obj: int = 2):
@@ -23,6 +23,32 @@ def build_multi_obj_categorical_problem(problem_config: ProblemConfig, n_obj: in
 
     for _ in range(n_obj):
         problem_config.add_min_objective()
+
+
+def test_simple_test():
+    # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
+    problem_config = ProblemConfig()
+    problem_config.add_feature("real", (-2, 3))
+    problem_config.add_min_objective()
+
+    # Create training data using the randomly disturbed function f(x) = x^2 + 1 + eps
+    X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
+    y_train = np.reshape([x**2 + 1 + random.uniform(-0.2, 0.2) for x in X_train], (-1, 1))
+
+    # Define enting object and corresponding parameters
+    params = {"unc_params": {"dist_metric": "l1"}}
+    enting = Enting(problem_config, params=params)
+    # Fit tree model
+    enting.fit(X_train, y_train)
+    # Compute the predictions for training data and see that light gbm fitted a step function with three steps
+    enting.predict(X_train)
+
+    # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
+    params_pyo = {"solver_name": "gurobi", "solver_options": {"MIPGap": 0}}
+    opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+    X_opt_pyo, _, _ = opt_pyo.solve(enting)
+
+    assert round(X_opt_pyo[0]) == 0
 
 
 @pytest.mark.fast_test
