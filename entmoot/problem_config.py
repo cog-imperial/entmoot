@@ -103,6 +103,11 @@ class ProblemConfig:
             lb, ub = bounds
 
             if feat_type == "real":
+                if isinstance(lb, int):
+                    lb = float(lb)
+                if isinstance(ub, int):
+                    ub = float(ub)
+
                 assert isinstance(lb, float) and isinstance(ub, float), (
                     f"Wrong type for bounds of feat_type '{feat_type}'. Expected '(float, "
                     f"float)', got '({type(lb)}, {type(ub)})'. Check feature '{name}'"
