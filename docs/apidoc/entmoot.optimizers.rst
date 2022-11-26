@@ -1,45 +1,18 @@
-ENTMOOT Optimizers
+Optimizers
 ==========================
 
-Submodules
-----------
-
-entmoot.optimizers.base\_opt module
------------------------------------
-
-.. automodule:: entmoot.optimizers.base_opt
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-entmoot.optimizers.gurobi\_opt module
+GurobiOptimizer Class
 -------------------------------------
 
-.. automodule:: entmoot.optimizers.gurobi_opt
+.. autoclass:: entmoot.optimizers.gurobi_opt.GurobiOptimizer
    :members:
    :undoc-members:
    :show-inheritance:
 
-entmoot.optimizers.pyomo\_opt module
+PyomoOptimizer Class
 ------------------------------------
 
-.. automodule:: entmoot.optimizers.pyomo_opt
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-entmoot.optimizers.sampling\_opt module
----------------------------------------
-
-.. automodule:: entmoot.optimizers.sampling_opt
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: entmoot.optimizers
+.. autoclass:: entmoot.optimizers.pyomo_opt.PyomoOptimizer
    :members:
    :undoc-members:
    :show-inheritance:
