@@ -6,3 +6,5 @@ tqdm
 pyomo
 gurobipy
 pytest-cov
+IPython
+nbsphinx
