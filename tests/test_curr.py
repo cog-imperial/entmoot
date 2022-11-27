@@ -134,6 +134,10 @@ def test_compare_pyomo_gurobipy_singleobj():
         assert [round(x, 5) for x in X_opt_gur[2:]] == [round(x, 5) for x in X_opt_pyo[2:]]
 
 
+@pytest.mark.fast_test
+@pytest.mark.skipif(
+    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
+)
 def test_tree_model_vs_opt_model():
     """
     This test compares the prediction values from the tree models with the corresponding decision variable
