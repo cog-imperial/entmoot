@@ -142,7 +142,7 @@ def test_tree_model_vs_opt_model():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
     # number of objectives
-    number_objectives = 1
+    number_objectives = 2
     build_multi_obj_categorical_problem(problem_config, n_obj=number_objectives)
 
     # sample data
