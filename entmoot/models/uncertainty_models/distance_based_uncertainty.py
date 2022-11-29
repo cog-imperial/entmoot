@@ -36,7 +36,7 @@ class DistanceBasedUncertainty(BaseModel):
                 len(self._problem_config.cat_idx) == 0
             ), "Distance transformation 'standard' can only be used for non-categorical problems."
 
-            self._dist_has_var_bound = True
+            self._dist_has_var_bound = False if self._acq_sense == 'penalty' else True
             self._bound_coeff = params.get("bound_coeff", 0.5)
             self._dist_coeff = 1.0
         elif dist_trafo == "normal":
@@ -144,18 +144,37 @@ class DistanceBasedUncertainty(BaseModel):
         for i, (non_cat_term, cat_term) in enumerate(
             zip(non_cat_term_list, cat_term_list)
         ):
-            if self._dist_metric == "l2":
-                # take sqrt for l2 distance
-                model.addQConstr(
-                    model._unc * model._unc
-                    <= (non_cat_term + cat_term) * self._dist_coeff ** 2,
-                    name=f"unc_x_{i}",
-                )
+
+            # TODO: big-m, fix l2 (no sqrt of cat_term)
+            # check if penalty term is needed
+            if self._acq_sense is "penalty":
+                big_m_term = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
+
+                if self._dist_metric == "l2":
+                    # take sqrt for l2 distance
+                    model.addQConstr(
+                        (non_cat_term + cat_term) * self._dist_coeff ** 2
+                        <= model._unc * model._unc + big_m_term,
+                        name=f"unc_x_{i}",
+                    )
+                else:
+                    model.addQConstr(
+                        model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                        name=f"unc_x_{i}",
+                    )
             else:
-                model.addQConstr(
-                    model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
-                    name=f"unc_x_{i}",
-                )
+                if self._dist_metric == "l2":
+                    # take sqrt for l2 distance
+                    model.addQConstr(
+                        model._unc * model._unc
+                        <= (non_cat_term + cat_term) * self._dist_coeff ** 2,
+                        name=f"unc_x_{i}",
+                    )
+                else:
+                    model.addQConstr(
+                        model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                        name=f"unc_x_{i}",
+                    )
 
         if self._acq_sense == "exploration":
             model.params.NonConvex = 2

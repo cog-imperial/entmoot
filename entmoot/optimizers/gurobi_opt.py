@@ -40,6 +40,9 @@ class GurobiOptimizer:
         # Solve optimization model
         opt_model.optimize()
 
+        # print("")
+        # print(f"mu_vals: {[mu.x for mu in opt_model._uncscaled_mu]}")
+
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
@@ -55,7 +58,6 @@ class GurobiOptimizer:
                 res.append(sol_cat)
             else:
                 res.append(curr_var.x)
-        print(res)
 
         return self._problem_config.decode([res])
 
