@@ -235,7 +235,16 @@ class ProblemConfig:
         return model
 
     def copy_gurobi_model_core(self, model_core):
+        """
+        Computes a copy of a Gurobi model which is decoupled from the original, i.e. you can modify the copy without
+        changing the original model.
+        :param model_core: The gurobi model we want to copy
+        :type model_core: gurobi.Model
+        :return:
+        :rtype: gurobi.Model
+        """
         copy_model_core = model_core.copy()
+        # Since Gurobi's .copy() method does not copy attributes like ._all_feat we have to copy them manually
         copy_model_core._all_feat = []
 
         # transfer feature var list to model copy
@@ -251,7 +260,15 @@ class ProblemConfig:
         return copy_model_core
 
     def copy_pyomo_model_core(self, model_core):
-        raise NotImplementedError
+        """
+        Computes a copy of a Pyomo model which is decoupled from the original, i.e. you can modify the copy without
+        changing the original model.
+        :param model_core: A Pyomo model
+        :type model_core: pyomo.environ.ConcreteModel
+        :return: A copy of the Pyomo model
+        :rtype: pyomo.environ.ConcreteModel
+        """
+        return model_core.clone()
 
     def get_pyomo_model_core(self):
         import pyomo.environ as pyo
