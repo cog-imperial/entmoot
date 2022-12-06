@@ -25,6 +25,27 @@ def build_multi_obj_categorical_problem(problem_config: ProblemConfig, n_obj: in
         problem_config.add_min_objective()
 
 
+def test_core_model_copy():
+
+    # define problem
+    problem_config = ProblemConfig(rnd_seed=73)
+    # number of objectives
+    number_objectives = 2
+    build_multi_obj_categorical_problem(problem_config, n_obj=number_objectives)
+
+    core_model_gurobi = problem_config.get_gurobi_model_core()
+    core_model_gurobi_copy = problem_config.copy_gurobi_model_core(core_model_gurobi)
+
+    assert len(core_model_gurobi.getVars()) == len(core_model_gurobi_copy.getVars())
+    assert len(core_model_gurobi._all_feat) == len(core_model_gurobi_copy._all_feat)
+
+    core_model_pyomo = problem_config.get_pyomo_model_core()
+    core_model_pyomo_copy = problem_config.copy_pyomo_model_core(core_model_pyomo)
+
+    assert len(core_model_pyomo.x) == len(core_model_pyomo_copy.x)
+    assert len(core_model_pyomo._all_feat) == len(core_model_pyomo_copy._all_feat)
+
+
 def test_simple_test():
     # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
     problem_config = ProblemConfig()
