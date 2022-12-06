@@ -141,33 +141,63 @@ class DistanceBasedUncertainty(BaseModel):
         )
         cat_term_list = self.cat_unc_model.get_gurobipy_model_constr_terms(model)
 
+        # add binaries for big_m penalty constraints
+        if self._acq_sense == "penalty":
+            model._bin_penalty = []
+            big_m = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
+
         for i, (non_cat_term, cat_term) in enumerate(
             zip(non_cat_term_list, cat_term_list)
         ):
-
             # TODO: big-m, fix l2 (no sqrt of cat_term)
             # check if penalty term is needed
-            if self._acq_sense is "penalty":
-                big_m_term = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
+            if self._acq_sense == "penalty":
+
+                model._bin_penalty.append(
+                    model.addVar(
+                        name=f"bin_penalty_{i}",
+                        vtype="B"
+                    )
+                )
+
+                big_m_term = big_m * (1 - model._bin_penalty[-1])
 
                 if self._dist_metric == "l2":
                     # take sqrt for l2 distance
+                    aux_non_cat_unc = model.addVar(lb=0.0, ub=dist_bound,
+                                                   name=f"aux_non_cat_unc_x_{i}",
+                                                   vtype="C")
+
                     model.addQConstr(
-                        (non_cat_term + cat_term) * self._dist_coeff ** 2
-                        <= model._unc * model._unc + big_m_term,
+                        aux_non_cat_unc * aux_non_cat_unc >= non_cat_term,
                         name=f"unc_x_{i}",
                     )
+
+                    model.addQConstr(
+                        model._unc + big_m_term >= (aux_non_cat_unc + cat_term) * self._dist_coeff,
+                        name=f"unc_x_{i}",
+                    )
+                    model.params.NonConvex = 2
                 else:
                     model.addQConstr(
-                        model._unc <= (non_cat_term + cat_term) * self._dist_coeff,
+                        model._unc + big_m_term >= (non_cat_term + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
             else:
                 if self._dist_metric == "l2":
                     # take sqrt for l2 distance
+                    aux_non_cat_unc = model.addVar(lb=0.0, ub=dist_bound,
+                                                   name=f"aux_non_cat_unc_x_{i}",
+                                                   vtype="C")
+
+                    model.addQConstr(
+                        aux_non_cat_unc * aux_non_cat_unc <= non_cat_term,
+                        name=f"unc_x_{i}",
+                    )
+
                     model.addQConstr(
                         model._unc * model._unc
-                        <= (non_cat_term + cat_term) * self._dist_coeff ** 2,
+                        <= (aux_non_cat_unc + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
                 else:

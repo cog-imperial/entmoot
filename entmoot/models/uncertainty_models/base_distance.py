@@ -26,6 +26,11 @@ class NonCatDistance(BaseModel):
         ), f"Uncertainty model needs fit function call before it can predict."
         return self._x_trafo
 
+    def get_big_m(self):
+        lb = self._trafo(self._problem_config.non_cat_lb)
+        ub = self._trafo(self._problem_config.non_cat_ub)
+        return self._get_distance(lb, ub)
+
     def _get_distance(self, x_left, x_right):
         raise NotImplementedError()
 
@@ -86,6 +91,10 @@ class CatDistance(BaseModel):
             self._sim_map is not None
         ), f"Uncertainty model needs fit function call before it can predict."
         return self._sim_map
+
+    def get_big_m(self):
+        # categorical contribution has maximum of one
+        return len(self._problem_config.cat_idx)
 
     def predict(self, xi):
         # iterate through every evaluation row
