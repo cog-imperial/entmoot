@@ -46,6 +46,7 @@ class Enting(BaseModel):
             # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
+
     def __init__(self, problem_config: ProblemConfig, params: dict = None):
 
         if params is None:

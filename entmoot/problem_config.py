@@ -253,7 +253,9 @@ class ProblemConfig:
                 copy_model_core._all_feat.append(dict())
                 for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
                     var_name = model_core._all_feat[i][enc].VarName
-                    copy_model_core._all_feat[i][enc] = copy_model_core.getVarByName(var_name)
+                    copy_model_core._all_feat[i][enc] = copy_model_core.getVarByName(
+                        var_name
+                    )
             else:
                 var_name = model_core._all_feat[i].VarName
                 copy_model_core._all_feat.append(copy_model_core.getVarByName(var_name))

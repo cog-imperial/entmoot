@@ -124,10 +124,7 @@ class CatDistance(BaseModel):
 
             # creates similarity entries for all categories of all categorical features
             mat = np.fromfunction(
-                np.vectorize(
-                    self._sim_mat_rule,
-                    otypes=[float]
-                ),
+                np.vectorize(self._sim_mat_rule, otypes=[float]),
                 (len(all_cats), len(all_cats)),
                 dtype=int,
                 cat_idx=idx,

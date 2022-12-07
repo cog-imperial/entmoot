@@ -11,12 +11,12 @@ class PyomoOptimizer:
 
     @property
     def get_curr_sol(self):
-        assert (
-            self._curr_sol is not None
-        ), "No solution was generated yet."
+        assert self._curr_sol is not None, "No solution was generated yet."
         return self._curr_sol
 
-    def solve(self, tree_model: Enting, model_core: pyo.ConcreteModel = None, weights=None):
+    def solve(
+        self, tree_model: Enting, model_core: pyo.ConcreteModel = None, weights=None
+    ):
         if model_core is None:
             opt_model = self._problem_config.get_pyomo_model_core()
         else:
@@ -25,9 +25,10 @@ class PyomoOptimizer:
 
         # check weights
         if weights is not None:
-            assert len(weights) == len(self._problem_config.obj_list), \
-                f"Number of 'weights' is '{len(weights)}', number of objectives " \
+            assert len(weights) == len(self._problem_config.obj_list), (
+                f"Number of 'weights' is '{len(weights)}', number of objectives "
                 f"is '{len(self._problem_config.obj_list)}'."
+            )
             assert sum(weights) == 1.0, "weights don't add up to 1.0"
 
         # choose solver
@@ -47,7 +48,11 @@ class PyomoOptimizer:
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
-        return self.get_curr_sol, pyo.value(opt_model.obj), [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu]
+        return (
+            self.get_curr_sol,
+            pyo.value(opt_model.obj),
+            [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu],
+        )
 
     def _get_sol(self, solved_model):
         res = []
@@ -55,7 +60,10 @@ class PyomoOptimizer:
             curr_var = solved_model._all_feat[idx]
             if feat.is_cat():
                 # find active category
-                sol_cat = [int(round(pyo.value(curr_var[enc_cat]))) for enc_cat in feat.enc_cat_list].index(1)
+                sol_cat = [
+                    int(round(pyo.value(curr_var[enc_cat])))
+                    for enc_cat in feat.enc_cat_list
+                ].index(1)
                 res.append(sol_cat)
             else:
                 res.append(pyo.value(curr_var))

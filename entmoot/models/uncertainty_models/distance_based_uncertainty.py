@@ -36,7 +36,7 @@ class DistanceBasedUncertainty(BaseModel):
                 len(self._problem_config.cat_idx) == 0
             ), "Distance transformation 'standard' can only be used for non-categorical problems."
 
-            self._dist_has_var_bound = False if self._acq_sense == 'penalty' else True
+            self._dist_has_var_bound = False if self._acq_sense == "penalty" else True
             self._bound_coeff = params.get("bound_coeff", 0.5)
             self._dist_coeff = 1.0
         elif dist_trafo == "normal":
@@ -153,19 +153,16 @@ class DistanceBasedUncertainty(BaseModel):
             if self._acq_sense == "penalty":
 
                 model._bin_penalty.append(
-                    model.addVar(
-                        name=f"bin_penalty_{i}",
-                        vtype="B"
-                    )
+                    model.addVar(name=f"bin_penalty_{i}", vtype="B")
                 )
 
                 big_m_term = big_m * (1 - model._bin_penalty[-1])
 
                 if self._dist_metric == "l2":
                     # take sqrt for l2 distance
-                    aux_non_cat_unc = model.addVar(lb=0.0, ub=dist_bound,
-                                                   name=f"aux_non_cat_unc_x_{i}",
-                                                   vtype="C")
+                    aux_non_cat_unc = model.addVar(
+                        lb=0.0, ub=dist_bound, name=f"aux_non_cat_unc_x_{i}", vtype="C"
+                    )
 
                     model.addQConstr(
                         aux_non_cat_unc * aux_non_cat_unc >= non_cat_term,
@@ -173,23 +170,25 @@ class DistanceBasedUncertainty(BaseModel):
                     )
 
                     model.addQConstr(
-                        model._unc + big_m_term >= (aux_non_cat_unc + cat_term) * self._dist_coeff,
+                        model._unc + big_m_term
+                        >= (aux_non_cat_unc + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
                     model.params.NonConvex = 2
                 else:
                     # self._dist_metric == "l1" or "euclidean_squared"
                     model.addQConstr(
-                        model._unc + big_m_term >= (non_cat_term + cat_term) * self._dist_coeff,
+                        model._unc + big_m_term
+                        >= (non_cat_term + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
             else:
                 #  self._acq_sense =="exploration"
                 if self._dist_metric == "l2":
                     # take sqrt for l2 distance
-                    aux_non_cat_unc = model.addVar(lb=0.0, ub=dist_bound,
-                                                   name=f"aux_non_cat_unc_x_{i}",
-                                                   vtype="C")
+                    aux_non_cat_unc = model.addVar(
+                        lb=0.0, ub=dist_bound, name=f"aux_non_cat_unc_x_{i}", vtype="C"
+                    )
 
                     model.addQConstr(
                         aux_non_cat_unc * aux_non_cat_unc <= non_cat_term,
@@ -230,31 +229,46 @@ class DistanceBasedUncertainty(BaseModel):
         model.terms_constrs_cat_noncat_contr = list(
             zip(non_cat_term_list, cat_term_list)
         )
-        model.indices_constrs_cat_noncat_contr = list(range(len(model.terms_constrs_cat_noncat_contr)))
+        model.indices_constrs_cat_noncat_contr = list(
+            range(len(model.terms_constrs_cat_noncat_contr))
+        )
 
         # add binaries for big_m penalty constraints
         if self._acq_sense == "penalty":
             model._bin_penalty = []
             big_m = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
 
-            model._bin_penalty = pyo.Var(model.indices_constrs_cat_noncat_contr, domain=pyo.Binary)
+            model._bin_penalty = pyo.Var(
+                model.indices_constrs_cat_noncat_contr, domain=pyo.Binary
+            )
 
-            big_m_term = {i: big_m * (1 - model._bin_penalty[i]) for i in model.indices_constrs_cat_noncat_contr}
+            big_m_term = {
+                i: big_m * (1 - model._bin_penalty[i])
+                for i in model.indices_constrs_cat_noncat_contr
+            }
 
             if self._dist_metric == "l2":
                 # take sqrt for l2 distance
-                model.aux_non_cat_unc = pyo.Var(model.indices_constrs_cat_noncat_contr, bounds=(0, dist_bound))
+                model.aux_non_cat_unc = pyo.Var(
+                    model.indices_constrs_cat_noncat_contr, bounds=(0, dist_bound)
+                )
 
                 def constrs_unc_x_aux(model_obj, k):
-                    return model_obj.aux_non_cat_unc[k] * model_obj.aux_non_cat_unc[k] >= non_cat_term_list[k]
+                    return (
+                        model_obj.aux_non_cat_unc[k] * model_obj.aux_non_cat_unc[k]
+                        >= non_cat_term_list[k]
+                    )
 
                 model.constrs_unc_x_aux = pyo.Constraint(
                     model.indices_constrs_cat_noncat_contr, rule=constrs_unc_x_aux
                 )
 
                 def constrs_unc_x(model_obj, k):
-                    return model_obj._unc + big_m_term[k] >= \
-                           (model_obj.aux_non_cat_unc[k] + cat_term_list[k]) * self._dist_coeff
+                    return (
+                        model_obj._unc + big_m_term[k]
+                        >= (model_obj.aux_non_cat_unc[k] + cat_term_list[k])
+                        * self._dist_coeff
+                    )
 
                 model.constrs_unc_x_l2 = pyo.Constraint(
                     model.indices_constrs_cat_noncat_contr, rule=constrs_unc_x
@@ -263,11 +277,14 @@ class DistanceBasedUncertainty(BaseModel):
             elif self._dist_metric == "l1" or "euclidean_squared":
 
                 def constrs_unc_x_l1l2squared(model_obj, k):
-                    return model_obj._unc + big_m_term[k] >= \
-                           (non_cat_term_list[k] + cat_term_list[k]) * self._dist_coeff
+                    return (
+                        model_obj._unc + big_m_term[k]
+                        >= (non_cat_term_list[k] + cat_term_list[k]) * self._dist_coeff
+                    )
 
                 model.constrs_unc_x_l1l2squared = pyo.Constraint(
-                    model.indices_constrs_cat_noncat_contr, rule=constrs_unc_x_l1l2squared
+                    model.indices_constrs_cat_noncat_contr,
+                    rule=constrs_unc_x_l1l2squared,
                 )
 
             else:
@@ -277,18 +294,26 @@ class DistanceBasedUncertainty(BaseModel):
             if self._dist_metric == "l2":
 
                 # take sqrt for l2 distance
-                model.aux_non_cat_unc = pyo.Var(model.indices_constrs_cat_noncat_contr, bounds=(0, dist_bound))
+                model.aux_non_cat_unc = pyo.Var(
+                    model.indices_constrs_cat_noncat_contr, bounds=(0, dist_bound)
+                )
 
                 def constrs_unc_x_aux_expl(model_obj, k):
-                    return model_obj.aux_non_cat_unc[k] * model_obj.aux_non_cat_unc[k] <= non_cat_term_list[k]
+                    return (
+                        model_obj.aux_non_cat_unc[k] * model_obj.aux_non_cat_unc[k]
+                        <= non_cat_term_list[k]
+                    )
 
                 model.constrs_unc_x_aux_expl = pyo.Constraint(
                     model.indices_constrs_cat_noncat_contr, rule=constrs_unc_x_aux_expl
                 )
 
                 def constrs_unc_x_expl(model_obj, k):
-                    return model_obj._unc * model_obj._unc <= \
-                           (model_obj.aux_non_cat_unc[k] + cat_term_list[k]) * self._dist_coeff
+                    return (
+                        model_obj._unc * model_obj._unc
+                        <= (model_obj.aux_non_cat_unc[k] + cat_term_list[k])
+                        * self._dist_coeff
+                    )
 
                 model.constrs_unc_x_expl = pyo.Constraint(
                     model.indices_constrs_cat_noncat_contr, rule=constrs_unc_x_expl
@@ -297,23 +322,26 @@ class DistanceBasedUncertainty(BaseModel):
             elif self._dist_metric == "l1" or "euclidean_squared":
 
                 def constrs_unc_x_l1l2squared_expl(model_obj, k):
-                    return model_obj._unc <= (non_cat_term_list[k] + cat_term_list[k]) * self._dist_coeff
+                    return (
+                        model_obj._unc
+                        <= (non_cat_term_list[k] + cat_term_list[k]) * self._dist_coeff
+                    )
 
                 model.constrs_unc_x_l1l2squared = pyo.Constraint(
-                    model.indices_constrs_cat_noncat_contr, rule=constrs_unc_x_l1l2squared_expl
+                    model.indices_constrs_cat_noncat_contr,
+                    rule=constrs_unc_x_l1l2squared_expl,
                 )
 
             else:
                 # Illegal value for self._dist_metric
                 raise ValueError
 
-
-
         def rule_constr_cat_noncat_quadr(model_obj, i):
             # take sqrt for l2 distance
             non_cat_term, cat_term = model.terms_constrs_cat_noncat_contr[i]
             return (
-                model._unc * model._unc <= (non_cat_term + cat_term) * self._dist_coeff ** 2
+                model._unc * model._unc
+                <= (non_cat_term + cat_term) * self._dist_coeff**2
             )
 
         def rule_constr_cat_noncat(model_obj, i):
