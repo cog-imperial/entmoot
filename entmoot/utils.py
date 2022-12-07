@@ -1,5 +1,24 @@
+from entmoot import ProblemConfig
 import numpy as np
 from scipy.special import comb
+
+
+def build_multi_obj_categorical_problem(problem_config: ProblemConfig, n_obj: int = 2):
+    """
+    Builds a small test example which is frequently used by the tests.
+    :param problem_config: ProblemConfig object where features and objectives are added
+    :param n_obj: Number of objectives
+    :return: None, the problem definition happens "inplace"
+    """
+    problem_config.add_feature("categorical", ("blue", "orange", "gray"))
+    problem_config.add_feature("integer", (5, 6))
+    problem_config.add_feature("binary")
+    problem_config.add_feature("real", (5.0, 6.0))
+    problem_config.add_feature("real", (4.6, 6.0))
+    problem_config.add_feature("real", (5.0, 6.0))
+
+    for _ in range(n_obj):
+        problem_config.add_min_objective()
 
 
 def grid(dimension: int, levels: int) -> np.ndarray:
