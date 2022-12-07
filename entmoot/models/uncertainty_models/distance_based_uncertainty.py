@@ -149,7 +149,6 @@ class DistanceBasedUncertainty(BaseModel):
         for i, (non_cat_term, cat_term) in enumerate(
             zip(non_cat_term_list, cat_term_list)
         ):
-            # TODO: big-m, fix l2 (no sqrt of cat_term)
             # check if penalty term is needed
             if self._acq_sense == "penalty":
 

@@ -9,7 +9,6 @@ class GurobiOptimizer:
         self._problem_config = problem_config
         self._curr_sol = None
 
-    @property
     def get_curr_sol(self):
         assert (
             self._curr_sol is not None
@@ -40,13 +39,10 @@ class GurobiOptimizer:
         # Solve optimization model
         opt_model.optimize()
 
-        # print("")
-        # print(f"mu_vals: {[mu.x for mu in opt_model._uncscaled_mu]}")
-
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
-        return self.get_curr_sol, opt_model.ObjVal, [x.X for x in opt_model._unscaled_mu]
+        return self.get_curr_sol(), opt_model.ObjVal, [x.X for x in opt_model._unscaled_mu]
 
     def _get_sol(self, solved_model):
         res = []
