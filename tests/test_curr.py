@@ -62,7 +62,7 @@ def test_simple_test_pipeline():
     problem_config.add_min_objective()
 
     # Create training data using the randomly disturbed function f(x) = x^2 + 1 + eps
-    X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
+    X_train = np.reshape(np.linspace(-2, 3, 5), (-1, 1))
     y_train = np.reshape(
         [x**2 + 1 + random.uniform(-0.2, 0.2) for x in X_train], (-1, 1)
     )
