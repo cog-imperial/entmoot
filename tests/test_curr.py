@@ -55,6 +55,47 @@ def test_simple_test():
 
     assert round(X_opt_pyo[0]) == 0
 
+def test_simple_test_pipeline():
+    # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
+    problem_config = ProblemConfig()
+    problem_config.add_feature("real", (-2, 3))
+    problem_config.add_min_objective()
+
+    # Create training data using the randomly disturbed function f(x) = x^2 + 1 + eps
+    X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
+    y_train = np.reshape(
+        [x**2 + 1 + random.uniform(-0.2, 0.2) for x in X_train], (-1, 1)
+    )
+
+    for metric in ["l1", "l2", "euclidean_squared"]:
+        for acq_sense in ["exploration", "penalty"]:
+            # Define enting object and corresponding parameters
+            params = {"unc_params": {"dist_metric": metric, "acq_sense": acq_sense}}
+            enting = Enting(problem_config, params=params)
+            # Fit tree model
+            enting.fit(X_train, y_train)
+
+            # Build GurobiOptimizer object and solve optimization problem
+            params_gurobi = {"NonConvex": 2, "MIPGap": 0}
+            opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
+            X_opt_gur, y_opt_gur, _ = opt_gur.solve(enting)
+
+            # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
+            params_pyo = {
+                "solver_name": "gurobi",
+                "solver_options": {"NonConvex": 2, "MIPGap": 0},
+            }
+            opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+            X_opt_pyo, y_opt_pyo, _ = opt_pyo.solve(enting)
+
+            # Compare optimal values (e.g. objective values) ...
+            assert (
+                abs(round(y_opt_gur / y_opt_pyo, 3)) <= 1.01
+                or abs(round(y_opt_gur - y_opt_pyo, 3)) <= 0.01
+                or [round(x) for x in X_opt_gur[2:]]
+                == [round(x) for x in X_opt_pyo[2:]]
+            )
+
 
 @pytest.mark.fast_test
 @pytest.mark.skipif(
