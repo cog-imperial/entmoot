@@ -30,8 +30,8 @@ This small example illustrates how to use ENTMOOT.
     X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
     y_train = np.reshape([my_func(x) for x in X_train], (-1, 1))
 
-    # Define Bayesian optimization parameters uding an l1-distance based uncertainty measure and penalizing the distance
-    # from well-known areas, i.e. exploitation (instead of exploration)
+    # Define Bayesian optimization parameters uding an l1-distance based uncertainty measure and
+    # penalizing the distance from well-known areas, i.e. exploitation (instead of exploration)
     params_bo = {"unc_params": {"dist_metric": "l1", "acq_sense": "penalty"}}
 
     # Define an Enting object which holds information about the problem as well as the parameters...
@@ -39,7 +39,7 @@ This small example illustrates how to use ENTMOOT.
     # ... and train the underlying tree model.
     enting.fit(X_train, y_train)
 
-    # Create an PyomoOptimizer object that solves the optimization problem using the open source solver "GLPK"
+    # Create an PyomoOptimizer object that solves the optimization problem using the solver "GLPK"
     params_pyo = {"solver_name": "glpk"}
     opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
     res = opt_pyo.solve(enting)

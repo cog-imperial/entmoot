@@ -4,8 +4,6 @@ Requirements
 -------------
 * python >= 3.7
 * numpy >= 1.18.4
-* scikit-learn >= 0.21.3
-* pyyaml >= 5.3.1
 * lightgbm >= 2.3.1
 
 In addition, you will need the commercial solver Gurobi or the open source framework Pyomo (which has also APIs to

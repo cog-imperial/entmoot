@@ -18,14 +18,10 @@ setup(
     packages=find_packages(exclude=["tests", "docs"]),
     install_requires=[
         "numpy>=1.18.4",
-        "scikit-learn>=0.21.3",
-        "pyYAML>=5.3.1",
         "lightgbm>=2.3.1",
     ],
     setup_requires=[
         "numpy>=1.18.4",
-        "scikit-learn>=0.21.3",
-        "pyYAML>=5.3.1",
         "lightgbm>=2.3.1",
     ],
 )
