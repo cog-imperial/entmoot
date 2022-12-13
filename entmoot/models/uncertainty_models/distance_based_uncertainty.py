@@ -235,7 +235,6 @@ class DistanceBasedUncertainty(BaseModel):
 
         # add binaries for big_m penalty constraints
         if self._acq_sense == "penalty":
-            model._bin_penalty = []
             big_m = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
 
             model._bin_penalty = pyo.Var(
