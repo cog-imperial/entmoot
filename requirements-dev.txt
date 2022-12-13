@@ -4,6 +4,7 @@ PyYAML>=5.3.1
 lightgbm>=2.3.1
 tqdm
 pyomo
+glpk
 gurobipy
 pytest-cov
 IPython
