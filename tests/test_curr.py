@@ -50,7 +50,7 @@ def test_simple_test():
     enting.fit(X_train, y_train)
 
     # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
-    params_pyo = {"solver_name": "glpk"}
+    params_pyo = {"solver_name": "gurobi"}
     opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
     res = opt_pyo.solve(enting)
 
