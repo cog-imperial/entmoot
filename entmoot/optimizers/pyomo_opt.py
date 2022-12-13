@@ -1,5 +1,5 @@
-from entmoot.problem_config import ProblemConfig
-from entmoot.models.enting import Enting
+from entmoot import Enting, ProblemConfig
+from entmoot.utils import OptResult
 import pyomo.environ as pyo
 
 
@@ -48,10 +48,10 @@ class PyomoOptimizer:
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
-        return (
+        return OptResult(
             self.get_curr_sol,
             pyo.value(opt_model.obj),
-            [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu],
+            [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu]
         )
 
     def _get_sol(self, solved_model):

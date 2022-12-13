@@ -1,5 +1,5 @@
-from entmoot.problem_config import ProblemConfig
-from entmoot.models.enting import Enting
+from entmoot import Enting, ProblemConfig
+from entmoot.utils import OptResult
 import gurobipy as gur
 
 
@@ -43,7 +43,7 @@ class GurobiOptimizer:
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
 
-        return (
+        return OptResult(
             self.get_curr_sol(),
             opt_model.ObjVal,
             [x.X for x in opt_model._unscaled_mu],
