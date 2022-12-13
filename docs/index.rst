@@ -2,9 +2,9 @@ Welcome to ENTMOOT's documentation!
 ===================================
 
 **ENTMOOT** (**EN**\semble **T**\ree **MO**\del **O**\ptimization **T**\ool) is a framework to handle tree-based surrogate
-models in Bayesian Optimization applications. Gradient-boosted tree models from `lightgbm` are combined with a
-distance-based uncertainty measure in a deterministic global optimization framework to optimize black-box functions.
-More details on the method can be found here: https://arxiv.org/abs/2003.04774.
+models in Bayesian Optimization applications. Gradient-boosted tree models from `LightGBM <https://lightgbm.readthedocs.io>`__
+are combined with a distance-based uncertainty measure in a deterministic global optimization framework to optimize
+black-box functions. More details on the method can be found here: https://arxiv.org/abs/2003.04774.
 
 Appetizer
 ---------
@@ -12,34 +12,46 @@ This small example illustrates how to use ENTMOOT.
 
 .. code-block:: python
 
-    from entmoot.optimizer.optimizer import Optimizer
-    from entmoot.benchmarks import Rosenbrock
+    from entmoot import Enting, ProblemConfig, PyomoOptimizer
+    import numpy as np
+    import random
 
-    func = Rosenbrock()
+    # This is the function you want to minimize.
+    def my_func(x: float) -> float:
+        # randomly disturbed function f(x) = x^2 + 1 + eps
+        return x**2 + 1 + random.uniform(-0.2, 0.2)
 
-    opt = Optimizer(func.get_bounds(10),
-                    base_estimator="ENTING",
-                    n_initial_points=20,
-                    initial_point_generator="random",
-                    acq_func="LCB",
-                    acq_optimizer="sampling",
-                    random_state=100,
-                    model_queue_size=None,
-                    base_estimator_kwargs={
-                        "lgbm_params": {"min_child_samples": 1}
-                    },
-                    verbose=True,
-                    )
+    # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
+    problem_config = ProblemConfig()
+    problem_config.add_feature("real", (-2, 3))
+    problem_config.add_min_objective()
 
-    # run optimizer for 20 iterations
-    res = opt.run(func, n_iter=20)
-    print(f"-> best solution found {res.fun}")
+    # Create training data for the tree model
+    X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
+    y_train = np.reshape([my_func(x) for x in X_train], (-1, 1))
+
+    # Define Bayesian optimization parameters uding an l1-distance based uncertainty measure and penalizing the distance
+    # from well-known areas, i.e. exploitation (instead of exploration)
+    params_bo = {"unc_params": {"dist_metric": "l1", "acq_sense": "penalty"}}
+
+    # Define an Enting object which holds information about the problem as well as the parameters...
+    enting = Enting(problem_config, params=params_bo)
+    # ... and train the underlying tree model.
+    enting.fit(X_train, y_train)
+
+    # Create an PyomoOptimizer object that solves the optimization problem using the open source solver "GLPK"
+    params_pyo = {"solver_name": "glpk"}
+    opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+    res = opt_pyo.solve(enting)
+
+    # Inspect the result. The optimal point should be close to zero.
+    print(f"Optimal point: {res.opt_point[0]}")
 
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
 
-   Installation <installation>
+   Installation Guide <installation>
    Examples <notebooks>
    API Reference <apidoc/entmoot>
 
