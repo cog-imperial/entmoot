@@ -1,6 +1,5 @@
 from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
-from entmoot.benchmarks import eval_multi_obj_cat_testfunc
-from entmoot.utils import build_multi_obj_categorical_problem
+from entmoot.benchmarks import build_multi_obj_categorical_problem, eval_multi_obj_cat_testfunc
 
 import numpy as np
 import os
@@ -29,6 +28,9 @@ def test_core_model_copy():
 
 
 def test_simple_test():
+    def my_func(x: float) -> float:
+        return x**2 + 1 + random.uniform(-0.2, 0.2)
+
     # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
     problem_config = ProblemConfig()
     problem_config.add_feature("real", (-2, 3))
@@ -36,24 +38,20 @@ def test_simple_test():
 
     # Create training data using the randomly disturbed function f(x) = x^2 + 1 + eps
     X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
-    y_train = np.reshape(
-        [x**2 + 1 + random.uniform(-0.2, 0.2) for x in X_train], (-1, 1)
-    )
+    y_train = np.reshape([my_func(x) for x in X_train], (-1, 1))
 
     # Define enting object and corresponding parameters
-    params = {"unc_params": {"dist_metric": "l1"}}
+    params = {"unc_params": {"dist_metric": "l1", "acq_sense": "penalty"}}
     enting = Enting(problem_config, params=params)
     # Fit tree model
     enting.fit(X_train, y_train)
-    # Compute the predictions for training data and see that light gbm fitted a step function with three steps
-    enting.predict(X_train)
 
     # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
-    params_pyo = {"solver_name": "gurobi", "solver_options": {"MIPGap": 0}}
+    params_pyo = {"solver_name": "glpk"}
     opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-    X_opt_pyo, _, _ = opt_pyo.solve(enting)
+    res = opt_pyo.solve(enting)
 
-    assert round(X_opt_pyo[0]) == 0
+    assert round(res.opt_point[0]) == 0
 
 
 @pytest.mark.fast_test
@@ -86,7 +84,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             # Build GurobiOptimizer object and solve optimization problem
             params_gurobi = {"NonConvex": 2, "MIPGap": 0}
             opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-            X_opt_gur, y_opt_gur, _ = opt_gur.solve(enting)
+            res_gur = opt_gur.solve(enting)
 
             # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
             params_pyo = {
@@ -94,19 +92,19 @@ def test_compare_pyomo_gurobipy_multiobj():
                 "solver_options": {"NonConvex": 2, "MIPGap": 0},
             }
             opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-            X_opt_pyo, y_opt_pyo, _ = opt_pyo.solve(enting)
+            res_pyo = opt_pyo.solve(enting)
 
             # Compare optimal values (e.g. objective values) ...
             assert (
-                abs(round(y_opt_gur / y_opt_pyo, 3)) <= 1.01
-                or abs(round(y_opt_gur - y_opt_pyo, 3)) <= 0.01
-                or [round(x) for x in X_opt_gur[2:]]
-                == [round(x) for x in X_opt_pyo[2:]]
+                abs(round(res_gur.opt_val / res_pyo.opt_val, 3)) <= 1.01
+                or abs(round(res_gur.opt_val - res_pyo.opt_val, 3)) <= 0.01
+                or [round(x) for x in res_gur.opt_point[2:]]
+                == [round(x) for x in res_pyo.opt_point[2:]]
             )
             # ... and optimal points (e.g. feature variables)
 
-            assert [round(x) for x in X_opt_gur[2:]] == [
-                round(x) for x in X_opt_pyo[2:]
+            assert [round(x) for x in res_gur.opt_point[2:]] == [
+                round(x) for x in res_pyo.opt_point[2:]
             ]
 
 
@@ -140,7 +138,7 @@ def test_compare_pyomo_gurobipy_singleobj():
             # Build GurobiOptimizer object and solve optimization problem
             params_gurobi = {"NonConvex": 2, "MIPGap": 0}
             opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-            X_opt_gur, y_opt_gur, _ = opt_gur.solve(enting)
+            res_gur = opt_gur.solve(enting)
 
             # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
             params_pyo = {
@@ -148,13 +146,13 @@ def test_compare_pyomo_gurobipy_singleobj():
                 "solver_options": {"NonConvex": 2, "MIPGap": 0},
             }
             opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-            X_opt_pyo, y_opt_pyo, _ = opt_pyo.solve(enting)
+            res_pyo = opt_pyo.solve(enting)
 
             # Compare optimal values (e.g. objective values) ...
-            assert round(y_opt_gur / y_opt_pyo, 5) <= 1.0001
+            assert round(res_gur.opt_val / res_pyo.opt_val, 5) <= 1.0001
             # ... and optimal points (e.g. feature variables)
-            assert [round(x) for x in X_opt_gur[2:]] == [
-                round(x) for x in X_opt_pyo[2:]
+            assert [round(x) for x in res_gur.opt_point[2:]] == [
+                round(x) for x in res_pyo.opt_point[2:]
             ]
 
 
@@ -185,7 +183,7 @@ def test_tree_model_vs_opt_model():
     # Build GurobiOptimizer object and solve optimization problem
     params_gurobi = {"NonConvex": 2, "MIPGap": 0}
     opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-    X_opt_gur, y_opt_gur, y_opt_unscaled_gur = opt_gur.solve(enting)
+    res_gur = opt_gur.solve(enting)
 
     # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
     params_pyo = {
@@ -193,9 +191,9 @@ def test_tree_model_vs_opt_model():
         "solver_options": {"NonConvex": 2, "MIPGap": 0},
     }
     opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-    X_opt_pyo, y_opt_pyo, y_opt_unscaled_pyo = opt_pyo.solve(enting)
+    res_pyo = opt_pyo.solve(enting)
 
-    pred_mean, pred_std = enting.predict([X_opt_pyo])[0]
+    pred_mean, pred_std = enting.predict([res_pyo.opt_point])[0]
 
     # TODO: Find reason for different values
     # assert y_opt_unscaled_pyo == pred_mean
