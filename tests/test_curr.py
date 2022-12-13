@@ -1,5 +1,8 @@
 from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
-from entmoot.benchmarks import build_multi_obj_categorical_problem, eval_multi_obj_cat_testfunc
+from entmoot.benchmarks import (
+    build_multi_obj_categorical_problem,
+    eval_multi_obj_cat_testfunc,
+)
 
 import numpy as np
 import os

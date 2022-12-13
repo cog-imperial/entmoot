@@ -51,7 +51,7 @@ class PyomoOptimizer:
         return OptResult(
             self.get_curr_sol,
             pyo.value(opt_model.obj),
-            [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu]
+            [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu],
         )
 
     def _get_sol(self, solved_model):
