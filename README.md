@@ -1,6 +1,6 @@
 [![Tests](https://github.com/cog-imperial/entmoot/actions/workflows/python-package.yml/badge.svg?branch=entmoot-v2)](https://github.com/cog-imperial/entmoot/actions/workflows/python-package.yml)
 [![codecov](https://codecov.io/gh/cog-imperial/entmoot/branch/entmoot-v2/graph/badge.svg)](https://codecov.io/gh/cog-imperial/entmoot)
-[![Python versions](https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
+![Python versions](https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
 [![Read the Docs](https://readthedocs.org/projects/entmoot/badge/?version=latest)](https://entmoot.readthedocs.io/en/latest/)
 
 <img src="media/entmoot_logo.png" width="400">
