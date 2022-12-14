@@ -231,6 +231,3 @@ class Enting(BaseModel):
         core_model.obj = pyo.Objective(
             expr=core_model._mu + self._beta * core_model._unc, sense=pyo.minimize
         )
-
-    def update_params(params: dict):
-        raise NotImplementedError()
