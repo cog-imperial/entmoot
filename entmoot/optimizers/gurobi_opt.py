@@ -2,6 +2,7 @@ from collections import namedtuple
 from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
 import gurobipy as gur
+import os
 
 
 class GurobiOptimizer:
@@ -18,13 +19,37 @@ class GurobiOptimizer:
         return self._curr_sol
 
     def solve(
-        self, tree_model: Enting, model_core: gur.Model = None, weights: tuple = None
+        self, tree_model: Enting, model_core: gur.Model = None, weights: tuple = None, use_env: bool = False
     ) -> namedtuple:
         """
         Solves the Gurobi optimization model
         """
+
         if model_core is None:
-            opt_model = self._problem_config.get_gurobi_model_core()
+            if use_env:
+                if "WLSACCESSID" in os.environ:
+                    # Use WLS license
+                    connection_params_wls = {
+                        'WLSACCESSID': os.getenv('WLSACCESSID'),
+                        'WLSSECRET': os.getenv('WLSSECRET'),
+                        'LICENSEID': os.getenv('LICENSEID')
+                    }
+                    env_wls = gur.Env(params=connection_params_wls)
+                    env_wls.start()
+                    opt_model = self._problem_config.get_gurobi_model_core(env=env_wls)
+                elif "CLOUDACCESSID" in os.environ:
+                    # Use Gurobi Cloud
+                    connection_params_cld = {
+                        'CLOUDACCESSID': os.getenv('CLOUDACCESSID'),
+                        'CLOUDSECRETKEY': os.getenv('CLOUDSECRETKEY'),
+                        'CLOUDPOOL': os.getenv('CLOUDPOOL')
+                    }
+                    env_cld = gur.Env(params=connection_params_cld)
+                    env_cld.start()
+                    opt_model = self._problem_config.get_gurobi_model_core(env=env_cld)
+
+            else:
+                opt_model = self._problem_config.get_gurobi_model_core()
         else:
             # create model copy to not overwrite original one
             opt_model = self._problem_config.copy_gurobi_model_core(model_core)
