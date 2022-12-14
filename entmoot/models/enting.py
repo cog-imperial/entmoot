@@ -82,7 +82,14 @@ class Enting(BaseModel):
             problem_config=problem_config, params=unc_params
         )
 
-    def fit(self, X: np.ndarray, y: np.ndarray):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        """
+        Performs the training of you tree model using training data and labels
+        :param X: training data
+        :type X: numpay array
+        :param y: labels
+        :type y: numpy array
+        """
         # encode categorical features
         X = self._problem_config.encode(X)
 
@@ -108,7 +115,14 @@ class Enting(BaseModel):
         self.mean_model.fit(X, y)
         self.unc_model.fit(X, y)
 
-    def predict(self, X: np.ndarray):
+    def predict(self, X: np.ndarray) -> list:
+        """
+        Computes prediction value of tree model for X.
+        :param X: feature values for which prediction should be computed
+        :type X: numpy array
+        :return: prediction values
+        :rtype: list
+        """
         # encode categorical features
         X = self._problem_config.encode(X)
 
@@ -130,14 +144,29 @@ class Enting(BaseModel):
     def predict_pareto(self):
         pass
 
-    def predict_acq(self, X: np.ndarray):
+    def predict_acq(self, X: np.ndarray) -> list:
+        """
+        predicts value of acquisition function (which contains not only the mean value but also the uncertainty)
+        :param X: feature values
+        :type X: numpy array
+        :return: prediction values of acquisition function
+        :rtype: list
+        """
         acq_pred = []
         comb_pred = self.predict(X)
         for mean, unc in comb_pred:
             acq_pred.append(mean + self._beta * unc)
         return acq_pred
 
-    def add_to_gurobipy_model(self, core_model, weights: tuple = None):
+    def add_to_gurobipy_model(self, core_model, weights: tuple = None) -> None:
+        """
+        This method enriches the core model by adding variables and constraints based on information
+        from the tree model
+        :param core_model: gurobi model that contains only basic variables first and that will be enriched
+        :type core_model: gurobipy.Model
+        :param weights: weights for multiobjective case
+        :type weights: tuple of floats
+        """
         from gurobipy import GRB
         from entmoot.utils import sample
 
@@ -171,7 +200,15 @@ class Enting(BaseModel):
         core_model.setObjective(core_model._mu + self._beta * core_model._unc)
         core_model.update()
 
-    def add_to_pyomo_model(self, core_model, weights: tuple = None):
+    def add_to_pyomo_model(self, core_model, weights: tuple = None) -> None:
+        """
+        This method enriches the core model by adding variables and constraints based on information
+        from the tree model
+        :param core_model: Pyomo model that contains only basic variables first and that will be enriched
+        :type core_model: pyomo.ConcreteModel
+        :param weights: weights for multiobjective case
+        :type weights: tuple of floats
+        """
         import pyomo.environ as pyo
         from entmoot.utils import sample
 
