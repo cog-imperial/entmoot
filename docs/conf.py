@@ -75,4 +75,4 @@ html_theme_options = {"logo_only": True, "style_nav_header_background": "white"}
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"
