@@ -1,3 +1,4 @@
+from collections import namedtuple
 from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
 import gurobipy as gur
@@ -9,13 +10,19 @@ class GurobiOptimizer:
         self._problem_config = problem_config
         self._curr_sol = None
 
-    def get_curr_sol(self):
+    def get_curr_sol(self) -> list:
+        """
+        returns current solution (i.e. optimal points) from optimization run
+        """
         assert self._curr_sol is not None, "No solution was generated yet."
         return self._curr_sol
 
     def solve(
         self, tree_model: Enting, model_core: gur.Model = None, weights: tuple = None
-    ):
+    ) -> namedtuple:
+        """
+        Solves the Gurobi optimization model
+        """
         if model_core is None:
             opt_model = self._problem_config.get_gurobi_model_core()
         else:
@@ -49,7 +56,7 @@ class GurobiOptimizer:
             [x.X for x in opt_model._unscaled_mu],
         )
 
-    def _get_sol(self, solved_model):
+    def _get_sol(self, solved_model: gur.Model) -> list:
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
             curr_var = solved_model._all_feat[idx]
@@ -63,6 +70,3 @@ class GurobiOptimizer:
                 res.append(curr_var.x)
 
         return self._problem_config.decode([res])
-
-    def sample_feas(self, model_core: gur.Model, num_points):
-        raise NotImplementedError()

@@ -1,3 +1,4 @@
+from collections import namedtuple
 from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
 import pyomo.environ as pyo
@@ -10,13 +11,19 @@ class PyomoOptimizer:
         self._curr_sol = None
 
     @property
-    def get_curr_sol(self):
+    def get_curr_sol(self) -> list:
+        """
+        returns current solution (i.e. optimal points) from optimization run
+        """
         assert self._curr_sol is not None, "No solution was generated yet."
         return self._curr_sol
 
     def solve(
         self, tree_model: Enting, model_core: pyo.ConcreteModel = None, weights=None
-    ):
+    ) -> namedtuple:
+        """
+        Solves the Pyomo optimization model
+        """
         if model_core is None:
             opt_model = self._problem_config.get_pyomo_model_core()
         else:
@@ -54,7 +61,7 @@ class PyomoOptimizer:
             [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu],
         )
 
-    def _get_sol(self, solved_model):
+    def _get_sol(self, solved_model: pyo.ConcreteModel) -> list:
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
             curr_var = solved_model._all_feat[idx]
@@ -70,6 +77,3 @@ class PyomoOptimizer:
         print(res)
 
         return self._problem_config.decode([res])
-
-    def sample_feas(num_points):
-        raise NotImplementedError()
