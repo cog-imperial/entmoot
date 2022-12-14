@@ -32,6 +32,9 @@ jobs:
     - name: Test with pytest
       env:
         CICD_ACTIVE: ${{ secrets.CICD_ACTIVE }}
+        LICENSEID: ${{ secrets.LICENSEID }}
+        WLSACCESSID: ${{ secrets.WLSACCESSID }}
+        WLSSECRET: ${{ secrets.WLSACCESSID }}
       run: |
         pytest --cov
     - name: Upload coverage to Codecov
