@@ -43,6 +43,7 @@ jobs:
         WLSSECRET: ${{ secrets.WLSACCESSID }}
         GRB_LICENSE_FILE: ${{ secrets.GRB_LICENSE_FILE }}
       run: |
+        echo "$GRB_LICENSE_FILE"
         pytest --cov
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
