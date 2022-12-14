@@ -31,9 +31,6 @@ def test_core_model_copy():
 
 
 @pytest.mark.fast_test
-@pytest.mark.skipif(
-    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
-)
 def test_multiobj_constraints():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
@@ -124,9 +121,6 @@ def test_simple_test():
 
 
 @pytest.mark.fast_test
-@pytest.mark.skipif(
-    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
-)
 def test_compare_pyomo_gurobipy_multiobj():
     """
     Ensures for a multi objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -178,9 +172,6 @@ def test_compare_pyomo_gurobipy_multiobj():
 
 
 @pytest.mark.fast_test
-@pytest.mark.skipif(
-    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
-)
 def test_compare_pyomo_gurobipy_singleobj():
     """
     Ensures for a single objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -226,9 +217,6 @@ def test_compare_pyomo_gurobipy_singleobj():
 
 
 @pytest.mark.fast_test
-@pytest.mark.skipif(
-    "CICD_ACTIVE" in os.environ, reason="No optimization runs in CICD pipelines"
-)
 def test_tree_model_vs_opt_model():
     """
     This test compares the prediction values from the tree models with the corresponding decision variable
