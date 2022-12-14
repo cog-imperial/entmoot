@@ -29,12 +29,19 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         pip install -r requirements-dev.txt
+    - shell: bash
+      id: write-license
+      env:
+        WLSLICENSE: ${{ secrets.WLSLICENSE   }}
+      run: |
+        echo "$WLSLICENSE" > $PWD/gurobi.lic
     - name: Test with pytest
       env:
         CICD_ACTIVE: ${{ secrets.CICD_ACTIVE }}
         LICENSEID: ${{ secrets.LICENSEID }}
         WLSACCESSID: ${{ secrets.WLSACCESSID }}
         WLSSECRET: ${{ secrets.WLSACCESSID }}
+        GRB_LICENSE_FILE: ${{ secrets.GRB_LICENSE_FILE }}
       run: |
         pytest --cov
     - name: Upload coverage to Codecov
