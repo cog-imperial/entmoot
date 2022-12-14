@@ -76,11 +76,8 @@ class GurobiOptimizer:
         # Solve optimization model
         opt_model.optimize()
 
-        # Close Gurobi envs after usage
-        if "WLSACCESSID" in os.environ:
-            env_wls.close()
-        elif "CLOUDACCESSID" in os.environ:
-            env_cld.close()
+        # Close Gurobi envs after usage (if existent)
+        opt_model.discardConcurrentEnvs()
 
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
