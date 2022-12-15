@@ -147,7 +147,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             # Build GurobiOptimizer object and solve optimization problem
             params_gurobi = {"NonConvex": 2, "MIPGap": 0}
             opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-            res_gur = opt_gur.solve(enting)
+            res_gur = opt_gur.solve(enting, weights=(0.4, 0.6))
 
             # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
             params_pyo = {
@@ -155,7 +155,7 @@ def test_compare_pyomo_gurobipy_multiobj():
                 "solver_options": {"NonConvex": 2, "MIPGap": 0},
             }
             opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-            res_pyo = opt_pyo.solve(enting)
+            res_pyo = opt_pyo.solve(enting, weights=(0.4, 0.6))
 
             # TODO: Check why values do not conincide for all cases!
 
