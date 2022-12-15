@@ -39,9 +39,6 @@ jobs:
     - name: Test with pytest
       env:
         CICD_ACTIVE: ${{ secrets.CICD_ACTIVE }}
-        LICENSEID: ${{ secrets.LICENSEID }}
-        WLSACCESSID: ${{ secrets.WLSACCESSID }}
-        WLSSECRET: ${{ secrets.WLSACCESSID }}
         GRB_LICENSE_FILE: ${{ steps.write-license.outputs.grb_license_file }}
       run: |
         pytest --cov

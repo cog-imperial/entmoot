@@ -31,17 +31,7 @@ class GurobiOptimizer:
 
         if model_core is None:
             if use_env:
-                if "WLSACCESSID" in os.environ:
-                    # Use WLS license
-                    connection_params_wls = {
-                        "WLSACCESSID": os.getenv("WLSACCESSID"),
-                        "WLSSECRET": os.getenv("WLSSECRET"),
-                        "LICENSEID": os.getenv("LICENSEID"),
-                    }
-                    env_wls = gur.Env(params=connection_params_wls)
-                    env_wls.start()
-                    opt_model = self._problem_config.get_gurobi_model_core(env=env_wls)
-                elif "CLOUDACCESSID" in os.environ:
+                if "CLOUDACCESSID" in os.environ:
                     # Use Gurobi Cloud
                     connection_params_cld = {
                         "CLOUDACCESSID": os.getenv("CLOUDACCESSID"),
@@ -75,9 +65,6 @@ class GurobiOptimizer:
 
         # Solve optimization model
         opt_model.optimize()
-
-        # Close Gurobi envs after usage (if existent)
-        opt_model.discardConcurrentEnvs()
 
         # update current solution
         self._curr_sol = self._get_sol(opt_model)
