@@ -59,6 +59,12 @@ class MetaTreeModel:
     def get_right_leaves(self, tree, encoding):
         yield from (encoding + s for s in self.trees[tree].get_right_leaves(encoding))
 
+    def prune_var_bnds(self, encodings, var_bnds):
+        # prunes var_bnds provided according to which splits are active
+        for tree_id, leaf_enc in encodings:
+            self.trees[tree_id]._prune_var_bnds(0, leaf_enc, var_bnds)
+        return var_bnds
+
 
 class TreeType:
     pass
@@ -148,6 +154,31 @@ class TreeNode(TreeType):
             yield from next_node.get_right_leaves(encoding[1:])
         else:
             yield from self.right.get_leaf_encodings("1")
+
+    def _prune_var_bnds(self, curr_depth, leaf_enc, var_bnds):
+        if self.split_var != -1:
+            if isinstance(self.split_code_pred, list):
+                # categorical variable
+                cat_set = set(self.split_code_pred)
+                if leaf_enc[curr_depth] == '0':
+                    var_bnds[self.split_var] = \
+                        set(var_bnds[self.split_var]).intersection(cat_set)
+                    self.left._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
+                else:
+                    var_bnds[self.split_var] = \
+                        set(var_bnds[self.split_var]).difference(cat_set)
+                    self.right._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
+            else:
+                # continuous variable
+                lb, ub = var_bnds[self.split_var]
+                if leaf_enc[curr_depth] == '0':
+                    ub = min(ub,self.split_code_pred)
+                    var_bnds[self.split_var] = (lb, ub)
+                    self.left._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
+                else: # if value is '1'
+                    lb = max(lb,self.split_code_pred)
+                    var_bnds[self.split_var] = (lb, ub)
+                    self.right._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
 
 
 class LeafNode(TreeType):
