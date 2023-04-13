@@ -11,3 +11,7 @@ __pycache__
 .DS_Store
 env
 /docs/notebooks/.ipynb_checkpoints/
+docs/_build
+.coverage
+Makefile
+make.bat
