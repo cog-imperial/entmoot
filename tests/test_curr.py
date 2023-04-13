@@ -5,7 +5,6 @@ from entmoot.benchmarks import (
 )
 
 import numpy as np
-import os
 import pytest
 import random
 
@@ -157,7 +156,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
             res_pyo = opt_pyo.solve(enting, weights=(0.4, 0.6))
 
-            # TODO: Check why values do not conincide for all cases!
+            # TODO: Check why values do not coincide for all cases!
 
             # Compare optimal values (e.g. objective values) ...
             #assert (
@@ -217,6 +216,7 @@ def test_compare_pyomo_gurobipy_singleobj():
                 round(x) for x in res_pyo.opt_point[2:]
             ]
 
+# TODO: Add test for active leaves!
 
 @pytest.mark.fast_test
 def test_tree_model_vs_opt_model():
