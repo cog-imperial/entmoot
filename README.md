@@ -6,8 +6,7 @@
 
 <img src="media/entmoot_logo.png" width="400">
 
-`ENTMOOT` (**EN**semble **T**ree **MO**del **O**ptimization **T**ool) is a framework to handle tree-based surrogate models in Bayesian optimization applications. Gradient-boosted
-tree models from `lightgbm` are combined with a distance-based uncertainty 
+`ENTMOOT` (**EN**semble **T**ree **MO**del **O**ptimization **T**ool) is a framework to perform Bayesian Optimization using tree-based surrogate models. Gradient-boosted tree models from `lightgbm` are combined with a distance-based uncertainty 
 measure in a deterministic global optimization framework to optimize black-box functions. More
 details on the method here: https://arxiv.org/abs/2003.04774.
 
