@@ -5,4 +5,3 @@ ENTMOOT
    :maxdepth: 2
 
    entmoot.enting
-   entmoot.optimizers
