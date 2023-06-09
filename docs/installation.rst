@@ -30,7 +30,7 @@ Gurobi or Pyomo?
 -----------------
 You can work with ENTMOOT using Gurobi or Pyomo.
 
-* `Gurobi <https://www.gurobi.com/>`__ is a commercial mathematical optimization solver and faster than Pyomo. Not only
+* `Gurobi <https://www.gurobi.com/>`__ is a commercial mathematical optimization solver and very fast. Not only
   in solving the corresponding optimization problem but also in building it. Using Gurobi requires a valid license. Note
   that Gurobi offers `free academic licenses <https://www.gurobi.com/academia/academic-program-and-licenses/>`__.
 * `Pyomo <http://www.pyomo.org/>`__ is an open-source optimization modeling language with APIs to several commercial and
@@ -41,4 +41,5 @@ problems. The most common choices are the commercial solvers `Gurobi <https://ww
 `CPLEX <https://www.ibm.com/de-de/analytics/cplex-optimizer>`__ and
 `Xpress <https://www.fico.com/en/products/fico-xpress-optimization>`__ as well as the noncommercial solvers
 `GLPK <https://www.gnu.org/software/glpk/>`__,
-`CBC <https://github.com/coin-or/Cbc/>`__  and `SCIP <https://www.scipopt.org/>`__.
+`CBC <https://github.com/coin-or/Cbc/>`__  and `SCIP <https://www.scipopt.org
+/>`__.

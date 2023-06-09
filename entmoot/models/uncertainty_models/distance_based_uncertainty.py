@@ -182,9 +182,9 @@ class DistanceBasedUncertainty(BaseModel):
                         >= (non_cat_term + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
-            else:
-                #  self._acq_sense =="exploration"
+            elif self._acq_sense =="exploration":
                 if self._dist_metric == "l2":
+
                     # take sqrt for l2 distance
                     aux_non_cat_unc = model.addVar(
                         lb=0.0, ub=dist_bound, name=f"aux_non_cat_unc_x_{i}", vtype="C"
