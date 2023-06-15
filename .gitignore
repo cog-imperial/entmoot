@@ -4,10 +4,14 @@ __pycache__
 *.json
 *.gz
 *.pkl
-test.py
-.DS_Store
-env
 *.log
 *.sh
 .idea
 .pytest_cache
+.DS_Store
+env
+/docs/notebooks/.ipynb_checkpoints/
+docs/_build
+.coverage
+Makefile
+make.bat

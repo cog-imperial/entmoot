@@ -1,0 +1,8 @@
+numpy>=1.18.4
+lightgbm>=2.3.1
+tqdm
+pyomo
+gurobipy
+pytest-cov
+IPython
+nbsphinx
