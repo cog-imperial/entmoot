@@ -7,7 +7,6 @@ import numpy as np
 
 class TreeEnsemble(BaseModel):
     def __init__(self, problem_config, params=None):
-
         if params is None:
             params = {}
 
@@ -15,9 +14,8 @@ class TreeEnsemble(BaseModel):
         self._train_lib = params.get("train_lib", "lgbm")
         self._rnd_seed = problem_config.rnd_seed
 
-        assert self._train_lib in ("lgbm", "catboost", "xgboost"), (
-            "Parameter 'train_lib' for tree ensembles needs to be "
-            "in '('lgbm', 'catboost', 'xgboost')'."
+        assert self._train_lib in ("lgbm"), (
+            "Parameter 'train_lib' for tree ensembles needs to be " "in '('lgbm')'."
         )
 
         if "train_params" not in params:
@@ -136,7 +134,6 @@ class TreeEnsemble(BaseModel):
 
         # get model information
         for obj in self._problem_config.obj_list:
-
             if self._train_lib == "lgbm":
                 lib_out = self.tree_dict[obj.name].dump_model()
             elif self._train_lib == "catboost":
@@ -146,7 +143,7 @@ class TreeEnsemble(BaseModel):
             else:
                 raise IOError(
                     "Parameter 'train_lib' for tree ensembles needs to be "
-                    "in '('lgbm', 'catboost', 'xgboost')'."
+                    "in '('lgbm')'."
                 )
 
             # order tree_model_dict
