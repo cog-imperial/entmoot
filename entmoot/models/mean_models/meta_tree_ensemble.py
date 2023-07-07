@@ -160,28 +160,30 @@ class TreeNode(TreeType):
             if isinstance(self.split_code_pred, list):
                 # categorical variable
                 cat_set = set(self.split_code_pred)
-                if leaf_enc[curr_depth] == '0':
-                    var_bnds[self.split_var] = \
-                        set(var_bnds[self.split_var]).intersection(cat_set)
+                if leaf_enc[curr_depth] == "0":
+                    var_bnds[self.split_var] = set(
+                        var_bnds[self.split_var]
+                    ).intersection(cat_set)
                     self.left._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
                 else:
-                    var_bnds[self.split_var] = \
-                        set(var_bnds[self.split_var]).difference(cat_set)
+                    var_bnds[self.split_var] = set(var_bnds[self.split_var]).difference(
+                        cat_set
+                    )
                     self.right._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
             else:
                 # continuous variable
                 lb, ub = var_bnds[self.split_var]
-                if leaf_enc[curr_depth] == '0':
-                    ub = min(ub,self.split_code_pred)
+                if leaf_enc[curr_depth] == "0":
+                    ub = min(ub, self.split_code_pred)
                     var_bnds[self.split_var] = (lb, ub)
                     self.left._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
-                else: # if value is '1'
-                    lb = max(lb,self.split_code_pred)
+                else:  # if value is '1'
+                    lb = max(lb, self.split_code_pred)
                     var_bnds[self.split_var] = (lb, ub)
                     self.right._prune_var_bnds(curr_depth + 1, leaf_enc, var_bnds)
 
 
-class LeafNode(TreeType):
+class LeafNode(TreeNode):
     def __init__(self, split_code_pred):
         self.split_var = -1
         self.split_code_pred = split_code_pred
