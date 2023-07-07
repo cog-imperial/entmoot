@@ -84,6 +84,7 @@ class DistanceBasedUncertainty(BaseModel):
                 problem_config=self._problem_config, acq_sense=acq_sense
             )
         elif cat_metric == "goodall4":
+            print("got here")
             self.cat_unc_model = Goodall4Distance(
                 problem_config=self._problem_config, acq_sense=acq_sense
             )
@@ -125,7 +126,7 @@ class DistanceBasedUncertainty(BaseModel):
         return np.asarray(comb_pred)
 
     def add_to_gurobipy_model(self, model):
-        from gurobipy import GRB
+        from gurobipy import GRB, quicksum
 
         # define main uncertainty variables
         if self._dist_has_var_bound:
@@ -151,7 +152,6 @@ class DistanceBasedUncertainty(BaseModel):
         ):
             # check if penalty term is needed
             if self._acq_sense == "penalty":
-
                 model._bin_penalty.append(
                     model.addVar(name=f"bin_penalty_{i}", vtype="B")
                 )
@@ -182,9 +182,9 @@ class DistanceBasedUncertainty(BaseModel):
                         >= (non_cat_term + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
-            elif self._acq_sense =="exploration":
-                if self._dist_metric == "l2":
 
+            elif self._acq_sense == "exploration":
+                if self._dist_metric == "l2":
                     # take sqrt for l2 distance
                     aux_non_cat_unc = model.addVar(
                         lb=0.0, ub=dist_bound, name=f"aux_non_cat_unc_x_{i}", vtype="C"
@@ -196,8 +196,7 @@ class DistanceBasedUncertainty(BaseModel):
                     )
 
                     model.addQConstr(
-                        model._unc * model._unc
-                        <= (aux_non_cat_unc + cat_term) * self._dist_coeff,
+                        model._unc <= (aux_non_cat_unc + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
                 else:
@@ -208,6 +207,9 @@ class DistanceBasedUncertainty(BaseModel):
 
         if self._acq_sense == "exploration":
             model.params.NonConvex = 2
+
+        if self._acq_sense == "penalty":
+            model.addConstr(sum(model._bin_penalty) == 1, name=f"bin_penalty_sum")
 
         model.update()
 
@@ -291,7 +293,6 @@ class DistanceBasedUncertainty(BaseModel):
                 raise ValueError
         elif self._acq_sense == "exploration":
             if self._dist_metric == "l2":
-
                 # take sqrt for l2 distance
                 model.aux_non_cat_unc = pyo.Var(
                     model.indices_constrs_cat_noncat_contr, bounds=(0, dist_bound)
