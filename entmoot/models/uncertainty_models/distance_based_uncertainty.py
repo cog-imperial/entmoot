@@ -84,7 +84,6 @@ class DistanceBasedUncertainty(BaseModel):
                 problem_config=self._problem_config, acq_sense=acq_sense
             )
         elif cat_metric == "goodall4":
-            print("got here")
             self.cat_unc_model = Goodall4Distance(
                 problem_config=self._problem_config, acq_sense=acq_sense
             )
@@ -310,7 +309,7 @@ class DistanceBasedUncertainty(BaseModel):
 
                 def constrs_unc_x_expl(model_obj, k):
                     return (
-                        model_obj._unc * model_obj._unc
+                        model_obj._unc
                         <= (model_obj.aux_non_cat_unc[k] + cat_term_list[k])
                         * self._dist_coeff
                     )
