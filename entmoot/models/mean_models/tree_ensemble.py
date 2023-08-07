@@ -111,14 +111,14 @@ class TreeEnsemble(BaseModel):
                     self._train_params,
                     train_data,
                     categorical_feature=self._problem_config.cat_idx,
-                    verbose_eval=False,
+                    #verbose_eval=False,
                 )
             else:
                 # train for non-categorical vars
                 train_data = lgb.Dataset(X, label=y, params={"verbose": -1})
 
                 tree_model = lgb.train(
-                    self._train_params, train_data, verbose_eval=False
+                    self._train_params, train_data#, verbose_eval=False
                 )
         return tree_model
 
