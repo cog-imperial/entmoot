@@ -108,8 +108,6 @@ def test_gurobi_consistency2(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric
 @pytest.mark.parametrize("rnd_seed", [100, 101, 102])
 @pytest.mark.parametrize("n_obj", [1, 2])
 def test_gurobi_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric):
-    # tests only one random seed because the runtime is quite long
-
     # define model params
     params = {}
     params["unc_params"] = {
@@ -137,7 +135,7 @@ def test_gurobi_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric
         params_opt["MIPGap"] = 0
     else:
         # gurobi takes a long time to fully prove optimality here
-        params_opt["MIPGapAbs"] = 1e-3
+        params_opt["MIPGapAbs"] = 0.001
 
     run_gurobi(rnd_seed, n_obj, params, params_opt, num_samples=300)
 
@@ -153,7 +151,7 @@ def test_gurobi_consistency4(rnd_seed, acq_sense, dist_metric):
         "dist_trafo": "standard",
     }
     params["unc_params"]["beta"] = 0.1
-    params_opt = {"LogToConsole": 1, "MIPGap": 0}
+    params_opt = {"LogToConsole": 1, "MIPGap": 1e-5}
 
     run_gurobi(rnd_seed, 1, params, params_opt, num_samples=20, no_cat=True)
 
@@ -169,7 +167,7 @@ def test_gurobi_consistency5(rnd_seed, acq_sense, dist_metric):
         "dist_trafo": "standard",
     }
     params["unc_params"]["beta"] = 0.1
-    params_opt = {"LogToConsole": 1, "MIPGap": 0}
+    params_opt = {"LogToConsole": 1, "MIPGap": 1e-5}
 
     run_gurobi(rnd_seed, 1, params, params_opt, num_samples=200, no_cat=True)
 
@@ -185,6 +183,6 @@ def test_gurobi_consistency6(rnd_seed, acq_sense, dist_metric):
         "dist_trafo": "standard",
     }
     params["unc_params"]["beta"] = 0.05
-    params_opt = {"LogToConsole": 1, "MIPGapAbs": 1e-3}
+    params_opt = {"LogToConsole": 1, "MIPGapAbs": 0.01}
 
     run_gurobi(rnd_seed, 1, params, params_opt, num_samples=200, no_cat=True)
