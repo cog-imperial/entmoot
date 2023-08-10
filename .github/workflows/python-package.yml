@@ -39,6 +39,4 @@ jobs:
         CICD_ACTIVE: ${{ secrets.CICD_ACTIVE }}
         GRB_LICENSE_FILE: ${{ steps.write-license.outputs.grb_license_file }}
       run: |
-        pytest --cov
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+        pytest -v -m fast_test

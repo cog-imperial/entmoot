@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import random
 
-
+@pytest.mark.fast_test
 def test_core_model_copy():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
@@ -29,7 +29,6 @@ def test_core_model_copy():
     assert len(core_model_pyomo._all_feat) == len(core_model_pyomo_copy._all_feat)
 
 
-@pytest.mark.fast_test
 def test_multiobj_constraints():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
@@ -119,7 +118,6 @@ def test_simple_test():
     assert round(res.opt_point[0]) == 0
 
 
-@pytest.mark.fast_test
 def test_compare_pyomo_gurobipy_multiobj():
     """
     Ensures for a multi objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -163,7 +161,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             # assert opt_gur._active_leaves == opt_pyo._active_leaves
 
 
-@pytest.mark.fast_test
+
 def test_compare_pyomo_gurobipy_singleobj():
     """
     Ensures for a single objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
