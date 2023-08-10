@@ -5,7 +5,7 @@ name: Tests
 
 on:
   push:
-    branches: [ "master", "entmoot-v2"]
+    branches: [ "master", "fix-consistency-tests"]
   pull_request:
     branches: [ "master" ]
 
@@ -41,6 +41,6 @@ jobs:
         CICD_ACTIVE: ${{ secrets.CICD_ACTIVE }}
         GRB_LICENSE_FILE: ${{ steps.write-license.outputs.grb_license_file }}
       run: |
-        pytest --cov=entmoot tests/test_curr.py
+        pytest --cov=entmoot tests/test_consistency_gurobi.py
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
