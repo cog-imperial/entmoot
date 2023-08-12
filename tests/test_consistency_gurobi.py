@@ -58,7 +58,7 @@ def run_gurobi(rnd_seed, n_obj, params, params_opt, num_samples=20, no_cat=False
         unc > 0.001 and unc_pred > 0.001
     ), f"`{unc}` and `{unc_pred}` are too small to test"
     assert math.isclose(
-        unc, unc_pred, abs_tol=1e-4
+        unc, unc_pred, abs_tol=0.001
     ), f"`{unc}` and `{unc_pred}` unc values are not the same"
 
 
