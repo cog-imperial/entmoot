@@ -347,12 +347,13 @@ class DistanceBasedUncertainty(BaseModel):
             non_cat_term, cat_term = model.terms_constrs_cat_noncat_contr[i]
             return model._unc <= (non_cat_term + cat_term) * self._dist_coeff
 
-        if self._dist_metric == "l2":
-            model.constrs_cat_noncat_contr = pyo.Constraint(
-                model.indices_constrs_cat_noncat_contr,
-                rule=rule_constr_cat_noncat_quadr,
-            )
-        else:
-            model.constrs_cat_noncat_contr = pyo.Constraint(
-                model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat
-            )
+        if not self._acq_sense == "exploration":
+            if self._dist_metric == "l2":
+                model.constrs_cat_noncat_contr = pyo.Constraint(
+                    model.indices_constrs_cat_noncat_contr,
+                    rule=rule_constr_cat_noncat_quadr,
+                )
+            else:
+                model.constrs_cat_noncat_contr = pyo.Constraint(
+                    model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat
+                )
