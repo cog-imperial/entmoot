@@ -234,10 +234,10 @@ class DistanceBasedUncertainty(BaseModel):
             range(len(model.terms_constrs_cat_noncat_contr))
         )
 
-        # add binaries for big_m penalty constraints
         if self._acq_sense == "penalty":
             big_m = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
 
+            # add binaries for big_m penalty constraints
             model._bin_penalty = pyo.Var(
                 model.indices_constrs_cat_noncat_contr, domain=pyo.Binary
             )
@@ -246,6 +246,13 @@ class DistanceBasedUncertainty(BaseModel):
                 i: big_m * (1 - model._bin_penalty[i])
                 for i in model.indices_constrs_cat_noncat_contr
             }
+
+            def constrs_bin_penalty_sum(model_obj):
+                return (
+                    sum(model_obj._bin_penalty[k] for k in model.indices_constrs_cat_noncat_contr) == 1
+                )
+
+            model.constrs_bin_penalty_sum = pyo.Constraint(rule=constrs_bin_penalty_sum)
 
             if self._dist_metric == "l2":
                 # take sqrt for l2 distance
