@@ -51,14 +51,14 @@ def run_pyomo(rnd_seed, n_obj, params, params_opt, num_samples=20, no_cat=False)
     # compare model mean and uncertainty to prediction
     for m_opt, m_pred in zip(mu, mu_pred):
         assert math.isclose(
-            m_opt, m_pred, abs_tol=1e-4
-        ), f"`{m_opt}` and `{m_pred}` tree values are too small to test"
+            m_opt, m_pred, rel_tol=0.0001
+        ), f"`{m_opt}` and `{m_pred}` prediction values are too different from each other"
 
     assert (
         unc > 0.001 and unc_pred > 0.001
     ), f"`{unc}` and `{unc_pred}` are too small to test"
     assert math.isclose(
-        unc, unc_pred, abs_tol=1e-4
+        unc, unc_pred, rel_tol=0.0001
     ), f"`{unc}` and `{unc_pred}` unc values are not the same"
 
 
@@ -113,7 +113,7 @@ def test_gurobi_consistency2(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric
 @pytest.mark.parametrize("acq_sense", ["penalty"])
 @pytest.mark.parametrize("rnd_seed", [100, 101, 102])
 @pytest.mark.parametrize("n_obj", [1, 2])
-def test_gurobi_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric):
+def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric):
     # define model params
     params = {}
     params["unc_params"] = {
@@ -137,7 +137,7 @@ def test_gurobi_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric
     params["unc_params"]["beta"] = 0.05
     params_opt = {
         "solver_name": "gurobi",
-        "solver_options": {"NonConvex": 2},
+        "solver_options": {"MIPGap": 0, "LogToConsole": 1, "NonConvex": 2},
     }
 
     if n_obj == 1:
