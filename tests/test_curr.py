@@ -1,3 +1,5 @@
+import math
+
 from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
@@ -155,10 +157,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             res_pyo = opt_pyo.solve(enting, weights=(0.4, 0.6))
 
             # Assert that active leaves coincide for both models
-            # TODO: Adjust tolerance level
-            assert round(res_gur.opt_val, 1) == round(res_pyo.opt_val, 1)
-
-            # assert opt_gur._active_leaves == opt_pyo._active_leaves
+            assert math.isclose(res_gur.opt_val, res_pyo.opt_val, abs_tol=0.01)
 
 
 
