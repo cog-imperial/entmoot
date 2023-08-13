@@ -17,6 +17,7 @@ This small example illustrates how to use ENTMOOT.
     import random
 
     # This is the function you want to minimize.
+    # In most use cases this will be something terribly complicated like a simulation or a real-world experiment
     def my_func(x: float) -> float:
         # randomly disturbed function f(x) = x^2 + 1 + eps
         return x**2 + 1 + random.uniform(-0.2, 0.2)
