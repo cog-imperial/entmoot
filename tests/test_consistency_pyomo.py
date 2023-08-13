@@ -33,6 +33,8 @@ def run_pyomo(rnd_seed, n_obj, params, params_opt, num_samples=20, no_cat=False)
     # solve gurobi
     opt = PyomoOptimizer(problem_config, params=params_opt)
 
+    params_opt["solver_options"]["Timelimit"] = 120
+
     x_sol, obj, mu, unc, leafs = opt.solve(enting)
 
     # predict enting model with solution
