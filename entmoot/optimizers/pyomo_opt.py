@@ -67,6 +67,8 @@ class PyomoOptimizer:
             self.get_curr_sol,
             pyo.value(opt_model.obj),
             [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu],
+            pyo.value(opt_model._unc),
+            self._active_leaves
         )
 
     def _get_sol(self, solved_model: pyo.ConcreteModel) -> list:

@@ -125,7 +125,7 @@ class DistanceBasedUncertainty(BaseModel):
         return np.asarray(comb_pred)
 
     def add_to_gurobipy_model(self, model):
-        from gurobipy import GRB
+        from gurobipy import GRB, quicksum
 
         # define main uncertainty variables
         if self._dist_has_var_bound:
@@ -151,7 +151,6 @@ class DistanceBasedUncertainty(BaseModel):
         ):
             # check if penalty term is needed
             if self._acq_sense == "penalty":
-
                 model._bin_penalty.append(
                     model.addVar(name=f"bin_penalty_{i}", vtype="B")
                 )
@@ -182,9 +181,9 @@ class DistanceBasedUncertainty(BaseModel):
                         >= (non_cat_term + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
-            elif self._acq_sense =="exploration":
-                if self._dist_metric == "l2":
 
+            elif self._acq_sense == "exploration":
+                if self._dist_metric == "l2":
                     # take sqrt for l2 distance
                     aux_non_cat_unc = model.addVar(
                         lb=0.0, ub=dist_bound, name=f"aux_non_cat_unc_x_{i}", vtype="C"
@@ -196,8 +195,7 @@ class DistanceBasedUncertainty(BaseModel):
                     )
 
                     model.addQConstr(
-                        model._unc * model._unc
-                        <= (aux_non_cat_unc + cat_term) * self._dist_coeff,
+                        model._unc <= (aux_non_cat_unc + cat_term) * self._dist_coeff,
                         name=f"unc_x_{i}",
                     )
                 else:
@@ -208,6 +206,9 @@ class DistanceBasedUncertainty(BaseModel):
 
         if self._acq_sense == "exploration":
             model.params.NonConvex = 2
+
+        if self._acq_sense == "penalty":
+            model.addConstr(sum(model._bin_penalty) == 1, name=f"bin_penalty_sum")
 
         model.update()
 
@@ -233,10 +234,10 @@ class DistanceBasedUncertainty(BaseModel):
             range(len(model.terms_constrs_cat_noncat_contr))
         )
 
-        # add binaries for big_m penalty constraints
         if self._acq_sense == "penalty":
             big_m = self.non_cat_unc_model.get_big_m() + self.cat_unc_model.get_big_m()
 
+            # add binaries for big_m penalty constraints
             model._bin_penalty = pyo.Var(
                 model.indices_constrs_cat_noncat_contr, domain=pyo.Binary
             )
@@ -245,6 +246,13 @@ class DistanceBasedUncertainty(BaseModel):
                 i: big_m * (1 - model._bin_penalty[i])
                 for i in model.indices_constrs_cat_noncat_contr
             }
+
+            def constrs_bin_penalty_sum(model_obj):
+                return (
+                    sum(model_obj._bin_penalty[k] for k in model.indices_constrs_cat_noncat_contr) == 1
+                )
+
+            model.constrs_bin_penalty_sum = pyo.Constraint(rule=constrs_bin_penalty_sum)
 
             if self._dist_metric == "l2":
                 # take sqrt for l2 distance
@@ -291,7 +299,6 @@ class DistanceBasedUncertainty(BaseModel):
                 raise ValueError
         elif self._acq_sense == "exploration":
             if self._dist_metric == "l2":
-
                 # take sqrt for l2 distance
                 model.aux_non_cat_unc = pyo.Var(
                     model.indices_constrs_cat_noncat_contr, bounds=(0, dist_bound)
@@ -309,7 +316,7 @@ class DistanceBasedUncertainty(BaseModel):
 
                 def constrs_unc_x_expl(model_obj, k):
                     return (
-                        model_obj._unc * model_obj._unc
+                        model_obj._unc
                         <= (model_obj.aux_non_cat_unc[k] + cat_term_list[k])
                         * self._dist_coeff
                     )
@@ -347,12 +354,13 @@ class DistanceBasedUncertainty(BaseModel):
             non_cat_term, cat_term = model.terms_constrs_cat_noncat_contr[i]
             return model._unc <= (non_cat_term + cat_term) * self._dist_coeff
 
-        if self._dist_metric == "l2":
-            model.constrs_cat_noncat_contr = pyo.Constraint(
-                model.indices_constrs_cat_noncat_contr,
-                rule=rule_constr_cat_noncat_quadr,
-            )
-        else:
-            model.constrs_cat_noncat_contr = pyo.Constraint(
-                model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat
-            )
+        if not self._acq_sense == "exploration":
+            if self._dist_metric == "l2":
+                model.constrs_cat_noncat_contr = pyo.Constraint(
+                    model.indices_constrs_cat_noncat_contr,
+                    rule=rule_constr_cat_noncat_quadr,
+                )
+            else:
+                model.constrs_cat_noncat_contr = pyo.Constraint(
+                    model.indices_constrs_cat_noncat_contr, rule=rule_constr_cat_noncat
+                )

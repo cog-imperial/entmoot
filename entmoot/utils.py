@@ -3,7 +3,10 @@ import numpy as np
 from scipy.special import comb
 
 
-OptResult = namedtuple("OptResult", ["opt_point", "opt_val", "mu_unscaled"])
+OptResult = namedtuple(
+    "OptResult",
+    ["opt_point", "opt_val", "mu_unscaled", "unc_unscaled", "active_leaf_enc"],
+)
 
 
 def grid(dimension: int, levels: int) -> np.ndarray:

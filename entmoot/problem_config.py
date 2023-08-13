@@ -58,6 +58,9 @@ class ProblemConfig:
     def rnd_seed(self):
         return self._rnd_seed
 
+    def get_enc_bnd(self):
+        return [feat.get_enc_bnds() for feat in self._feat_list]
+
     def _encode_xi(self, xi: List):
         return np.asarray(
             [feat.encode(xi[idx]) for idx, feat in enumerate(self.feat_list)]
@@ -361,6 +364,9 @@ class ProblemConfig:
 
 
 class FeatureType:
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
+
     def is_real(self):
         return False
 
@@ -402,6 +408,9 @@ class Categorical(FeatureType):
             self._enc_cat_list.append(enc)
             self._enc2str[enc] = cat
             self._str2enc[cat] = enc
+
+    def get_enc_bnds(self):
+        return self._enc_cat_list
 
     @property
     def cat_list(self):

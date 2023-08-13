@@ -48,7 +48,6 @@ class Enting(BaseModel):
     """
 
     def __init__(self, problem_config: ProblemConfig, params: dict = None):
-
         if params is None:
             params = {}
 
@@ -111,12 +110,17 @@ class Enting(BaseModel):
         self.mean_model.fit(X, y)
         self.unc_model.fit(X, y)
 
-    def predict(self, X: np.ndarray) -> list:
+    def leaf_bnd_predict(self, obj_name, leaf_enc):
+        bnds = self._problem_config.get_enc_bnd()
+        return self.mean_model.meta_tree_dict[obj_name].prune_var_bnds(leaf_enc, bnds)
+
+    def predict(self, X: np.ndarray, is_enc=False) -> list:
         """
         Computes prediction value of tree model for X.
         """
         # encode categorical features
-        X = self._problem_config.encode(X)
+        if not is_enc:
+            X = self._problem_config.encode(X)
 
         # check dims of X
         if X.ndim == 1:
@@ -136,12 +140,12 @@ class Enting(BaseModel):
     def predict_pareto(self):
         pass
 
-    def predict_acq(self, X: np.ndarray) -> list:
+    def predict_acq(self, X: np.ndarray, is_enc=False) -> list:
         """
         predicts value of acquisition function (which contains not only the mean value but also the uncertainty)
         """
         acq_pred = []
-        comb_pred = self.predict(X)
+        comb_pred = self.predict(X, is_enc=is_enc)
         for mean, unc in comb_pred:
             acq_pred.append(mean + self._beta * unc)
         return acq_pred

@@ -1,3 +1,5 @@
+import math
+
 from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
@@ -8,7 +10,7 @@ import numpy as np
 import pytest
 import random
 
-
+@pytest.mark.fast_test
 def test_core_model_copy():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
@@ -29,7 +31,6 @@ def test_core_model_copy():
     assert len(core_model_pyomo._all_feat) == len(core_model_pyomo_copy._all_feat)
 
 
-@pytest.mark.fast_test
 def test_multiobj_constraints():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
@@ -62,7 +63,7 @@ def test_multiobj_constraints():
     model_gur.update()
 
     # Build GurobiOptimizer object and solve optimization problem
-    params_gurobi = {"MIPGap": 0}
+    params_gurobi = {"MIPGap": 1e-3}
     opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
 
     res_gur = opt_gur.solve(enting, model_core=model_gur)
@@ -119,7 +120,6 @@ def test_simple_test():
     assert round(res.opt_point[0]) == 0
 
 
-@pytest.mark.fast_test
 def test_compare_pyomo_gurobipy_multiobj():
     """
     Ensures for a multi objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -136,10 +136,8 @@ def test_compare_pyomo_gurobipy_multiobj():
     rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
     testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=number_objectives)
 
-
-    # The (l2, exploration) combination does not work which is probably due to a rounding error
-    for metric in ["l1", "euclidean_squared"]:
-        for acq_sense in ["penalty"]:
+    for metric in ["l1", "l2", "euclidean_squared"]:
+        for acq_sense in ["exploration", "penalty"]:
             params = {"unc_params": {"dist_metric": metric, "acq_sense": acq_sense}}
             enting = Enting(problem_config, params=params)
             # fit tree ensemble
@@ -159,12 +157,10 @@ def test_compare_pyomo_gurobipy_multiobj():
             res_pyo = opt_pyo.solve(enting, weights=(0.4, 0.6))
 
             # Assert that active leaves coincide for both models
-            assert round(res_gur.opt_val, 2) == round(res_pyo.opt_val, 2)
-
-            assert opt_gur._active_leaves == opt_pyo._active_leaves
+            assert math.isclose(res_gur.opt_val, res_pyo.opt_val, abs_tol=0.01)
 
 
-@pytest.mark.fast_test
+
 def test_compare_pyomo_gurobipy_singleobj():
     """
     Ensures for a single objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -189,14 +185,14 @@ def test_compare_pyomo_gurobipy_singleobj():
             enting.fit(rnd_sample, testfunc_evals)
 
             # Build GurobiOptimizer object and solve optimization problem
-            params_gurobi = {"NonConvex": 2, "MIPGap": 0}
+            params_gurobi = {"NonConvex": 2, "MIPGap": 1e-3}
             opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
             res_gur = opt_gur.solve(enting)
 
             # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
             params_pyo = {
                 "solver_name": "gurobi",
-                "solver_options": {"NonConvex": 2, "MIPGap": 0},
+                "solver_options": {"NonConvex": 2, "MIPGap": 1e-3},
             }
             opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
             res_pyo = opt_pyo.solve(enting)

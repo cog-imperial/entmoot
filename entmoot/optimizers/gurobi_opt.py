@@ -27,11 +27,11 @@ class GurobiOptimizer:
         return self._active_leaves
 
     def solve(
-            self,
-            tree_model: Enting,
-            model_core: gur.Model = None,
-            weights: tuple = None,
-            use_env: bool = False,
+        self,
+        tree_model: Enting,
+        model_core: gur.Model = None,
+        weights: tuple = None,
+        use_env: bool = False,
     ) -> namedtuple:
         """
         Solves the Gurobi optimization model
@@ -81,6 +81,8 @@ class GurobiOptimizer:
             self.get_curr_sol(),
             opt_model.ObjVal,
             [x.X for x in opt_model._unscaled_mu],
+            opt_model._unc.X,
+            self._active_leaves,
         )
 
     def _get_sol(self, solved_model: gur.Model) -> list:
@@ -107,7 +109,11 @@ class GurobiOptimizer:
         act_leaves = []
         for idx, obj in enumerate(self._problem_config.obj_list):
             act_leaves.append(
-                [(tree_id, leaf_enc) for tree_id, leaf_enc in obj_leaf_index(solved_model, obj.name)
-                 if round(solved_model._z[obj.name, tree_id, leaf_enc].x) == 1.0])
+                [
+                    (tree_id, leaf_enc)
+                    for tree_id, leaf_enc in obj_leaf_index(solved_model, obj.name)
+                    if round(solved_model._z[obj.name, tree_id, leaf_enc].x) == 1.0
+                ]
+            )
 
         return self._problem_config.decode([res]), act_leaves
