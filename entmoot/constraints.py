@@ -6,6 +6,7 @@ import pyomo.environ as pyo
 if TYPE_CHECKING:
     from problem_config import FeatureType
 
+ConstraintFunctionType = Callable[[pyo.ConcreteModel, int], pyo.Expression]
 
 class Constraint(ABC):
     def __init__(self, features_keys: list[str]):
@@ -20,19 +21,14 @@ class Constraint(ABC):
         features = [model._all_feat[i] for i in feat_idxs]
         return features
 
-    def as_pyomo_constraint(
-        self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
-    ):
-        features = self._get_feature_vars(model, feat_list)
-        return self._as_pyomo_constraint(features)
-
-    @abstractmethod
-    def _as_pyomo_constraint(self, features: list[pyo.Var]) -> pyo.Constraint:
-        pass
-
 
 class ExpressionConstraint(Constraint):
-    def _as_pyomo_constraint(self, features: list[pyo.Var]) -> pyo.Constraint:
+    """Constraints defined by pyomo.Expressions.
+
+    For constraints that can be simply defined by an expression of variables.    
+    """
+    def as_pyomo_constraint(self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]) -> pyo.Constraint:
+        features = self._get_feature_vars(model, feat_list)
         return pyo.Constraint(expr=self._get_expr(features))
 
     @abstractmethod
@@ -41,11 +37,15 @@ class ExpressionConstraint(Constraint):
 
 
 class FunctionalConstraint(Constraint):
-    def _as_pyomo_constraint(self, features: list[pyo.Var]) -> pyo.Constraint:
-        return pyo.Constraint(rule=self._get_function(features))
+    """A constraint that uses a functional approach.
+    
+    For constraints that require creating intermediate variables and access to the model."""
+    def as_pyomo_constraint(self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]) -> pyo.Constraint:
+        features = self._get_feature_vars(model, feat_list)
+        return pyo.Constraint(rule=self._get_function(model, features))
 
     @abstractmethod
-    def _get_function(self, features) -> Callable[..., pyo.Expression]:
+    def _get_function(self, features) -> ConstraintFunctionType:
         pass
 
 
@@ -71,3 +71,26 @@ class LinearEqualityConstraint(LinearConstraint):
 class LinearInequalityConstraint(LinearConstraint):
     def _get_expr(self, features):
         return self._get_lhs(features) <= self.rhs
+
+
+class NChooseKConstraint(FunctionalConstraint):
+    tol: float = 1e-6
+    M: float = 1e6
+    def __init__(self, feature_keys: list[str], min_count: int, max_count: int, none_also_valid: bool = False):
+        self.min_count = min_count
+        self.max_count = max_count
+        self.none_also_valid = none_also_valid
+        super().__init__(feature_keys)
+
+    def _get_function(self, model, features):
+        model.feat_selected = pyo.Var(range(len(features)), domain=pyo.Binary, initialize=0)
+        model.ub_selected = pyo.ConstraintList()
+        model.lb_selected = pyo.ConstraintList()
+        for i in range(len(features)):
+            model.ub_selected.add(expr=model.feat_selected[i]*self.M >= features[i])
+            model.lb_selected.add(expr=model.feat_selected[i]*self.tol <= features[i])
+        
+        def inner(model, i):
+            return sum(model.feat_selected.values()) <= self.max_count
+
+        return inner
