@@ -9,8 +9,8 @@ if TYPE_CHECKING:
 ConstraintFunctionType = Callable[[pyo.ConcreteModel, int], pyo.Expression]
 
 class Constraint(ABC):
-    def __init__(self, features_keys: list[str]):
-        self.feature_keys = features_keys
+    def __init__(self, feature_keys: list[str]):
+        self.feature_keys = feature_keys
 
     def _get_feature_vars(
         self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
