@@ -106,7 +106,7 @@ class Enting(BaseModel):
             "Argument 'y' has wrong dimensions. "
             f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
         )
-
+        y = self._problem_config.transform_objective(y)
         self.mean_model.fit(X, y)
         self.unc_model.fit(X, y)
 
@@ -131,8 +131,11 @@ class Enting(BaseModel):
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
         )
 
-        mean_pred = self.mean_model.predict(X).tolist()
+        mean_pred = self.mean_model.predict(X) #.tolist()
         unc_pred = self.unc_model.predict(X)
+        
+        mean_pred = self._problem_config.transform_objective(mean_pred)
+        mean_pred = mean_pred.tolist()
 
         comb_pred = [(mean, unc) for mean, unc in zip(mean_pred, unc_pred)]
         return comb_pred
