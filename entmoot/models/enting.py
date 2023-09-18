@@ -4,7 +4,10 @@ from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
     DistanceBasedUncertainty,
 )
+from entmoot.utils import EntingParams
+from dataclasses import asdict
 import numpy as np
+from typing import Union
 
 
 class Enting(BaseModel):
@@ -47,9 +50,14 @@ class Enting(BaseModel):
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
 
-    def __init__(self, problem_config: ProblemConfig, params: dict = None):
+    def __init__(self, problem_config: ProblemConfig, params: Union[EntingParams, dict]):
         if params is None:
             params = {}
+        if isinstance(params, dict):
+            params = EntingParams.from_dict(params)
+
+        # this is temporary - just to avoid breaking the code!
+        params = asdict(params)
 
         self._problem_config = problem_config
 
