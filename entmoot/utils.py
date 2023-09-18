@@ -1,4 +1,6 @@
 from collections import namedtuple
+from dataclasses import dataclass
+from typing import Literal
 import numpy as np
 from scipy.special import comb
 
@@ -7,6 +9,37 @@ OptResult = namedtuple(
     "OptResult",
     ["opt_point", "opt_val", "mu_unscaled", "unc_unscaled", "active_leaf_enc"],
 )
+
+
+@dataclass
+class EntingParams:
+    unc_params: "UncParams" = None
+    tree_train_params: "TreeTrainParams" = None
+
+@dataclass
+class UncParams:
+    beta: float = 1.96 # >0
+    acq_sense: Literal["exploration", "penalty"] = "exploration"
+    dist_trafo: Literal["normal", "standard"] = "normal"
+    dist_metric: Literal["euclidean_squared", "l1", "l2"] = "euclidean_squared"
+    cat_metric: Literal["overlap", "of", "goodall4"] = "overlap"
+
+@dataclass
+class TreeTrainParams:
+    train_params: "TrainParams"
+    train_lib: Literal["lgbm"] = "lgbm"
+
+@dataclass
+class TrainParams:
+    # lightgbm training hyperparameters
+    objective: str = "regression"
+    metric: str = "rmse"
+    boosting: str = "gbdt"
+    num_boost_round: int = 100
+    max_depth: int = 3
+    min_data_in_leaf: int = 1
+    min_data_per_group: int = 1
+    verbose: int = -1
 
 
 def grid(dimension: int, levels: int) -> np.ndarray:
