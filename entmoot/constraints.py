@@ -9,6 +9,12 @@ if TYPE_CHECKING:
 ConstraintFunctionType = Callable[[pyo.ConcreteModel, int], pyo.Expression]
 
 class Constraint(ABC):
+    """A constraint to be applied to a model.
+    
+    Implements a user-friendly way to construct constraints to an optimisation problem.
+    
+    Attributes:
+        feature_keys: A list of the string names of the features to be constrained"""
     def __init__(self, feature_keys: list[str]):
         self.feature_keys = feature_keys
 
@@ -20,12 +26,18 @@ class Constraint(ABC):
         feat_idxs = [all_keys.index(key) for key in self.feature_keys]
         features = [model._all_feat[i] for i in feat_idxs]
         return features
-
+    
+    @abstractmethod
+    def as_pyomo_constraint(self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]) -> pyo.Constraint:
+        """Convert to a pyomo.Constraint object.
+        
+        This requires the model (to access the variables), and the feat_list (to access the feature names)"""
+        pass
 
 class ExpressionConstraint(Constraint):
     """Constraints defined by pyomo.Expressions.
 
-    For constraints that can be simply defined by an expression of variables.    
+    For constraints that can be simply defined by an expression of variables.   
     """
     def as_pyomo_constraint(self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]) -> pyo.Constraint:
         features = self._get_feature_vars(model, feat_list)
@@ -74,6 +86,7 @@ class LinearInequalityConstraint(LinearConstraint):
 
 
 class NChooseKConstraint(FunctionalConstraint):
+    """Constrain the number of active features to be bounded by min_count and max_count."""
     tol: float = 1e-6
     M: float = 1e6
     def __init__(self, feature_keys: list[str], min_count: int, max_count: int, none_also_valid: bool = False):
@@ -83,9 +96,14 @@ class NChooseKConstraint(FunctionalConstraint):
         super().__init__(feature_keys)
 
     def _get_function(self, model, features):
+        # constrain the features using the binary variable y
+        # where y indicates whether the feature is selected
+        # y * tol <= x <= y * M
+        # tol is sufficiently small, M is sufficiently large
         model.feat_selected = pyo.Var(range(len(features)), domain=pyo.Binary, initialize=0)
         model.ub_selected = pyo.ConstraintList()
         model.lb_selected = pyo.ConstraintList()
+
         for i in range(len(features)):
             model.ub_selected.add(expr=model.feat_selected[i]*self.M >= features[i])
             model.lb_selected.add(expr=model.feat_selected[i]*self.tol <= features[i])
