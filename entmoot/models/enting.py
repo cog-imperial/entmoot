@@ -4,7 +4,7 @@ from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
     DistanceBasedUncertainty,
 )
-from entmoot.utils import EntingParams
+from entmoot.models.model_params import EntingParams
 from dataclasses import asdict
 import numpy as np
 from typing import Union
@@ -50,19 +50,20 @@ class Enting(BaseModel):
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
 
-    def __init__(self, problem_config: ProblemConfig, params: Union[EntingParams, dict]):
+    def __init__(self, problem_config: ProblemConfig, params: Union[EntingParams, dict, None]):
         if params is None:
             params = {}
         if isinstance(params, dict):
-            params = EntingParams.from_dict(params)
+            params = EntingParams.fromdict(params)
 
         # this is temporary - just to avoid breaking the code!
-        params = asdict(params)
+        # params = asdict(params)
 
         self._problem_config = problem_config
 
         # check params values
-        tree_training_params = params.get("tree_train_params", {})
+        # tree_training_params = params.get("tree_train_params", {})
+        tree_training_params = params.tree_train_params
 
         # initialize mean model
         self.mean_model = TreeEnsemble(
@@ -70,14 +71,15 @@ class Enting(BaseModel):
         )
 
         # initialize unc model
-        unc_params = params.get("unc_params", {})
-        self._acq_sense = unc_params.get("acq_sense", "exploration")
+        # unc_params = params.get("unc_params", {})
+        unc_params = params.unc_params
+        self._acq_sense = unc_params.acq_sense
         assert self._acq_sense in (
             "exploration",
             "penalty",
         ), f"Pick 'acq_sense' '{self._acq_sense}' in '('exploration', 'penalty')'."
 
-        self._beta = unc_params.get("beta", 1.96)
+        self._beta = unc_params.beta
         assert (
             self._beta >= 0.0
         ), f"Value for 'beta' is {self._beta} but must be '>= 0.0'."

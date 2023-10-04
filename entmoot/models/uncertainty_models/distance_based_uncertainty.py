@@ -1,4 +1,5 @@
 from entmoot.models.base_model import BaseModel
+from entmoot.models.uncertainty_models.base_distance import CatDistance, NonCatDistance
 from entmoot.models.uncertainty_models.euclidean_squared_distance import (
     EuclideanSquaredDistance,
 )
@@ -9,25 +10,39 @@ from entmoot.models.uncertainty_models.overlap_distance import OverlapDistance
 from entmoot.models.uncertainty_models.goodall4_distance import Goodall4Distance
 from entmoot.models.uncertainty_models.of_distance import OfDistance
 
+from entmoot.models.model_params import UncParams
+from typing import Union
 import numpy as np
+
+def distance_func_mapper(dist_name: str, cat: bool) -> Union[CatDistance, NonCatDistance]:
+    """Given a string, return the distance function"""
+    non_cat_dists = {
+        "euclidean_squared": EuclideanSquaredDistance,
+        "l1": L1Distance,
+        "l2": L2Distance,
+    }
+    cat_dists = {
+        "overlap": OverlapDistance,
+        "of": OfDistance,
+        "goodall4": Goodall4Distance,
+    }
+    if cat:
+        return cat_dists.get(dist_name)
+    else:
+        return non_cat_dists.get(dist_name)
 
 
 class DistanceBasedUncertainty(BaseModel):
-    def __init__(self, problem_config, params):
+    def __init__(self, problem_config, params: UncParams):
         self._problem_config = problem_config
-
-        dist_metric = params.get("dist_metric", "euclidean_squared")
-        dist_trafo = params.get("dist_trafo", "normal")
-        cat_metric = params.get("cat_metric", "overlap")
-        acq_sense = params.get("acq_sense", "exploration")
 
         self._non_cat_x, self._cat_x = None, None
         self._dist_bound = None
-        self._dist_metric = dist_metric
+        self._dist_metric = params.dist_metric
         self._num_cache_x = None
-        self._acq_sense = acq_sense
+        self._acq_sense = params.acq_sense
 
-        if dist_trafo == "standard":
+        if params.dist_trafo == "standard":
             assert (
                 len(self._problem_config.obj_list) == 1
             ), "Distance transformation 'standard' can only be used for single objective problems."
@@ -37,59 +52,60 @@ class DistanceBasedUncertainty(BaseModel):
             ), "Distance transformation 'standard' can only be used for non-categorical problems."
 
             self._dist_has_var_bound = False if self._acq_sense == "penalty" else True
-            self._bound_coeff = params.get("bound_coeff", 0.5)
+            self._bound_coeff = params.bound_coeff
             self._dist_coeff = 1.0
-        elif dist_trafo == "normal":
+        elif params.dist_trafo == "normal":
             self._dist_has_var_bound = False
             self._bound_coeff = None
             self._dist_coeff = 1 / len(self._problem_config.feat_list)
         else:
             raise IOError(
-                f"Pick 'dist_trafo' '{dist_trafo}' in '('normal', 'standard')'."
+                f"Pick 'dist_trafo' '{params.dist_trafo}' in '('normal', 'standard')'."
             )
 
         # pick distance metric for non-cat features
-        if dist_metric == "euclidean_squared":
+        # non_cat_distance = distance_func_mapper(params.dist_metric, cat=False)
+        if params.dist_metric == "euclidean_squared":
             self.non_cat_unc_model = EuclideanSquaredDistance(
                 problem_config=self._problem_config,
-                acq_sense=acq_sense,
-                dist_trafo=dist_trafo,
+                acq_sense=params.acq_sense,
+                dist_trafo=params.dist_trafo,
             )
-        elif dist_metric == "l1":
+        elif params.dist_metric == "l1":
             self.non_cat_unc_model = L1Distance(
                 problem_config=self._problem_config,
-                acq_sense=acq_sense,
-                dist_trafo=dist_trafo,
+                acq_sense=params.acq_sense,
+                dist_trafo=params.dist_trafo,
             )
-        elif dist_metric == "l2":
+        elif params.dist_metric == "l2":
             self.non_cat_unc_model = L2Distance(
                 problem_config=self._problem_config,
-                acq_sense=acq_sense,
-                dist_trafo=dist_trafo,
+                acq_sense=params.acq_sense,
+                dist_trafo=params.dist_trafo,
             )
         else:
             raise IOError(
-                f"Non-categorical uncertainty metric '{dist_metric}' for "
+                f"Non-categorical uncertainty metric '{params.dist_metric}' for "
                 f"{self.__class__.__name__} model is not supported. "
                 f"Check 'params['uncertainty_type']'."
             )
 
         # pick distance metric for cat features
-        if cat_metric == "overlap":
+        if params.cat_metric == "overlap":
             self.cat_unc_model = OverlapDistance(
-                problem_config=self._problem_config, acq_sense=acq_sense
+                problem_config=self._problem_config, acq_sense=params.acq_sense
             )
-        elif cat_metric == "of":
+        elif params.cat_metric == "of":
             self.cat_unc_model = OfDistance(
-                problem_config=self._problem_config, acq_sense=acq_sense
+                problem_config=self._problem_config, acq_sense=params.acq_sense
             )
-        elif cat_metric == "goodall4":
+        elif params.cat_metric == "goodall4":
             self.cat_unc_model = Goodall4Distance(
-                problem_config=self._problem_config, acq_sense=acq_sense
+                problem_config=self._problem_config, acq_sense=params.acq_sense
             )
         else:
             raise IOError(
-                f"Categorical uncertainty metric '{cat_metric}' for {self.__class__.__name__} "
+                f"Categorical uncertainty metric '{params.cat_metric}' for {self.__class__.__name__} "
                 f"model is not supported. Check 'params['uncertainty_type']'."
             )
 
