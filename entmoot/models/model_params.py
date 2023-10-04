@@ -3,6 +3,10 @@
 from typing import Literal
 from dataclasses import dataclass, field
 
+class ParamValidationError(ValueError):
+    """A model parameter takes an invalid value."""
+    pass
+
 @dataclass
 class UncParams:
     beta: float = 1.96
@@ -14,7 +18,15 @@ class UncParams:
 
     def __post_init__(self):
         if self.beta < 0.0:
-            raise ValueError(f"Value for 'beta' is {self.beta} but must be '>= 0.0'.")
+            raise ParamValidationError(
+                f"Value for 'beta' is {self.beta}; must be positive."
+            )
+        
+        if self.acq_sense not in ("exploration", "penalty"):
+            raise ParamValidationError(
+                f"Value for 'acq_sense' is '{self.acq_sense}'; must be in ('exploration', 'penalty')."
+            )
+        
 
 @dataclass
 class TrainParams:
@@ -31,30 +43,27 @@ class TrainParams:
 
 @dataclass
 class TreeTrainParams:
-    train_params: "TrainParams" = field(default_factory=TrainParams)
+    train_params: "TrainParams" = field(default_factory=dict)
     train_lib: Literal["lgbm"] = "lgbm"
 
-    @staticmethod
-    def fromdict(d: dict):
-        d_train_params = d.get("train_params", {})
-        d_tree_train_params = {k: v for k, v in d.items() if k!="train_params"}
-        return TreeTrainParams(
-            train_params=TrainParams(**d_train_params),
-            **d_tree_train_params
-        )
+    def __post_init__(self):
+        self.train_params = TrainParams(**self.train_params)
+        
+        if self.train_lib not in ("lgbm",):
+            raise ParamValidationError(
+                f"Value for 'train_lib' is {self.train_lib}; must be in ('lgbm',)"
+            )
 
 
 @dataclass
 class EntingParams:
-    unc_params: "UncParams" = field(default_factory=UncParams)
-    tree_train_params: "TreeTrainParams" = field(default_factory=TreeTrainParams)
-
-    @staticmethod
-    def fromdict(d: dict):
-        d_unc_params = d.get("unc_params", {})
-        d_tree_train_params = d.get("tree_train_params", {})
-
-        return EntingParams(
-            unc_params=UncParams(**d_unc_params),
-            tree_train_params=TreeTrainParams.fromdict(d_tree_train_params)
-        )
+    """Contains parameters for a mean and uncertainty model.
+    
+    Provides a structured dataclass for the parameters of an Enting model, 
+    alongside default values and some light data validation."""
+    unc_params: "UncParams" = field(default_factory=dict)
+    tree_train_params: "TreeTrainParams" = field(default_factory=dict)
+    
+    def __post_init__(self):
+        self.unc_params = UncParams(**self.unc_params)
+        self.tree_train_params = TreeTrainParams(**self.tree_train_params)

@@ -10,7 +10,7 @@ from entmoot.models.uncertainty_models.overlap_distance import OverlapDistance
 from entmoot.models.uncertainty_models.goodall4_distance import Goodall4Distance
 from entmoot.models.uncertainty_models.of_distance import OfDistance
 
-from entmoot.models.model_params import UncParams
+from entmoot.models.model_params import UncParams, ParamValidationError
 from typing import Union
 import numpy as np
 
@@ -33,7 +33,12 @@ def distance_func_mapper(dist_name: str, cat: bool) -> Union[CatDistance, NonCat
 
 
 class DistanceBasedUncertainty(BaseModel):
-    def __init__(self, problem_config, params: UncParams):
+    def __init__(self, problem_config, params: Union[UncParams, dict, None] = None):
+        if params is None:
+            params = {}
+        if isinstance(params, dict):
+            params = UncParams(**params)
+
         self._problem_config = problem_config
 
         self._non_cat_x, self._cat_x = None, None
@@ -59,54 +64,36 @@ class DistanceBasedUncertainty(BaseModel):
             self._bound_coeff = None
             self._dist_coeff = 1 / len(self._problem_config.feat_list)
         else:
-            raise IOError(
+            raise ParamValidationError(
                 f"Pick 'dist_trafo' '{params.dist_trafo}' in '('normal', 'standard')'."
             )
 
         # pick distance metric for non-cat features
-        # non_cat_distance = distance_func_mapper(params.dist_metric, cat=False)
-        if params.dist_metric == "euclidean_squared":
-            self.non_cat_unc_model = EuclideanSquaredDistance(
-                problem_config=self._problem_config,
-                acq_sense=params.acq_sense,
-                dist_trafo=params.dist_trafo,
-            )
-        elif params.dist_metric == "l1":
-            self.non_cat_unc_model = L1Distance(
-                problem_config=self._problem_config,
-                acq_sense=params.acq_sense,
-                dist_trafo=params.dist_trafo,
-            )
-        elif params.dist_metric == "l2":
-            self.non_cat_unc_model = L2Distance(
-                problem_config=self._problem_config,
-                acq_sense=params.acq_sense,
-                dist_trafo=params.dist_trafo,
-            )
-        else:
-            raise IOError(
+        non_cat_distance = distance_func_mapper(params.dist_metric, cat=False)
+        if non_cat_distance is None:
+            raise ParamValidationError(
                 f"Non-categorical uncertainty metric '{params.dist_metric}' for "
                 f"{self.__class__.__name__} model is not supported. "
-                f"Check 'params['uncertainty_type']'."
+                f"Check 'params['dist_metric']'."
+            )
+        else:
+            self.non_cat_unc_model: NonCatDistance = non_cat_distance(
+                problem_config=self._problem_config,
+                acq_sense=params.acq_sense,
+                dist_trafo=params.dist_trafo,
             )
 
         # pick distance metric for cat features
-        if params.cat_metric == "overlap":
-            self.cat_unc_model = OverlapDistance(
-                problem_config=self._problem_config, acq_sense=params.acq_sense
-            )
-        elif params.cat_metric == "of":
-            self.cat_unc_model = OfDistance(
-                problem_config=self._problem_config, acq_sense=params.acq_sense
-            )
-        elif params.cat_metric == "goodall4":
-            self.cat_unc_model = Goodall4Distance(
-                problem_config=self._problem_config, acq_sense=params.acq_sense
+        cat_distance = distance_func_mapper(params.cat_metric, cat=True)
+        if cat_distance is None:
+            raise ParamValidationError(
+                f"Categorical uncertainty metric '{params.cat_metric}' for {self.__class__.__name__} "
+                f"model is not supported. Check 'params['cat_metric']'."
             )
         else:
-            raise IOError(
-                f"Categorical uncertainty metric '{params.cat_metric}' for {self.__class__.__name__} "
-                f"model is not supported. Check 'params['uncertainty_type']'."
+            self.cat_unc_model: CatDistance = cat_distance(
+                problem_config=self._problem_config, 
+                acq_sense=params.acq_sense,
             )
 
     @property

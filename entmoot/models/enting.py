@@ -54,35 +54,20 @@ class Enting(BaseModel):
         if params is None:
             params = {}
         if isinstance(params, dict):
-            params = EntingParams.fromdict(params)
-
-        # this is temporary - just to avoid breaking the code!
-        # params = asdict(params)
+            params = EntingParams(**params)
 
         self._problem_config = problem_config
 
-        # check params values
-        # tree_training_params = params.get("tree_train_params", {})
-        tree_training_params = params.tree_train_params
-
         # initialize mean model
         self.mean_model = TreeEnsemble(
-            problem_config=problem_config, params=tree_training_params
+            problem_config=problem_config, params=params.tree_train_params
         )
 
         # initialize unc model
-        # unc_params = params.get("unc_params", {})
         unc_params = params.unc_params
         self._acq_sense = unc_params.acq_sense
-        assert self._acq_sense in (
-            "exploration",
-            "penalty",
-        ), f"Pick 'acq_sense' '{self._acq_sense}' in '('exploration', 'penalty')'."
 
         self._beta = unc_params.beta
-        assert (
-            self._beta >= 0.0
-        ), f"Value for 'beta' is {self._beta} but must be '>= 0.0'."
 
         if self._acq_sense == "exploration":
             self._beta = -self._beta

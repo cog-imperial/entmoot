@@ -9,19 +9,15 @@ import numpy as np
 
 
 class TreeEnsemble(BaseModel):
-    def __init__(self, problem_config, params:Union[TreeTrainParams, dict, None]=None):
+    def __init__(self, problem_config, params: Union[TreeTrainParams, dict, None] = None):
         if params is None:
             params = {}
         if isinstance(params, dict):
-            params = TreeTrainParams.fromdict(params)
+            params = TreeTrainParams(**params)
 
         self._problem_config = problem_config
         self._train_lib = params.train_lib
         self._rnd_seed = problem_config.rnd_seed
-
-        assert self._train_lib in ("lgbm"), (
-            "Parameter 'train_lib' for tree ensembles needs to be " "in '('lgbm')'."
-        )
 
         self._train_params = asdict(params.train_params)
         if self._rnd_seed is not None:
