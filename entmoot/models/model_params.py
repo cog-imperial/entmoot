@@ -47,7 +47,8 @@ class TreeTrainParams:
     train_lib: Literal["lgbm"] = "lgbm"
 
     def __post_init__(self):
-        self.train_params = TrainParams(**self.train_params)
+        if isinstance(self.train_params, dict):
+            self.train_params = TrainParams(**self.train_params)
         
         if self.train_lib not in ("lgbm",):
             raise ParamValidationError(
@@ -65,5 +66,8 @@ class EntingParams:
     tree_train_params: "TreeTrainParams" = field(default_factory=dict)
     
     def __post_init__(self):
-        self.unc_params = UncParams(**self.unc_params)
-        self.tree_train_params = TreeTrainParams(**self.tree_train_params)
+        if isinstance(self.unc_params, dict):
+            self.unc_params = UncParams(**self.unc_params)
+
+        if isinstance(self.tree_train_params, dict):
+            self.tree_train_params = TreeTrainParams(**self.tree_train_params)
