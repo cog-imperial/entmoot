@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import pyomo.environ as pyo
 
+from entmoot.problem_config import FeatureType
+
 if TYPE_CHECKING:
     from problem_config import FeatureType
 
@@ -40,6 +42,39 @@ class Constraint(ABC):
         pass
 
 
+class ConstraintList:
+    """Contains multiple constraints to be applied at once."""
+
+    def __init__(self, constraints: list[Constraint]):
+        self._constraints = constraints
+
+    def add(self, constraint: Constraint):
+        self._constraints.append(constraint)
+
+    def apply_pyomo_constraints(
+        self,
+        model: pyo.ConcreteModel,
+        feat_list: list[FeatureType],
+        pyo_constraint_list: pyo.ConstraintList,
+    ) -> None:
+        """Add constraints to a pyo.ConstraintList object.
+
+        Requires creation of the pyo.ConstraintList outside of this class,
+        to the user to specify the constraints name."""
+
+        for constraint in self._constraints:
+            features = constraint._get_feature_vars(model, feat_list)
+            if isinstance(constraint, ExpressionConstraint):
+                expr = constraint._get_expr(features)
+
+            elif isinstance(constraint, FunctionalConstraint):
+                # must convert rules to expr
+                rule = constraint._get_function(model, features)
+                expr = rule(model, 0)
+
+            pyo_constraint_list.add(expr)
+
+
 class ExpressionConstraint(Constraint):
     """Constraints defined by pyomo.Expressions.
 
@@ -70,7 +105,9 @@ class FunctionalConstraint(Constraint):
         return pyo.Constraint(rule=self._get_function(model, features))
 
     @abstractmethod
-    def _get_function(self, features) -> ConstraintFunctionType:
+    def _get_function(
+        self, model: pyo.ConcreteModel, features: list["FeatureType"]
+    ) -> ConstraintFunctionType:
         pass
 
 
