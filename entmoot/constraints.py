@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import pyomo.environ as pyo
 
+from entmoot.problem_config import FeatureType
+
 if TYPE_CHECKING:
     from problem_config import FeatureType
 
@@ -40,6 +42,35 @@ class Constraint(ABC):
         pass
 
 
+class ConstraintList:
+    """Contains multiple constraints to be applied at once."""
+
+    def __init__(self, constraints: list[Constraint]):
+        self._constraints = constraints
+
+    def add(self, constraint: Constraint):
+        self._constraints.append(constraint)
+
+    def apply_pyomo_constraints(
+        self,
+        model: pyo.ConcreteModel,
+        feat_list: list[FeatureType],
+        pyo_constraint_list: pyo.ConstraintList,
+    ) -> None:
+        """Add constraints to a pyo.ConstraintList object.
+
+        Requires creation of the pyo.ConstraintList outside of this class,
+        to the user to specify the constraints name."""
+
+        for constraint in self._constraints:
+            features = constraint._get_feature_vars(model, feat_list)
+            if not isinstance(constraint, ExpressionConstraint):
+                raise TypeError("Only ExpressionConstraints are supported in a constraint list")
+
+            expr = constraint._get_expr(model, features)
+            pyo_constraint_list.add(expr)
+
+
 class ExpressionConstraint(Constraint):
     """Constraints defined by pyomo.Expressions.
 
@@ -50,10 +81,10 @@ class ExpressionConstraint(Constraint):
         self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
     ) -> pyo.Constraint:
         features = self._get_feature_vars(model, feat_list)
-        return pyo.Constraint(expr=self._get_expr(features))
+        return pyo.Constraint(expr=self._get_expr(model, features))
 
     @abstractmethod
-    def _get_expr(self, features) -> pyo.Expression:
+    def _get_expr(self, model, features) -> pyo.Expression:
         pass
 
 
@@ -70,7 +101,9 @@ class FunctionalConstraint(Constraint):
         return pyo.Constraint(rule=self._get_function(model, features))
 
     @abstractmethod
-    def _get_function(self, features) -> ConstraintFunctionType:
+    def _get_function(
+        self, model: pyo.ConcreteModel, features: list["FeatureType"]
+    ) -> ConstraintFunctionType:
         pass
 
 
@@ -89,16 +122,16 @@ class LinearConstraint(ExpressionConstraint):
 
 
 class LinearEqualityConstraint(LinearConstraint):
-    def _get_expr(self, features):
+    def _get_expr(self, model, features):
         return self._get_lhs(features) == self.rhs
 
 
 class LinearInequalityConstraint(LinearConstraint):
-    def _get_expr(self, features):
+    def _get_expr(self, model, features):
         return self._get_lhs(features) <= self.rhs
 
 
-class NChooseKConstraint(FunctionalConstraint):
+class NChooseKConstraint(ExpressionConstraint):
     """Constrain the number of active features to be bounded by min_count and max_count."""
 
     tol: float = 1e-6
@@ -116,7 +149,7 @@ class NChooseKConstraint(FunctionalConstraint):
         self.none_also_valid = none_also_valid
         super().__init__(feature_keys)
 
-    def _get_function(self, model, features):
+    def _get_expr(self, model, features):
         # constrain the features using the binary variable y
         # where y indicates whether the feature is selected
         # y * tol <= x <= y * M
@@ -131,7 +164,4 @@ class NChooseKConstraint(FunctionalConstraint):
             model.ub_selected.add(expr=model.feat_selected[i] * self.M >= features[i])
             model.lb_selected.add(expr=model.feat_selected[i] * self.tol <= features[i])
 
-        def inner(model, i):
-            return sum(model.feat_selected.values()) <= self.max_count
-
-        return inner
+        return sum(model.feat_selected.values()) <= self.max_count
