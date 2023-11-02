@@ -6,3 +6,4 @@ gurobipy
 pytest-cov
 IPython
 nbsphinx
+sphinx-rtd-theme
