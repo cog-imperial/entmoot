@@ -4,6 +4,7 @@ import math
 import numpy as np
 
 from entmoot import Enting, ProblemConfig, PyomoOptimizer
+from entmoot.models.model_params import EntingParams, UncParams
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
@@ -91,14 +92,14 @@ def run_pyomo(
 @pytest.mark.parametrize("rnd_seed", [100, 101])
 def test_pyomo_optimality(rnd_seed, acq_sense, dist_metric, cat_metric):
     # define model params
-    params = {
-        "unc_params": {
-            "dist_metric": dist_metric,
-            "acq_sense": acq_sense,
-            "dist_trafo": "normal",
-            "cat_metric": cat_metric,
-        }
-    }
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="normal",
+            cat_metric=cat_metric,
+        )
+    )
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"MIPGap": 0, "LogToConsole": 1, "NonConvex": 2},

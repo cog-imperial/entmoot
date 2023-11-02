@@ -4,7 +4,10 @@ from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
     DistanceBasedUncertainty,
 )
+from entmoot.models.model_params import EntingParams
+from dataclasses import asdict
 import numpy as np
+from typing import Union
 
 
 class Enting(BaseModel):
@@ -47,32 +50,24 @@ class Enting(BaseModel):
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
 
-    def __init__(self, problem_config: ProblemConfig, params: dict = None):
+    def __init__(self, problem_config: ProblemConfig, params: Union[EntingParams, dict, None]):
         if params is None:
             params = {}
+        if isinstance(params, dict):
+            params = EntingParams(**params)
 
         self._problem_config = problem_config
 
-        # check params values
-        tree_training_params = params.get("tree_train_params", {})
-
         # initialize mean model
         self.mean_model = TreeEnsemble(
-            problem_config=problem_config, params=tree_training_params
+            problem_config=problem_config, params=params.tree_train_params
         )
 
         # initialize unc model
-        unc_params = params.get("unc_params", {})
-        self._acq_sense = unc_params.get("acq_sense", "exploration")
-        assert self._acq_sense in (
-            "exploration",
-            "penalty",
-        ), f"Pick 'acq_sense' '{self._acq_sense}' in '('exploration', 'penalty')'."
+        unc_params = params.unc_params
+        self._acq_sense = unc_params.acq_sense
 
-        self._beta = unc_params.get("beta", 1.96)
-        assert (
-            self._beta >= 0.0
-        ), f"Value for 'beta' is {self._beta} but must be '>= 0.0'."
+        self._beta = unc_params.beta
 
         if self._acq_sense == "exploration":
             self._beta = -self._beta
@@ -106,7 +101,7 @@ class Enting(BaseModel):
             "Argument 'y' has wrong dimensions. "
             f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."
         )
-
+        y = self._problem_config.transform_objective(y)
         self.mean_model.fit(X, y)
         self.unc_model.fit(X, y)
 
@@ -131,8 +126,11 @@ class Enting(BaseModel):
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
         )
 
-        mean_pred = self.mean_model.predict(X).tolist()
+        mean_pred = self.mean_model.predict(X) #.tolist()
         unc_pred = self.unc_model.predict(X)
+        
+        mean_pred = self._problem_config.transform_objective(mean_pred)
+        mean_pred = mean_pred.tolist()
 
         comb_pred = [(mean, unc) for mean, unc in zip(mean_pred, unc_pred)]
         return comb_pred

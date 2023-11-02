@@ -4,6 +4,7 @@ import math
 import numpy as np
 
 from entmoot import Enting, ProblemConfig, GurobiOptimizer
+from entmoot.models.model_params import EntingParams, UncParams
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
@@ -91,13 +92,13 @@ def run_gurobi(
 @pytest.mark.parametrize("rnd_seed", [100, 101])
 def test_gurobi_optimality(rnd_seed, acq_sense, dist_metric, cat_metric):
     # define model params
-    params = {
-        "unc_params": {
-            "dist_metric": dist_metric,
-            "acq_sense": acq_sense,
-            "dist_trafo": "normal",
-            "cat_metric": cat_metric,
-        }
-    }
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="normal",
+            cat_metric=cat_metric,
+        )
+    )
     params_opt = {"LogToConsole": 1, "MIPGap": 0}
     run_gurobi(rnd_seed, params, params_opt, num_samples=20)

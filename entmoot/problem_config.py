@@ -167,6 +167,20 @@ class ProblemConfig:
 
         self._obj_list.append(MinObjective(name=name))
 
+    def add_max_objective(self, name: str = None):
+        if name is None:
+            name = f"obj_{len(self.obj_list)}"
+
+        self._obj_list.append(MaxObjective(name=name))
+
+    def transform_objective(self, y: np.ndarray) -> np.ndarray:
+        """Transform data for minimisation/maximisation"""
+        # y.shape = (num_samples, num_obj)
+        signs = np.array([obj.sign for obj in self.obj_list]).reshape(1, -1)
+        return y * signs
+
+
+
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
         array_list = []
@@ -455,7 +469,12 @@ class Binary(FeatureType):
     def is_bin(self):
         return True
 
-
-class MinObjective:
+class Objective:
     def __init__(self, name):
         self.name = name
+
+class MinObjective(Objective):
+    sign = 1
+
+class MaxObjective(Objective):
+    sign = -1

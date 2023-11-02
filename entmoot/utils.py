@@ -1,4 +1,6 @@
 from collections import namedtuple
+from dataclasses import dataclass, field
+from typing import Literal
 import numpy as np
 from scipy.special import comb
 

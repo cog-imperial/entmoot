@@ -4,6 +4,7 @@ import random
 import math
 
 from entmoot import Enting, ProblemConfig, PyomoOptimizer
+from entmoot.models.model_params import EntingParams, UncParams, TreeTrainParams, TrainParams
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
@@ -71,14 +72,14 @@ def run_pyomo(rnd_seed, n_obj, params, params_opt, num_samples=20, no_cat=False)
 @pytest.mark.parametrize("n_obj", [1, 2])
 def test_pyomo_consistency1(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric):
     # define model params
-    params = {
-        "unc_params": {
-            "dist_metric": dist_metric,
-            "acq_sense": acq_sense,
-            "dist_trafo": "normal",
-            "cat_metric": cat_metric,
-        }
-    }
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="normal",
+            cat_metric=cat_metric,
+        )
+    )
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"NonConvex": 2, "MIPGap": 0},
@@ -93,15 +94,15 @@ def test_pyomo_consistency1(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric)
 @pytest.mark.parametrize("n_obj", [1, 2])
 def test_gurobi_consistency2(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric):
     # define model params
-    params = {
-        "unc_params": {
-            "dist_metric": dist_metric,
-            "acq_sense": acq_sense,
-            "dist_trafo": "normal",
-            "cat_metric": cat_metric,
-        },
-    }
-    params["unc_params"]["beta"] = 0.05
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="normal",
+            cat_metric=cat_metric,
+        )
+    )
+    params.unc_params.beta = 0.05
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"NonConvex": 2, "MIPGap": 0},
@@ -117,26 +118,31 @@ def test_gurobi_consistency2(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric
 @pytest.mark.parametrize("n_obj", [1, 2])
 def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric):
     # define model params
-    params = {}
-    params["unc_params"] = {
-        "dist_metric": dist_metric,
-        "acq_sense": acq_sense,
-        "dist_trafo": "normal",
-        "cat_metric": cat_metric,
-    }
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="normal",
+            cat_metric=cat_metric
+        ),
 
-    # make tree model smaller to reduce testing time
-    params["tree_train_params"] = {
-        "objective": "regression",
-        "metric": "rmse",
-        "boosting": "gbdt",
-        "num_boost_round": 2,
-        "max_depth": 2,
-        "min_data_in_leaf": 1,
-        "min_data_per_group": 1,
-        "verbose": -1,
-    }
-    params["unc_params"]["beta"] = 0.05
+        # make tree model smaller to reduce testing time
+        tree_train_params=TreeTrainParams(
+            train_lib="lgbm",
+            train_params=TrainParams(
+                objective="regression",
+                metric="rmse",
+                boosting="gbdt",
+                num_boost_round=2,
+                max_depth=2,
+                min_data_in_leaf=1,
+                min_data_per_group=1,
+                verbose=-1
+            )
+        )
+    )
+
+    params.unc_params.beta = 0.05
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"MIPGap": 0, "LogToConsole": 1, "NonConvex": 2},
@@ -154,14 +160,16 @@ def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric)
 @pytest.mark.parametrize("dist_metric", ["l1", "l2", "euclidean_squared"])
 @pytest.mark.parametrize("acq_sense", ["exploration"])
 @pytest.mark.parametrize("rnd_seed", [100, 101, 102])
-def test_gurobi_consistency4(rnd_seed, acq_sense, dist_metric):
-    params = {}
-    params["unc_params"] = {
-        "dist_metric": dist_metric,
-        "acq_sense": acq_sense,
-        "dist_trafo": "standard",
-    }
-    params["unc_params"]["beta"] = 0.1
+def test_pyomo_consistency4(rnd_seed, acq_sense, dist_metric):
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="standard",
+        )
+    )
+
+    params.unc_params.beta = 0.1
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"NonConvex": 2, "MIPGap": 1e-5},
@@ -173,14 +181,15 @@ def test_gurobi_consistency4(rnd_seed, acq_sense, dist_metric):
 @pytest.mark.parametrize("dist_metric", ["l1", "euclidean_squared"])
 @pytest.mark.parametrize("acq_sense", ["penalty"])
 @pytest.mark.parametrize("rnd_seed", [100, 101, 102])
-def test_gurobi_consistency5(rnd_seed, acq_sense, dist_metric):
-    params = {}
-    params["unc_params"] = {
-        "dist_metric": dist_metric,
-        "acq_sense": acq_sense,
-        "dist_trafo": "standard",
-    }
-    params["unc_params"]["beta"] = 0.1
+def test_pyomo_consistency5(rnd_seed, acq_sense, dist_metric):
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="standard",
+        )
+    )
+    params.unc_params.beta = 0.1
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"NonConvex": 2, "MIPGap": 1e-5},
@@ -192,14 +201,15 @@ def test_gurobi_consistency5(rnd_seed, acq_sense, dist_metric):
 @pytest.mark.parametrize("dist_metric", ["l2"])
 @pytest.mark.parametrize("acq_sense", ["penalty"])
 @pytest.mark.parametrize("rnd_seed", [100, 101, 102])
-def test_gurobi_consistency6(rnd_seed, acq_sense, dist_metric):
-    params = {}
-    params["unc_params"] = {
-        "dist_metric": dist_metric,
-        "acq_sense": acq_sense,
-        "dist_trafo": "standard",
-    }
-    params["unc_params"]["beta"] = 0.05
+def test_pyomo_consistency6(rnd_seed, acq_sense, dist_metric):
+    params = EntingParams(
+        unc_params=UncParams(
+            dist_metric=dist_metric,
+            acq_sense=acq_sense,
+            dist_trafo="standard",
+        )
+    )
+    params.unc_params.beta = 0.05
     params_opt = {
         "solver_name": "gurobi",
         "solver_options": {"NonConvex": 2, "MIPGap": 1e-5},

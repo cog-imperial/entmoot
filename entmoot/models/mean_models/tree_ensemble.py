@@ -1,45 +1,27 @@
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.lgbm_utils import read_lgbm_tree_model_dict
 from entmoot.models.mean_models.meta_tree_ensemble import MetaTreeModel
+from entmoot.models.model_params import TreeTrainParams
 import warnings
+from typing import Union
+from dataclasses import asdict
 import numpy as np
 
 
 class TreeEnsemble(BaseModel):
-    def __init__(self, problem_config, params=None):
+    def __init__(self, problem_config, params: Union[TreeTrainParams, dict, None] = None):
         if params is None:
             params = {}
+        if isinstance(params, dict):
+            params = TreeTrainParams(**params)
 
         self._problem_config = problem_config
-        self._train_lib = params.get("train_lib", "lgbm")
+        self._train_lib = params.train_lib
         self._rnd_seed = problem_config.rnd_seed
 
-        assert self._train_lib in ("lgbm"), (
-            "Parameter 'train_lib' for tree ensembles needs to be " "in '('lgbm')'."
-        )
-
-        if "train_params" not in params:
-            # default training params
-            warnings.warn(
-                "No 'train_params' for tree ensemble training specified. "
-                "Switch training to default params!"
-            )
-
-            self._train_params = {
-                "objective": "regression",
-                "metric": "rmse",
-                "boosting": "gbdt",
-                "num_boost_round": 100,
-                "max_depth": 3,
-                "min_data_in_leaf": 1,
-                "min_data_per_group": 1,
-                "verbose": -1,
-            }
-
-            if self._rnd_seed is not None:
-                self._train_params["random_state"] = self._rnd_seed
-        else:
-            self._train_params = params["train_params"]
+        self._train_params = asdict(params.train_params)
+        if self._rnd_seed is not None:
+            self._train_params["random_state"] = self._rnd_seed
 
         self._tree_dict = None
         self._meta_tree_dict = {}
