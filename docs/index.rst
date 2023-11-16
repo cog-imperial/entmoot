@@ -6,8 +6,8 @@ Optimization using tree-based surrogate models.
 
 **What does that even mean?**
 
-You define a black-box function :math:`f` and ENTMOOT will try to find an optimum of :math:`f` in a iterative
-Bayesian spirit, that means it uses currently available knowledge about good and bad points (*exploitation*) and
+You define a black-box function :math:`f` and ENTMOOT will try to find an optimum of :math:`f` in an iterative
+Bayesian spirit. That means it uses currently available knowledge about good and bad points (*exploitation*) and
 explores unseen regions in the search space (*exploration*).
 
 **How does ENTMOOT work?**
@@ -15,7 +15,7 @@ explores unseen regions in the search space (*exploration*).
 In iteration :math:`i`, ENTMOOT approximates :math:`f` using a gradient boosted tree
 model :math:`G` from `LightGBM <https://lightgbm.readthedocs.io>`__ which is trained on data points for which
 function evaluations of :math:`f` are available. In order to find a good point of :math:`f` a prediction of :math:`G`
-ist combined with an uncertainty measure that takes into account that we do not trust all data points equally. This
+is combined with an uncertainty measure that takes into account that we do not trust all data points equally. This
 combination of predictions and the corresponding uncertainty measures comprises the *acquisition function* which is
 optimized in order to find the best candidate :math:`x^i` for an optimal point of :math:`f` in iteration :math:`i`.
 If the true function evaluation :math:`f(x^i)` matches your expectations, you may stop, otherwise include
@@ -27,7 +27,8 @@ of :math:`f` and start the next iteration.
 Gradient-boosted tree models define step functions, that is piecewise constant functions, which are in particular
 discontinuous and cannot be optimized with standard methods from smooth nonlinear optimization since no gradient
 information is available. ENTMOOT uses the fact that step functions can be modeled as so called mixed-integer optimization
-problem for which very fast solvers are available. More details on the method can be found here: https://arxiv.org/abs/2003.04774.
+problem for which very fast solvers are available. More details on the method can be found in the corresponding paper
+(https://arxiv.org/abs/2003.04774).
 
 Appetizer
 ---------
