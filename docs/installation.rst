@@ -45,7 +45,7 @@ problems. The most common choices are the commercial solvers `Gurobi <https://ww
 />`__.
 
 On the installation of noncommercial solvers
-=============================================
+---------------------------------------------
 Data scientists are used to install everything they need using
 
 ::
@@ -57,14 +57,14 @@ section on how to install the solvers `GLPK <https://www.gnu.org/software/glpk/>
 `CBC <https://github.com/coin-or/Cbc/>`__  and `SCIP <https://www.scipopt.org
 />`__. We tested some types of installations (not all, though) for Windows and macOS and hope that this may help you.
 
-Which of the solvers CBC, GLPK and SCIP is best?
----------------------------------------------
+**Which of the solvers CBC, GLPK and SCIP is best?**
+
 SCIP is considered to be superior to GLPK and CBC in terms of speed and modeling features. However, CBC and GLPK are
 also widely used and there might be other reasons for you to use them, so we will guide you through the installation
 of all three solvers.
 
-Are you a Windows user who likes to download files?
-----------------------------------------------------
+**Are you a Windows user who likes to download files?**
+
 If that is an option for you, you can follow these steps to install CBC and GLPK:
 
 1. Install the latest Microsoft Visual C++ Redistributable. You can get them
@@ -77,8 +77,8 @@ If that is an option for you, you can follow these steps to install CBC and GLPK
    Security>>System>>Advanced system settings>>Environment Variables. Then click on `path` in the top window, click the
    `Edit` button, then `New`.
 
-Are you a Windows user who likes to use conda?
-----------------------------------------------
+**Are you a Windows user who likes to use conda?**
+
 If you like to install your Python packages with conda, just use
 
 ::
@@ -99,8 +99,8 @@ Two remarks:
 2. If you use Windows and Anaconda you might encounter an openSSL error, which occurs due to a bug from Anaconda.
    `Here <https://community.anaconda.cloud/t/getting-openssl-working/51512/>`__ is some advice on how to fix it:
 
-Are you a macOS user?
-----------------------
+**Are you a macOS user?**
+
 You may install *GLPK* with pip or conda using the commands
 
 ::
