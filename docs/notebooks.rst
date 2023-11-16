@@ -10,4 +10,4 @@ These Jupyter Notebooks provide some examples on how to work with ENTMOOT. Their
    notebooks/multi_obj_pareto
    notebooks/multi_obj_with_constraints
    notebooks/constraint_classes
-   notebooks/single_obj:maximisation
+   notebooks/single_obj_maximisation
