@@ -40,10 +40,8 @@ This small example illustrates how to use ENTMOOT.
     import numpy as np
     import random
 
-    # This is the function you want to minimize.
-    # In most use cases this will be something terribly complicated like a simulation or a real-world experiment
+    # This is the function to be minimized. Usually some complicated like a simulation.
     def my_func(x: float) -> float:
-        # randomly disturbed function f(x) = x^2 + 1 + eps
         return x**2 + 1 + random.uniform(-0.2, 0.2)
 
     # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
@@ -55,7 +53,7 @@ This small example illustrates how to use ENTMOOT.
     X_train = np.reshape(np.linspace(-2, 3, 10), (-1, 1))
     y_train = np.reshape([my_func(x) for x in X_train], (-1, 1))
 
-    # Define Bayesian optimization parameters uding an l1-distance based uncertainty measure and
+    # Define Bayesian optimization parameters using an l1-distance based uncertainty measure and
     # penalizing the distance from well-known areas, i.e. exploitation (instead of exploration)
     params_bo = {"unc_params": {"dist_metric": "l1", "acq_sense": "penalty"}}
 
