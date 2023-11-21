@@ -12,7 +12,7 @@ from typing import Union
 
 class Enting(BaseModel):
     """
-    This class contains a nice living space for your tree model. You can fit your model, use it for predictions and
+    This class provides a living space for your tree model. You can fit your model, use it for predictions and
     provide information that are needed to build optimization models that incorporate the tree structure of your model.
 
     Example:
@@ -135,12 +135,9 @@ class Enting(BaseModel):
         comb_pred = [(mean, unc) for mean, unc in zip(mean_pred, unc_pred)]
         return comb_pred
 
-    def predict_pareto(self):
-        pass
-
     def predict_acq(self, X: np.ndarray, is_enc=False) -> list:
         """
-        predicts value of acquisition function (which contains not only the mean value but also the uncertainty)
+        Predicts value of acquisition function (which contains not only the mean value but also the uncertainty)
         """
         acq_pred = []
         comb_pred = self.predict(X, is_enc=is_enc)
@@ -150,7 +147,7 @@ class Enting(BaseModel):
 
     def add_to_gurobipy_model(self, core_model, weights: tuple = None) -> None:
         """
-        This method enriches the core model by adding variables and constraints based on information
+        Enriches the core model by adding variables and constraints based on information
         from the tree model.
         """
         from gurobipy import GRB
@@ -188,7 +185,7 @@ class Enting(BaseModel):
 
     def add_to_pyomo_model(self, core_model, weights: tuple = None) -> None:
         """
-        This method enriches the core model by adding variables and constraints based on information
+        Enriches the core model by adding variables and constraints based on information
         from the tree model.
         """
         import pyomo.environ as pyo
