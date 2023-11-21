@@ -17,15 +17,6 @@ You can install ENTMOOT with
 
     brew install libomp
 
-In addition, you need to install **one of the following** Python packages.
-
-* gurobipy >= 10.0.0
-* pyomo >= 6.4.4
-
-The package gurobipy belongs to the commercial solver `Gurobi <https://www.gurobi.com/>`__ whereas pyomo refers to the
-open source framework `Pyomo <http://www.pyomo.org/>`__ which supports several commercial and noncommercial solvers.
-
-
 Gurobi or Pyomo?
 -----------------
 You can work with ENTMOOT using the Gurobi interface or the modeling framework Pyomo.
