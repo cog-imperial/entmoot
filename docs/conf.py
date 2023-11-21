@@ -38,7 +38,7 @@ except ImportError:
 # -- Project information -----------------------------------------------------
 
 project = "ENTMOOT"
-copyright = "2022, Alexander Thebelt, Nathan Sudermann-Merx"
+copyright = "2023, Alexander Thebelt, Nathan Sudermann-Merx"
 author = "Alexander Thebelt, Nathan Sudermann-Merx"
 
 
