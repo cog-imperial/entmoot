@@ -1,4 +1,4 @@
-#Enting
+PyomoOptimizer
 ==========================
 
 .. autoclass:: entmoot.optimizers.pyomo_opt.PyomoOptimizer

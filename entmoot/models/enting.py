@@ -78,7 +78,7 @@ class Enting(BaseModel):
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """
-        performs the training of you tree model using training data and labels
+        Performs the training of you tree model using training data and labels
         """
         # encode categorical features
         X = self._problem_config.encode(X)

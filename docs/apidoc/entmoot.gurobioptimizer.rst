@@ -1,4 +1,4 @@
-Enting
+GurobiOptimizer
 ==========================
 
 .. autoclass:: entmoot.optimizers.gurobi_opt.GurobiOptimizer
