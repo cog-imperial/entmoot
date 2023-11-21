@@ -6,6 +6,42 @@ import os
 
 
 class GurobiOptimizer:
+    """
+    This class builds and solves a Gurobi optimization model using available
+    information (tree structure, uncertainty measures, ...).
+
+    Example:
+        .. code-block:: python
+
+            from entmoot import ProblemConfig
+            import numpy as np
+            import random
+
+            # Define a one-dimensional minimization problem with one real variable bounded by -2 and 3
+            problem_config = ProblemConfig()
+            problem_config.add_feature("real", (-2, 3))
+            problem_config.add_min_objective()
+
+            # Create training data using the randomly disturbed function f(x) = x^2 + 1 + eps
+            X_train = np.linspace(-2, 3, 10)
+            y_train = [x**2 + 1 + random.uniform(-0.2, 0.2) for x in X_train]
+
+            # Define enting object and corresponding parameters
+            params = {"unc_params": {"dist_metric": "l1"}}
+            enting = Enting(problem_config, params=params)
+            # Fit tree model
+            enting.fit(X_train, y_train)
+            # Compute the predictions for training data and see that light gbm fitted a step function
+            # with three steps
+            enting.predict(X_train)
+
+            # Define parameters needed during optimization
+            params_gur = {"MIPGap": 1e-3}
+            # Build GurobiOptimizer object.
+            opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
+            # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
+            X_opt_pyo, _, _ = opt_gur.solve(enting)
+    """
     def __init__(self, problem_config: ProblemConfig, params: dict = None) -> float:
         self._params = {} if params is None else params
         self._problem_config = problem_config
@@ -14,14 +50,14 @@ class GurobiOptimizer:
 
     def get_curr_sol(self) -> list:
         """
-        returns current solution (i.e. optimal points) from optimization run
+        Returns current solution (i.e. optimal points) from optimization run
         """
         assert self._curr_sol is not None, "No solution was generated yet."
         return self._curr_sol
 
     def get_active_leaf_sol(self) -> list:
         """
-        returns current solution (i.e. optimal points) from optimization based
+        Returns active leaves in the tree model based on the current solution
         """
         assert self._curr_sol is not None, "No solution was generated yet."
         return self._active_leaves
