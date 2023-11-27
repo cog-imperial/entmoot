@@ -32,6 +32,7 @@ When using any `ENTMOOT` for any publications please reference this software pac
 ## Authors
 * **[Alexander Thebelt](https://optimisation.doc.ic.ac.uk/person/alexander-thebelt/)** ([ThebTron](https://github.com/ThebTron)) - Imperial College London
 * **[Nathan Sudermann-Merx](https://www.mannheim.dhbw.de/profile/sudermann-merx)** ([spiralulam](https://github.com/spiralulam)) - Cooperative State University Mannheim
+* **Toby Boyne** ([ThebTron](https://github.com/TobyBoyne)) - Imperial College London
 ## License
 The ENTMOOT package is released under the BSD 3-Clause License. Please refer to the [LICENSE](https://github.com/cog-imperial/entmoot/blob/master/LICENSE) file for details.
 
