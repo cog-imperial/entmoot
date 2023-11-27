@@ -7,3 +7,4 @@ ENTMOOT
    entmoot.enting
    entmoot.gurobioptimizer
    entmoot.pyomooptimizer
+   entmoot.params
