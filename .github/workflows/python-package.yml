@@ -39,4 +39,4 @@ jobs:
         CICD_ACTIVE: ${{ secrets.CICD_ACTIVE }}
         GRB_LICENSE_FILE: ${{ steps.write-license.outputs.grb_license_file }}
       run: |
-        pytest -v -m fast_test
+        pytest -v -m pipeline_test

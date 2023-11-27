@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import random
 
-@pytest.mark.fast_test
+@pytest.mark.pipeline_test
 def test_core_model_copy():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
