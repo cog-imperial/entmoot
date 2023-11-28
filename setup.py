@@ -18,10 +18,14 @@ setup(
     packages=find_packages(exclude=["tests", "docs"]),
     install_requires=[
         "numpy>=1.18.4",
-        "lightgbm>=2.3.1",
+        "lightgbm>=2.3.1",        
+        "gurobipy",
+        "pyomo"
     ],
     setup_requires=[
         "numpy>=1.18.4",
         "lightgbm>=2.3.1",
+        "gurobipy",
+        "pyomo"
     ],
 )
