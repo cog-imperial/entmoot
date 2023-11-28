@@ -98,6 +98,7 @@ def test_multiobj_constraints():
     assert round(x_opt, 5) == round(y_opt, 5) and round(y_opt, 5) == round(z_opt, 5)
 
 
+@pytest.mark.pipeline_test
 def test_simple_test():
     def my_func(x: float) -> float:
         return x**2 + 1 + random.uniform(-0.2, 0.2)
@@ -128,6 +129,7 @@ def test_simple_test():
     assert round(res.opt_point[0]) == 0
 
 
+@pytest.mark.pipeline_test
 def test_compare_pyomo_gurobipy_multiobj():
     """
     Ensures for a multi objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -171,7 +173,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             assert math.isclose(res_gur.opt_val, res_pyo.opt_val, abs_tol=0.01)
 
 
-
+@pytest.mark.pipeline_test
 def test_compare_pyomo_gurobipy_singleobj():
     """
     Ensures for a single objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
