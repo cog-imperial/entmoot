@@ -32,6 +32,7 @@ def test_core_model_copy():
     assert len(core_model_pyomo._all_feat) == len(core_model_pyomo_copy._all_feat)
 
 
+@pytest.mark.pipeline_test
 def test_multiobj_constraints():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
