@@ -1,6 +1,5 @@
-numpy>=1.18.4
-lightgbm>=2.3.1
-tqdm
+numpy
+lightgbm==4.0.0
 pyomo
 gurobipy
 pytest-cov
