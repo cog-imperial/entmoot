@@ -9,6 +9,21 @@ class ParamValidationError(ValueError):
 
 @dataclass
 class UncParams:
+    """
+    This class contains all uncertainty parameters.
+    :var beta: weight for penalty/exploration part in objective function
+    :var bound_coeff: the predictions of the GBT model are cut off, if
+    their absolute value exceeds bound_coeff * variance of the y-values.
+    :var acq_sense: "exploration": try to find good points far away from known
+    training data, "exploitation": stay close to explored areas and try to
+    find even better points there.
+    :var dist_trafo: controls two different types of transformations by scaling/shifting.
+    "normal": shift by lower bound, scale by difference of smalles and largest value
+    "standard": shift by mean, scale by standard deviation
+    :var dist_metric: compute distance measure using the l_1, the l_2 or the squared l_2 norm.
+    :var cat_metric: different ways to compute the distance of categorical features
+
+    """
     beta: float = 1.96
     bound_coeff: float = 0.5
     acq_sense: Literal["exploration", "penalty"] = "exploration"
