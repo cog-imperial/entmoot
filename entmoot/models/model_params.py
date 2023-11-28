@@ -10,7 +10,7 @@ class ParamValidationError(ValueError):
 @dataclass
 class UncParams:
     """
-    This class contains all uncertainty parameters.
+    This dataclass contains all uncertainty parameters.
     """
     #: weight for penalty/exploration part in objective function
     beta: float = 1.96
@@ -18,7 +18,7 @@ class UncParams:
     #: bound_coeff * variance of the y-values.
     bound_coeff: float = 0.5
     #: "exploration": try to find good points far away from known training data,
-    #: "exploitation": stay close to explored areas and try to find even better points there.
+    #: "penalty": stay close to explored areas and try to find even better points there.
     acq_sense: Literal["exploration", "penalty"] = "exploration"
     #: controls two different types of transformations by scaling/shifting.
     #: "normal": shift by lower bound, scale by difference of smalles and largest value
@@ -43,6 +43,10 @@ class UncParams:
 
 @dataclass
 class TrainParams:
+    """
+    This dataclass contains all hyperparameters that are used by lightbm during training and
+    documented here https://lightgbm.readthedocs.io/en/latest/Parameters.html
+    """
     # lightgbm training hyperparameters
     objective: str = "regression"
     metric: str = "rmse"
@@ -56,6 +60,9 @@ class TrainParams:
 
 @dataclass
 class TreeTrainParams:
+    """
+    This dataclass contains all parameters needed for the tree training.
+    """
     train_params: "TrainParams" = field(default_factory=dict)
     train_lib: Literal["lgbm"] = "lgbm"
 
