@@ -11,24 +11,22 @@ class ParamValidationError(ValueError):
 class UncParams:
     """
     This class contains all uncertainty parameters.
-    :var beta: weight for penalty/exploration part in objective function
-    :var bound_coeff: the predictions of the GBT model are cut off, if
-    their absolute value exceeds bound_coeff * variance of the y-values.
-    :var acq_sense: "exploration": try to find good points far away from known
-    training data, "exploitation": stay close to explored areas and try to
-    find even better points there.
-    :var dist_trafo: controls two different types of transformations by scaling/shifting.
-    "normal": shift by lower bound, scale by difference of smalles and largest value
-    "standard": shift by mean, scale by standard deviation
-    :var dist_metric: compute distance measure using the l_1, the l_2 or the squared l_2 norm.
-    :var cat_metric: different ways to compute the distance of categorical features
-
     """
+    #: weight for penalty/exploration part in objective function
     beta: float = 1.96
+    #: the predictions of the GBT model are cut off, if their absolute value exceeds
+    # bound_coeff * variance of the y-values.
     bound_coeff: float = 0.5
+    #: "exploration": try to find good points far away from known training data,
+    # "exploitation": stay close to explored areas and try to find even better points there.
     acq_sense: Literal["exploration", "penalty"] = "exploration"
+    #: controls two different types of transformations by scaling/shifting.
+    # "normal": shift by lower bound, scale by difference of smalles and largest value
+    # "standard": shift by mean, scale by standard deviation
     dist_trafo: Literal["normal", "standard"] = "normal"
+    #: compute distance measure using the l_1, the l_2 or the squared l_2 norm.
     dist_metric: Literal["euclidean_squared", "l1", "l2"] = "euclidean_squared"
+    #: different ways to compute the distance of categorical features
     cat_metric: Literal["overlap", "of", "goodall4"] = "overlap"
 
     def __post_init__(self):
