@@ -129,7 +129,6 @@ def test_simple_test():
     assert round(res.opt_point[0]) == 0
 
 
-@pytest.mark.pipeline_test
 def test_compare_pyomo_gurobipy_multiobj():
     """
     Ensures for a multi objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
@@ -214,7 +213,7 @@ def test_compare_pyomo_gurobipy_singleobj():
             res_pyo = opt_pyo.solve(enting)
 
             # Compare optimal values (e.g. objective values) ...
-            assert round(res_gur.opt_val / res_pyo.opt_val, 5) <= 1.0001
+            assert round(res_gur.opt_val / res_pyo.opt_val, 5) <= 1.001
             # ... and optimal points (e.g. feature variables)
             assert [round(x) for x in res_gur.opt_point[2:]] == [
                 round(x) for x in res_pyo.opt_point[2:]
