@@ -96,7 +96,8 @@ class PyomoOptimizer:
         tree_model.add_to_pyomo_model(opt_model)
 
         # Solve optimization model
-        opt.solve(opt_model, tee=True)
+        verbose = self._params.get("verbose", True)
+        opt.solve(opt_model, tee=verbose)
 
         # update current solution
         self._curr_sol, self._active_leaves = self._get_sol(opt_model)
