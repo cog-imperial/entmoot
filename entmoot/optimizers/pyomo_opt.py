@@ -85,7 +85,11 @@ class PyomoOptimizer:
             assert sum(weights) == 1.0, "weights don't add up to 1.0"
 
         # choose solver
-        opt = pyo.SolverFactory(self._params["solver_name"])
+        opt = pyo.SolverFactory(
+            self._params["solver_name"],
+            manage_env="solver_factory_options" in self._params,
+            options=self._params.get("solver_factory_options", {}),
+        )
 
         # set solver parameters
         if "solver_options" in self._params:
