@@ -66,7 +66,7 @@ class PyomoOptimizer:
 
     def solve(
         self, tree_model: Enting, model_core: pyo.ConcreteModel = None, weights: tuple = None
-    ) -> namedtuple:
+    ) -> OptResult:
         """
         Solves the Pyomo optimization model
         """
