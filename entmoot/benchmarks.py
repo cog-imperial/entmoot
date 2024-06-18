@@ -165,7 +165,7 @@ def build_reals_only_problem(problem_config: ProblemConfig):
 
 def eval_reals_only_testfunc(X: ArrayLike):
     """The function (x1 - 1)**2 + (x2 - 2)**2 + ..."""
-    x = np.array(X)
+    x = np.atleast_2d(X)
     xbar = np.ones_like(x)
     xbar *= (np.arange(x.shape[1]) + 1)[None, :]
     y = np.sum((x - xbar)**2, axis=1)

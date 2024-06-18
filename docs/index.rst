@@ -82,7 +82,7 @@ Authors
 ~~~~~~~
 * `Alexander Thebelt <https://optimisation.doc.ic.ac.uk/person/alexander-thebelt>`_ (`ThebTron <https://github.com/ThebTron>`_) - Imperial College London
 * `Nathan Sudermann-Merx <https://www.mannheim.dhbw.de/profile/sudermann-merx>`_ (`spiralulam <https://github.com/spiralulam>`_) - Cooperative State University Mannheim
-* Toby Boyne (`TobyBoyne  <https://github.com/TobyBoyne>`_) - Imperial College London
+* `Toby Boyne <https://profiles.imperial.ac.uk/t.boyne23>`_ (`TobyBoyne  <https://github.com/TobyBoyne>`_) - Imperial College London
 
 License
 ~~~~~~~

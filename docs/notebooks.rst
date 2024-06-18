@@ -7,6 +7,7 @@ These Jupyter Notebooks provide some examples on how to work with ENTMOOT. Their
    :maxdepth: 2
    :caption: Contents:
 
+   notebooks/single_obj_bayes_opt
    notebooks/multi_obj_pareto
    notebooks/multi_obj_with_constraints
    notebooks/constraint_classes
