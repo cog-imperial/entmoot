@@ -1,20 +1,14 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import numpy as np
 import random
 
 
 class ProblemConfig:
-    def __init__(self, rnd_seed: int = None):
+    def __init__(self, rnd_seed: Optional[int] = None):
         self._feat_list = []
         self._obj_list = []
         self._rnd_seed = rnd_seed
-
-        if rnd_seed is not None:
-            assert isinstance(
-                rnd_seed, int
-            ), f"Argument 'rnd_seed' needs to be an integer. Got type '{type(rnd_seed)}'."
-            np.random.seed(rnd_seed)
-            random.seed(rnd_seed)
+        self.rng = np.random.default_rng(rnd_seed)
 
     @property
     def cat_idx(self):
@@ -187,16 +181,16 @@ class ProblemConfig:
         for feat in self.feat_list:
             if feat.is_real():
                 array_list.append(
-                    np.random.uniform(low=feat.lb, high=feat.ub, size=num_samples)
+                    self.rng.uniform(low=feat.lb, high=feat.ub, size=num_samples)
                 )
             elif feat.is_cat():
                 array_list.append(
-                    np.random.randint(len(feat.cat_list), size=num_samples)
+                    self.rng.integers(0, len(feat.cat_list), size=num_samples)
                 )
             elif feat.is_int() or feat.is_bin():
                 array_list.append(
-                    np.random.random_integers(
-                        low=feat.lb, high=feat.ub, size=num_samples
+                    self.rng.integers(
+                        low=feat.lb, high=feat.ub+1, size=num_samples
                     )
                 )
         return np.squeeze(np.column_stack(array_list))
@@ -208,14 +202,14 @@ class ProblemConfig:
             sample = []
             for feat in self.feat_list:
                 if feat.is_real():
-                    sample.append(random.uniform(feat.lb, feat.ub))
+                    sample.append(self.rng.uniform(feat.lb, feat.ub))
                 elif feat.is_cat():
                     if cat_enc:
-                        sample.append(random.randrange(0, len(feat.cat_list)))
+                        sample.append(self.rng.integers(0, len(feat.cat_list)))
                     else:
-                        sample.append(random.choice(feat.cat_list))
+                        sample.append(self.rng.choice(feat.cat_list))
                 elif feat.is_int() or feat.is_bin():
-                    sample.append(random.randint(feat.lb, feat.ub))
+                    sample.append(self.rng.integers(feat.lb, feat.ub+1))
             sample_list.append(tuple(sample))
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
