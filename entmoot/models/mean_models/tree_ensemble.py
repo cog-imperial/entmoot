@@ -84,7 +84,7 @@ class TreeEnsemble(BaseModel):
                 train_data = lgb.Dataset(
                     X,
                     label=y,
-                    categorical_feature=self._problem_config.cat_idx,
+                    categorical_feature=list(self._problem_config.cat_idx),
                     free_raw_data=False,
                     params={"verbose": -1},
                 )
@@ -92,7 +92,6 @@ class TreeEnsemble(BaseModel):
                 tree_model = lgb.train(
                     self._train_params,
                     train_data,
-                    categorical_feature=self._problem_config.cat_idx,
                     #verbose_eval=False,
                 )
             else:
