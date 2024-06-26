@@ -10,6 +10,7 @@ from entmoot.benchmarks import (
 import numpy as np
 import pytest
 import random
+import pyomo.environ # noqa: F401
 
 @pytest.mark.pipeline_test
 def test_core_model_copy():
