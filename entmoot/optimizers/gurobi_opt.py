@@ -68,7 +68,7 @@ class GurobiOptimizer:
         model_core: gur.Model = None,
         weights: tuple = None,
         use_env: bool = False,
-    ) -> namedtuple:
+    ) -> OptResult:
         """
         Solves the Gurobi optimization model
         """

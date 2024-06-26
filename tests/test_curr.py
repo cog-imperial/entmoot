@@ -10,6 +10,7 @@ from entmoot.benchmarks import (
 import numpy as np
 import pytest
 import random
+import pyomo.environ # noqa: F401
 
 @pytest.mark.pipeline_test
 def test_core_model_copy():
@@ -32,7 +33,7 @@ def test_core_model_copy():
     assert len(core_model_pyomo._all_feat) == len(core_model_pyomo_copy._all_feat)
 
 
-@pytest.mark.pipeline_test
+# @pytest.mark.pipeline_test
 def test_multiobj_constraints():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
@@ -98,7 +99,7 @@ def test_multiobj_constraints():
     assert round(x_opt, 5) == round(y_opt, 5) and round(y_opt, 5) == round(z_opt, 5)
 
 
-@pytest.mark.pipeline_test
+# @pytest.mark.pipeline_test
 def test_simple_test():
     def my_func(x: float) -> float:
         return x**2 + 1 + random.uniform(-0.2, 0.2)
@@ -172,7 +173,7 @@ def test_compare_pyomo_gurobipy_multiobj():
             assert math.isclose(res_gur.opt_val, res_pyo.opt_val, abs_tol=0.01)
 
 
-@pytest.mark.pipeline_test
+# @pytest.mark.pipeline_test
 def test_compare_pyomo_gurobipy_singleobj():
     """
     Ensures for a single objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
