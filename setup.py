@@ -17,14 +17,14 @@ setup(
     url="https://github.com/cog-imperial/entmoot",
     packages=find_packages(exclude=["tests", "docs"]),
     install_requires=[
-        "numpy",
-        "lightgbm==4.0.0",
+        "numpy<=2.0.0",
+        "lightgbm>=4.0.0",
         "gurobipy",
         "pyomo"
     ],
     setup_requires=[
-        "numpy",
-        "lightgbm==4.0.0",
+        "numpy<=2.0.0",
+        "lightgbm>=4.0.0",
         "gurobipy",
         "pyomo"
     ],

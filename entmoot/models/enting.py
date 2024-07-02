@@ -4,8 +4,9 @@ from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
     DistanceBasedUncertainty,
 )
+from entmoot.utils import sample
+
 from entmoot.models.model_params import EntingParams
-from dataclasses import asdict
 import numpy as np
 from typing import Union
 
@@ -151,7 +152,6 @@ class Enting(BaseModel):
         from the tree model.
         """
         from gurobipy import GRB
-        from entmoot.utils import sample
 
         # add uncertainty model part
         self.unc_model.add_to_gurobipy_model(core_model)
@@ -172,7 +172,7 @@ class Enting(BaseModel):
             if weights is not None:
                 moo_weights = weights
             else:
-                moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
+                moo_weights = sample(len(self._problem_config.obj_list), 1, self._problem_config.rng)[0]
 
             for idx, obj in enumerate(self._problem_config.obj_list):
                 core_model.addConstr(
@@ -189,7 +189,6 @@ class Enting(BaseModel):
         from the tree model.
         """
         import pyomo.environ as pyo
-        from entmoot.utils import sample
 
         # add uncertainty model part
         self.unc_model.add_to_pyomo_model(core_model)
@@ -212,7 +211,7 @@ class Enting(BaseModel):
             if weights is not None:
                 moo_weights = weights
             else:
-                moo_weights = sample(len(self._problem_config.obj_list), 1)[0]
+                moo_weights = sample(len(self._problem_config.obj_list), 1, self._problem_config.rng)[0]
 
             objectives_position_name = list(
                 enumerate([obj.name for obj in self._problem_config.obj_list])
