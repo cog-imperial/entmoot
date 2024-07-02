@@ -1,15 +1,18 @@
+import warnings
+from dataclasses import asdict
+from typing import Optional, Union
+
+import numpy as np
+
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.lgbm_utils import read_lgbm_tree_model_dict
 from entmoot.models.mean_models.meta_tree_ensemble import MetaTreeModel
 from entmoot.models.model_params import TreeTrainParams
-import warnings
-from typing import Union
-from dataclasses import asdict
-import numpy as np
+from entmoot.problem_config import ProblemConfig
 
 
 class TreeEnsemble(BaseModel):
-    def __init__(self, problem_config, params: Union[TreeTrainParams, dict, None] = None):
+    def __init__(self, problem_config: ProblemConfig, params: Union[TreeTrainParams, dict, None] = None):
         if params is None:
             params = {}
         if isinstance(params, dict):
@@ -25,7 +28,8 @@ class TreeEnsemble(BaseModel):
 
         self._tree_dict = None
         self._meta_tree_dict = {}
-        self._min_y, self._max_y = None, None
+        self._min_y: Optional[np.ndarray] = None
+        self._max_y: Optional[np.ndarray] = None
 
     @property
     def tree_dict(self):
@@ -43,10 +47,12 @@ class TreeEnsemble(BaseModel):
 
     @property
     def min_y(self):
+        assert self._min_y is not None, "Must first cache min value"
         return self._min_y
 
     @property
     def max_y(self):
+        assert self._max_y is not None, "Must first cache max value"
         return self._max_y
 
     def fit(self, X, y):

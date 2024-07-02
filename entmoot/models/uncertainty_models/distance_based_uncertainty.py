@@ -1,20 +1,28 @@
+from typing import Literal, Union, overload
+
+import numpy as np
+
 from entmoot.models.base_model import BaseModel
+from entmoot.models.model_params import ParamValidationError, UncParams
 from entmoot.models.uncertainty_models.base_distance import CatDistance, NonCatDistance
 from entmoot.models.uncertainty_models.euclidean_squared_distance import (
     EuclideanSquaredDistance,
 )
+from entmoot.models.uncertainty_models.goodall4_distance import Goodall4Distance
 from entmoot.models.uncertainty_models.l1_distance import L1Distance
 from entmoot.models.uncertainty_models.l2_distance import L2Distance
-
-from entmoot.models.uncertainty_models.overlap_distance import OverlapDistance
-from entmoot.models.uncertainty_models.goodall4_distance import Goodall4Distance
 from entmoot.models.uncertainty_models.of_distance import OfDistance
+from entmoot.models.uncertainty_models.overlap_distance import OverlapDistance
+from entmoot.problem_config import ProblemConfig
 
-from entmoot.models.model_params import UncParams, ParamValidationError
-from typing import Union
-import numpy as np
 
-def distance_func_mapper(dist_name: str, cat: bool) -> Union[CatDistance, NonCatDistance]:
+@overload
+def distance_func_mapper(dist_name: str, cat: Literal[True]) -> type[CatDistance] | None: ...
+
+@overload
+def distance_func_mapper(dist_name: str, cat: Literal[False]) -> type[NonCatDistance] | None: ...
+
+def distance_func_mapper(dist_name: str, cat: bool) -> type[CatDistance] | type[NonCatDistance] | None:
     """Given a string, return the distance function"""
     non_cat_dists = {
         "euclidean_squared": EuclideanSquaredDistance,
@@ -33,7 +41,7 @@ def distance_func_mapper(dist_name: str, cat: bool) -> Union[CatDistance, NonCat
 
 
 class DistanceBasedUncertainty(BaseModel):
-    def __init__(self, problem_config, params: Union[UncParams, dict, None] = None):
+    def __init__(self, problem_config: ProblemConfig, params: Union[UncParams, dict, None] = None):
         if params is None:
             params = {}
         if isinstance(params, dict):
@@ -97,15 +105,20 @@ class DistanceBasedUncertainty(BaseModel):
             )
 
     @property
+    def bound_coeff(self):
+        assert self._bound_coeff is not None
+        return self._bound_coeff
+
+    @property
     def num_cache_x(self):
         assert (
             self._num_cache_x is not None
-        ), f"Uncertainty model needs fit function call before it can predict."
+        ), "Uncertainty model needs fit function call before it can predict."
         return self._num_cache_x
 
     def fit(self, X, y):
         if self._dist_has_var_bound:
-            self._dist_bound = abs(np.var(y) * self._bound_coeff)
+            self._dist_bound = abs(np.var(y) * self.bound_coeff)
 
         self._num_cache_x = len(X)
 
@@ -128,7 +141,7 @@ class DistanceBasedUncertainty(BaseModel):
         return np.asarray(comb_pred)
 
     def add_to_gurobipy_model(self, model):
-        from gurobipy import GRB, quicksum
+        from gurobipy import GRB
 
         # define main uncertainty variables
         if self._dist_has_var_bound:
@@ -158,7 +171,7 @@ class DistanceBasedUncertainty(BaseModel):
                     model.addVar(name=f"bin_penalty_{i}", vtype="B")
                 )
 
-                big_m_term = big_m * (1 - model._bin_penalty[-1])
+                big_m_term = big_m * (1 - model._bin_penalty[-1]) # type: ignore 
 
                 if self._dist_metric == "l2":
                     # take sqrt for l2 distance
@@ -211,7 +224,7 @@ class DistanceBasedUncertainty(BaseModel):
             model.params.NonConvex = 2
 
         if self._acq_sense == "penalty":
-            model.addConstr(sum(model._bin_penalty) == 1, name=f"bin_penalty_sum")
+            model.addConstr(sum(model._bin_penalty) == 1, name="bin_penalty_sum")
 
         model.update()
 

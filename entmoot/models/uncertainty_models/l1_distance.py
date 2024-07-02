@@ -1,5 +1,6 @@
-from entmoot.models.uncertainty_models.base_distance import NonCatDistance
 import numpy as np
+
+from entmoot.models.uncertainty_models.base_distance import NonCatDistance
 
 
 class L1Distance(NonCatDistance):

@@ -23,7 +23,7 @@ def add_next_nodes(node_list, node, cat_idx):
 
         try:
             new_node["split_var"] = node[-1]["split_feature"]
-            if not new_node["split_var"] in cat_idx:
+            if new_node["split_var"] not in cat_idx:
                 # read numerical variables, solver accuracy 10e-5
                 temp_node_val = round(node[-1]["threshold"], 5)
                 new_node["split_code_pred"] = temp_node_val
