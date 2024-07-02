@@ -15,3 +15,7 @@ docs/_build
 .coverage
 Makefile
 make.bat
+
+build/
+dist/
+*.egg-info
