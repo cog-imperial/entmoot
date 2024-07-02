@@ -3,6 +3,7 @@ from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
 import gurobipy as gur
 import os
+from typing import Optional
 
 
 class GurobiOptimizer:
@@ -42,11 +43,11 @@ class GurobiOptimizer:
             # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
             X_opt_pyo, _, _ = opt_gur.solve(enting)
     """
-    def __init__(self, problem_config: ProblemConfig, params: dict = None) -> float:
+    def __init__(self, problem_config: ProblemConfig, params: Optional[dict] = None):
         self._params = {} if params is None else params
         self._problem_config = problem_config
         self._curr_sol = None
-        self._active_leaves = None
+        self._active_leaves: Optional[list[list[tuple[int, str]]]] = None
 
     def get_curr_sol(self) -> list:
         """
@@ -78,9 +79,9 @@ class GurobiOptimizer:
                 if "CLOUDACCESSID" in os.environ:
                     # Use Gurobi Cloud
                     connection_params_cld = {
-                        "CLOUDACCESSID": os.getenv("CLOUDACCESSID"),
-                        "CLOUDSECRETKEY": os.getenv("CLOUDSECRETKEY"),
-                        "CLOUDPOOL": os.getenv("CLOUDPOOL"),
+                        "CLOUDACCESSID": os.getenv("CLOUDACCESSID", ""),
+                        "CLOUDSECRETKEY": os.getenv("CLOUDSECRETKEY", ""),
+                        "CLOUDPOOL": os.getenv("CLOUDPOOL", ""),
                     }
                     env_cld = gur.Env(params=connection_params_cld)
                     env_cld.start()

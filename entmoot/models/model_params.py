@@ -63,7 +63,7 @@ class TreeTrainParams:
     """
     This dataclass contains all parameters needed for the tree training.
     """
-    train_params: "TrainParams" = field(default_factory=dict)
+    train_params: "TrainParams" = field(default_factory=dict) # type: ignore
     train_lib: Literal["lgbm"] = "lgbm"
 
     def __post_init__(self):
@@ -82,8 +82,8 @@ class EntingParams:
     
     Provides a structured dataclass for the parameters of an Enting model, 
     alongside default values and some light data validation."""
-    unc_params: "UncParams" = field(default_factory=dict)
-    tree_train_params: "TreeTrainParams" = field(default_factory=dict)
+    unc_params: "UncParams" = field(default_factory=dict) # type: ignore
+    tree_train_params: "TreeTrainParams" = field(default_factory=dict) # type: ignore
     
     def __post_init__(self):
         if isinstance(self.unc_params, dict):

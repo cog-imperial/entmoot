@@ -8,7 +8,7 @@ from entmoot.utils import sample
 
 from entmoot.models.model_params import EntingParams
 import numpy as np
-from typing import Union
+from typing import Union, Optional
 
 
 class Enting(BaseModel):
@@ -183,7 +183,7 @@ class Enting(BaseModel):
         core_model.setObjective(core_model._mu + self._beta * core_model._unc)
         core_model.update()
 
-    def add_to_pyomo_model(self, core_model, weights: tuple = None) -> None:
+    def add_to_pyomo_model(self, core_model, weights: Optional[tuple[float]] = None) -> None:
         """
         Enriches the core model by adding variables and constraints based on information
         from the tree model.

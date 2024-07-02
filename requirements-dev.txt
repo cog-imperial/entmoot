@@ -1,6 +1,6 @@
 numpy<2.0.0
 lightgbm>=4.0.0
-pyomo
+pyomo==6.7.0
 gurobipy
 pytest-cov
 IPython

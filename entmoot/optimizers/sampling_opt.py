@@ -2,8 +2,8 @@ class SamplingOptimizer:
     def __init__(self, space, params):
         raise NotImplementedError()
 
-    def solve(model):
+    def solve(self, model):
         raise NotImplementedError()
 
-    def sample_feas(num_points):
+    def sample_feas(self, num_points):
         raise NotImplementedError()
