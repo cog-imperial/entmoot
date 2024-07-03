@@ -3,8 +3,8 @@ from typing import Optional
 import numpy as np
 import pyomo.environ as pyo
 
-from entmoot import Enting, ProblemConfig
-from entmoot.problem_config import Categorical
+from entmoot.models.enting import Enting
+from entmoot.problem_config import ProblemConfig, Categorical
 from entmoot.utils import OptResult
 
 ActiveLeavesT = list[list[tuple[int, str]]]
