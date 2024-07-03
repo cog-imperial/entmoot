@@ -183,6 +183,7 @@ class MinObjective(Objective):
     sign = 1
 
 
+
 class MaxObjective(Objective):
     sign = -1
 
