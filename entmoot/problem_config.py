@@ -1,19 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, TypeVar
+from typing import Generic, List, Optional, TypeVar
 
+import gurobipy
 import numpy as np
 import pyomo.environ as pyo
 
 from entmoot.typing.optimizer_stubs import GurobiModelT, PyomoModelT
 
+B = TypeVar("B", int, float)
 BoundsT = tuple[float, float]
 CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
 
 
 class FeatureType(ABC):
-    pyomo_domain: pyo.Set
-    gurobi_vtype: str
-
     def __init__(self, name: str):
         self.name = name
 
@@ -39,23 +38,23 @@ class FeatureType(ABC):
     def decode(self, xi):
         return xi
 
-    def get_pyomo_domain_and_bounds(self, i: int):
-        return {i: self.pyomo_domain}, {i: self.get_enc_bnds()}
+    @abstractmethod
+    def get_pyomo_domain_and_bounds(self, i: int) -> tuple[dict, dict]:
+        pass
 
+    @abstractmethod
     def get_gurobi_variable(self, model: GurobiModelT):
-        return model.addVar(
-            lb=self.lb, ub=self.ub, name=self.name, vtype=self.gurobi_vtype
-        )
+        pass
 
     def __str__(self):
         return f"{self.name} :: {self.__class__.__name__} :: {self.get_enc_bnds()}"
 
 
-class Real(FeatureType):
-    pyomo_domain = pyo.Reals
-    gurobi_vtype = "C"
+class Ordinal(FeatureType, Generic[B]):
+    pyomo_domain: pyo.Set
+    gurobi_vtype: str
 
-    def __init__(self, lb: float, ub: float, name: str):
+    def __init__(self, lb: B, ub: B, name: str):
         super().__init__(name)
         self.lb = lb
         self.ub = ub
@@ -63,7 +62,45 @@ class Real(FeatureType):
     def get_enc_bnds(self):
         return (self.lb, self.ub)
 
+    def get_pyomo_domain_and_bounds(self, i: int) -> tuple[dict, dict]:
+        return {i: self.pyomo_domain}, {i: self.get_enc_bnds()}
+
+    def get_gurobi_variable(self, model: GurobiModelT):
+        return model.addVar(
+            lb=self.lb, ub=self.ub, name=self.name, vtype=self.gurobi_vtype
+        )
+
+
+class Real(Ordinal[float]):
+    pyomo_domain = pyo.Reals
+    gurobi_vtype = "C"
+
     def is_real(self):
+        return True
+
+
+class Integer(Ordinal[int]):
+    pyomo_domain = pyo.Integers
+    gurobi_vtype = "I"
+
+    def is_int(self):
+        return True
+
+    def decode(self, xi):
+        return int(xi)
+
+
+class Binary(Ordinal[int]):
+    pyomo_domain = pyo.Binary
+    gurobi_vtype = "B"
+
+    def __init__(self, name: str):
+        super().__init__(0, 1, name)
+
+    def decode(self, xi):
+        return abs(int(xi))
+
+    def is_bin(self):
         return True
 
 
@@ -116,44 +153,6 @@ class Categorical(FeatureType):
 
     def __str__(self):
         return f"{self.name} :: {self.__class__.__name__} :: {self.cat_list}"
-
-
-class Integer(FeatureType):
-    pyomo_domain = pyo.Integers
-    gurobi_vtype = "I"
-
-    def __init__(self, lb: int, ub: int, name: str):
-        super().__init__(name)
-        self.lb = lb
-        self.ub = ub
-
-    def get_enc_bnds(self):
-        return (self.lb, self.ub)
-
-    def is_int(self):
-        return True
-
-    def decode(self, xi):
-        return int(xi)
-
-
-class Binary(FeatureType):
-    pyomo_domain = pyo.Binary
-    gurobi_vtype = "B"
-
-    def __init__(self, name: str):
-        super().__init__(name)
-        self.lb = 0
-        self.ub = 1
-
-    def get_enc_bnds(self):
-        return (self.lb, self.ub)
-
-    def decode(self, xi):
-        return abs(int(xi))
-
-    def is_bin(self):
-        return True
 
 
 class Objective:
@@ -441,22 +440,28 @@ class ProblemConfig:
         :return:
         :rtype: gurobi.Model
         """
-        copy_model_core: GurobiModelT = model_core.copy()
+        copy_model_core: GurobiModelT = model_core.copy()  # type: ignore
         # Since Gurobi's .copy() method does not copy attributes like ._all_feat we have to copy them manually
         copy_model_core._all_feat = []
 
         # transfer feature var list to model copy
-        for i, feat in enumerate(self.feat_list):
-            if isinstance(feat, Categorical):
-                copy_model_core._all_feat.append(dict())
-                for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
-                    var_name = model_core._all_feat[i][enc].VarName
-                    copy_model_core._all_feat[i][enc] = copy_model_core.getVarByName(
-                        var_name
-                    )
+        copy_all_feat = []
+        for var in model_core._all_feat:
+            if isinstance(var, gurobipy.Var):
+                # ordinal variable
+                copy_all_feat.append(copy_model_core.getVarByName(var.VarName))
+
             else:
-                var_name = model_core._all_feat[i].VarName
-                copy_model_core._all_feat.append(copy_model_core.getVarByName(var_name))
+                # categorical variable
+                copy_all_feat.append(
+                    {
+                        enc: copy_model_core.getVarByName(v.VarName)
+                        for (enc, v) in var.items()
+                    }
+                )
+
+        copy_model_core._all_feat = copy_all_feat
+
         return copy_model_core
 
     def get_pyomo_model_core(self) -> PyomoModelT:
