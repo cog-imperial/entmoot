@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from entmoot.models.base_model import BaseModel
-from entmoot.problem_config import ProblemConfig, Categorical
+from entmoot.problem_config import Categorical, ProblemConfig
 
 
 class NonCatDistance(BaseModel):
@@ -74,13 +74,12 @@ class NonCatDistance(BaseModel):
 
     def get_pyomo_model_constr(self, model_core):
         raise NotImplementedError()
-    
+
     def get_gurobipy_model_constr_terms(self, model) -> list:
         raise NotImplementedError()
 
     def get_pyomo_model_constr_terms(self, model) -> list:
         raise NotImplementedError()
-
 
 
 class CatDistance(BaseModel):

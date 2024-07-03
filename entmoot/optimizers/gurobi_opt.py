@@ -4,11 +4,12 @@ from typing import Optional
 import gurobipy as gur
 import numpy as np
 
-from entmoot import Enting, ProblemConfig
+from entmoot.models.enting import Enting
+from entmoot.problem_config import Categorical, ProblemConfig
 from entmoot.utils import OptResult
-from entmoot.problem_config import Categorical
 
 ActiveLeavesT = list[list[tuple[int, str]]]
+
 
 class GurobiOptimizer:
     """
@@ -47,6 +48,7 @@ class GurobiOptimizer:
             # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
             X_opt_pyo, _, _ = opt_gur.solve(enting)
     """
+
     def __init__(self, problem_config: ProblemConfig, params: Optional[dict] = None):
         self._params = {} if params is None else params
         self._problem_config = problem_config
@@ -128,7 +130,9 @@ class GurobiOptimizer:
             self._active_leaves,
         )
 
-    def _get_sol(self, solved_model: gur.Model) -> tuple[list | np.ndarray, ActiveLeavesT]:
+    def _get_sol(
+        self, solved_model: gur.Model
+    ) -> tuple[list | np.ndarray, ActiveLeavesT]:
         # extract solutions from conti and discrete variables
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):

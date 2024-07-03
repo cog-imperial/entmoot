@@ -64,7 +64,9 @@ def grid(dimension: int, levels: int) -> np.ndarray:
     return out / n
 
 
-def sample(dimension: int, n_samples: int = 1, rng: Optional[np.random.Generator] = None) -> np.ndarray:
+def sample(
+    dimension: int, n_samples: int = 1, rng: Optional[np.random.Generator] = None
+) -> np.ndarray:
     """Sample uniformly from the unit simplex.
 
     Args:
@@ -74,7 +76,7 @@ def sample(dimension: int, n_samples: int = 1, rng: Optional[np.random.Generator
     Returns:
         array, shape=(n_samples, dimesnion): Random samples from the unit simplex.
     """
-    if rng is None: 
+    if rng is None:
         rng = np.random.default_rng()
     s = rng.standard_exponential((n_samples, dimension))
     return (s.T / s.sum(axis=1)).T

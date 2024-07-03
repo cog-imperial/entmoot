@@ -1,10 +1,11 @@
-from typing import List, Optional, TypeVar
 from abc import ABC, abstractmethod
+from typing import List, Optional, TypeVar
 
 import numpy as np
 
 BoundsT = tuple[float, float]
 CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
+
 
 class FeatureType(ABC):
     def __init__(self, name: str):
@@ -111,19 +112,24 @@ class Binary(FeatureType):
     def is_bin(self):
         return True
 
+
 class Objective:
     def __init__(self, name):
         self.name = name
 
+
 class MinObjective(Objective):
     sign = 1
+
 
 class MaxObjective(Objective):
     sign = -1
 
+
 AnyFeatureT = Real | Integer | Categorical | Binary
 FeatureT = TypeVar("FeatureT", bound=FeatureType)
 AnyObjectiveT = MinObjective | MaxObjective
+
 
 class ProblemConfig:
     def __init__(self, rnd_seed: Optional[int] = None):
@@ -134,22 +140,42 @@ class ProblemConfig:
 
     @property
     def cat_idx(self):
-        return tuple([i for i, feat in enumerate(self.feat_list) if isinstance(feat, Categorical)])
+        return tuple(
+            [
+                i
+                for i, feat in enumerate(self.feat_list)
+                if isinstance(feat, Categorical)
+            ]
+        )
 
     @property
     def non_cat_idx(self):
-        return tuple([i for i, feat in enumerate(self.feat_list) if not isinstance(feat, Categorical)])
+        return tuple(
+            [
+                i
+                for i, feat in enumerate(self.feat_list)
+                if not isinstance(feat, Categorical)
+            ]
+        )
 
     @property
     def non_cat_lb(self):
         return tuple(
-            [feat.lb for i, feat in enumerate(self.feat_list) if not isinstance(feat, Categorical)]
+            [
+                feat.lb
+                for i, feat in enumerate(self.feat_list)
+                if not isinstance(feat, Categorical)
+            ]
         )
 
     @property
     def non_cat_ub(self):
         return tuple(
-            [feat.ub for i, feat in enumerate(self.feat_list) if not isinstance(feat, Categorical)]
+            [
+                feat.ub
+                for i, feat in enumerate(self.feat_list)
+                if not isinstance(feat, Categorical)
+            ]
         )
 
     @property
@@ -162,8 +188,16 @@ class ProblemConfig:
             ]
         )
 
-    def get_idx_and_feat_by_type(self, feature_type: type[FeatureT]) -> tuple[tuple[int, FeatureT], ...]:
-        return tuple([(i, feat) for i, feat in enumerate(self.feat_list) if isinstance(feat, feature_type)])
+    def get_idx_and_feat_by_type(
+        self, feature_type: type[FeatureT]
+    ) -> tuple[tuple[int, FeatureT], ...]:
+        return tuple(
+            [
+                (i, feat)
+                for i, feat in enumerate(self.feat_list)
+                if isinstance(feat, feature_type)
+            ]
+        )
 
     @property
     def feat_list(self) -> list[AnyFeatureT]:
@@ -206,7 +240,12 @@ class ProblemConfig:
             dec = [self._decode_xi(xi) for xi in X]
             return np.asarray(dec)
 
-    def add_feature(self, feat_type: str, bounds: Optional[BoundsT | CategoriesT] = None, name: Optional[str] = None):
+    def add_feature(
+        self,
+        feat_type: str,
+        bounds: Optional[BoundsT | CategoriesT] = None,
+        name: Optional[str] = None,
+    ):
         if name is None:
             name = f"feat_{len(self.feat_list)}"
 
@@ -255,7 +294,7 @@ class ProblemConfig:
                     f"smaller than upper bound. Check feature '{name}'."
                 )
 
-                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))            
+                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))
 
         elif feat_type == "categorical":
             assert len(bounds) > 1, (
@@ -273,7 +312,7 @@ class ProblemConfig:
                 set(bounds)
             ), f"Categories of feat_type '{feat_type}' are not all unique."
 
-            self._feat_list.append(Categorical(cat_list=bounds, name=name)) # type: ignore
+            self._feat_list.append(Categorical(cat_list=bounds, name=name))  # type: ignore
 
         else:
             raise ValueError(
@@ -298,8 +337,6 @@ class ProblemConfig:
         signs = np.array([obj.sign for obj in self.obj_list]).reshape(1, -1)
         return y * signs
 
-
-
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
         # TODO: defer sample logic to feature
@@ -315,9 +352,7 @@ class ProblemConfig:
                 )
             else:
                 array_list.append(
-                    self.rng.integers(
-                        low=feat.lb, high=feat.ub+1, size=num_samples
-                    )
+                    self.rng.integers(low=feat.lb, high=feat.ub + 1, size=num_samples)
                 )
         return np.squeeze(np.column_stack(array_list))
 
@@ -335,7 +370,7 @@ class ProblemConfig:
                     else:
                         sample.append(self.rng.choice(feat.cat_list))
                 else:
-                    sample.append(self.rng.integers(feat.lb, feat.ub+1))
+                    sample.append(self.rng.integers(feat.lb, feat.ub + 1))
             sample_list.append(tuple(sample))
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
@@ -495,5 +530,3 @@ class ProblemConfig:
         for obj in self.obj_list:
             out_str.append(f"{obj.name} :: {obj.__class__.__name__}")
         return "\n".join(out_str)
-
-

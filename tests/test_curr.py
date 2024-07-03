@@ -1,16 +1,17 @@
 import math
+import random
 
-from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
-from entmoot.models.model_params import EntingParams, UncParams
+import numpy as np
+import pyomo.environ  # noqa: F401
+import pytest
+
+from entmoot import Enting, GurobiOptimizer, ProblemConfig, PyomoOptimizer
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
 )
+from entmoot.models.model_params import EntingParams, UncParams
 
-import numpy as np
-import pytest
-import random
-import pyomo.environ # noqa: F401
 
 @pytest.mark.pipeline_test
 def test_core_model_copy():
@@ -45,10 +46,9 @@ def test_multiobj_constraints():
     rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
     testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=number_objectives)
 
-    params = EntingParams(unc_params=UncParams(
-        dist_metric="l1",
-        acq_sense="exploration"
-    ))
+    params = EntingParams(
+        unc_params=UncParams(dist_metric="l1", acq_sense="exploration")
+    )
     enting = Enting(problem_config, params=params)
     # fit tree ensemble
     enting.fit(rnd_sample, testfunc_evals)
@@ -114,10 +114,9 @@ def test_simple_test():
     y_train = np.reshape([my_func(x) for x in X_train], (-1, 1))
 
     # Define enting object and corresponding parameters
-    params = EntingParams(unc_params=UncParams(
-        dist_metric="l1",
-        acq_sense="exploration"
-    ))
+    params = EntingParams(
+        unc_params=UncParams(dist_metric="l1", acq_sense="exploration")
+    )
     enting = Enting(problem_config, params=params)
     # Fit tree model
     enting.fit(X_train, y_train)
@@ -148,10 +147,9 @@ def test_compare_pyomo_gurobipy_multiobj():
 
     for metric in ["l1", "l2", "euclidean_squared"]:
         for acq_sense in ["exploration", "penalty"]:
-            params = EntingParams(unc_params=UncParams(
-                dist_metric=metric,
-                acq_sense=acq_sense
-            ))
+            params = EntingParams(
+                unc_params=UncParams(dist_metric=metric, acq_sense=acq_sense)
+            )
             enting = Enting(problem_config, params=params)
             # fit tree ensemble
             enting.fit(rnd_sample, testfunc_evals)
@@ -192,10 +190,9 @@ def test_compare_pyomo_gurobipy_singleobj():
 
     for metric in ["l1", "l2", "euclidean_squared"]:
         for acq_sense in ["exploration", "penalty"]:
-            params = EntingParams(unc_params=UncParams(
-                dist_metric=metric,
-                acq_sense=acq_sense
-            ))            
+            params = EntingParams(
+                unc_params=UncParams(dist_metric=metric, acq_sense=acq_sense)
+            )
             enting = Enting(problem_config, params=params)
             # fit tree ensemble
             enting.fit(rnd_sample, testfunc_evals)

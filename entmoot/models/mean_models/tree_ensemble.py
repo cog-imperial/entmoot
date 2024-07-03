@@ -8,11 +8,15 @@ from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.lgbm_utils import read_lgbm_tree_model_dict
 from entmoot.models.mean_models.meta_tree_ensemble import MetaTreeModel
 from entmoot.models.model_params import TreeTrainParams
-from entmoot.problem_config import ProblemConfig, Categorical
+from entmoot.problem_config import Categorical, ProblemConfig
 
 
 class TreeEnsemble(BaseModel):
-    def __init__(self, problem_config: ProblemConfig, params: Union[TreeTrainParams, dict, None] = None):
+    def __init__(
+        self,
+        problem_config: ProblemConfig,
+        params: Union[TreeTrainParams, dict, None] = None,
+    ):
         if params is None:
             params = {}
         if isinstance(params, dict):
@@ -98,14 +102,15 @@ class TreeEnsemble(BaseModel):
                 tree_model = lgb.train(
                     self._train_params,
                     train_data,
-                    #verbose_eval=False,
+                    # verbose_eval=False,
                 )
             else:
                 # train for non-categorical vars
                 train_data = lgb.Dataset(X, label=y, params={"verbose": -1})
 
                 tree_model = lgb.train(
-                    self._train_params, train_data#, verbose_eval=False
+                    self._train_params,
+                    train_data,  # , verbose_eval=False
                 )
         return tree_model
 

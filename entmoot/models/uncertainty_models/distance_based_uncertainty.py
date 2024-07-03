@@ -17,12 +17,20 @@ from entmoot.problem_config import ProblemConfig
 
 
 @overload
-def distance_func_mapper(dist_name: str, cat: Literal[True]) -> type[CatDistance] | None: ...
+def distance_func_mapper(
+    dist_name: str, cat: Literal[True]
+) -> type[CatDistance] | None: ...
+
 
 @overload
-def distance_func_mapper(dist_name: str, cat: Literal[False]) -> type[NonCatDistance] | None: ...
+def distance_func_mapper(
+    dist_name: str, cat: Literal[False]
+) -> type[NonCatDistance] | None: ...
 
-def distance_func_mapper(dist_name: str, cat: bool) -> type[CatDistance] | type[NonCatDistance] | None:
+
+def distance_func_mapper(
+    dist_name: str, cat: bool
+) -> type[CatDistance] | type[NonCatDistance] | None:
     """Given a string, return the distance function"""
     non_cat_dists = {
         "euclidean_squared": EuclideanSquaredDistance,
@@ -41,7 +49,9 @@ def distance_func_mapper(dist_name: str, cat: bool) -> type[CatDistance] | type[
 
 
 class DistanceBasedUncertainty(BaseModel):
-    def __init__(self, problem_config: ProblemConfig, params: Union[UncParams, dict, None] = None):
+    def __init__(
+        self, problem_config: ProblemConfig, params: Union[UncParams, dict, None] = None
+    ):
         if params is None:
             params = {}
         if isinstance(params, dict):
@@ -100,7 +110,7 @@ class DistanceBasedUncertainty(BaseModel):
             )
         else:
             self.cat_unc_model: CatDistance = cat_distance(
-                problem_config=self._problem_config, 
+                problem_config=self._problem_config,
                 acq_sense=params.acq_sense,
             )
 
@@ -171,7 +181,7 @@ class DistanceBasedUncertainty(BaseModel):
                     model.addVar(name=f"bin_penalty_{i}", vtype="B")
                 )
 
-                big_m_term = big_m * (1 - model._bin_penalty[-1]) # type: ignore 
+                big_m_term = big_m * (1 - model._bin_penalty[-1])  # type: ignore
 
                 if self._dist_metric == "l2":
                     # take sqrt for l2 distance
@@ -265,7 +275,11 @@ class DistanceBasedUncertainty(BaseModel):
 
             def constrs_bin_penalty_sum(model_obj):
                 return (
-                    sum(model_obj._bin_penalty[k] for k in model.indices_constrs_cat_noncat_contr) == 1
+                    sum(
+                        model_obj._bin_penalty[k]
+                        for k in model.indices_constrs_cat_noncat_contr
+                    )
+                    == 1
                 )
 
             model.constrs_bin_penalty_sum = pyo.Constraint(rule=constrs_bin_penalty_sum)

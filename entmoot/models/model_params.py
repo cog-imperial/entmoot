@@ -6,13 +6,16 @@ from typing import Literal
 
 class ParamValidationError(ValueError):
     """A model parameter takes an invalid value."""
+
     pass
+
 
 @dataclass
 class UncParams:
     """
     This dataclass contains all uncertainty parameters.
     """
+
     #: weight for penalty/exploration part in objective function
     beta: float = 1.96
     #: the predictions of the GBT model are cut off, if their absolute value exceeds
@@ -35,12 +38,12 @@ class UncParams:
             raise ParamValidationError(
                 f"Value for 'beta' is {self.beta}; must be positive."
             )
-        
+
         if self.acq_sense not in ("exploration", "penalty"):
             raise ParamValidationError(
                 f"Value for 'acq_sense' is '{self.acq_sense}'; must be in ('exploration', 'penalty')."
             )
-        
+
 
 @dataclass
 class TrainParams:
@@ -48,6 +51,7 @@ class TrainParams:
     This dataclass contains all hyperparameters that are used by lightbm during training and
     documented here https://lightgbm.readthedocs.io/en/latest/Parameters.html
     """
+
     # lightgbm training hyperparameters
     objective: str = "regression"
     metric: str = "rmse"
@@ -64,13 +68,14 @@ class TreeTrainParams:
     """
     This dataclass contains all parameters needed for the tree training.
     """
-    train_params: "TrainParams" = field(default_factory=dict) # type: ignore
+
+    train_params: "TrainParams" = field(default_factory=dict)  # type: ignore
     train_lib: Literal["lgbm"] = "lgbm"
 
     def __post_init__(self):
         if isinstance(self.train_params, dict):
             self.train_params = TrainParams(**self.train_params)
-        
+
         if self.train_lib not in ("lgbm",):
             raise ParamValidationError(
                 f"Value for 'train_lib' is {self.train_lib}; must be in ('lgbm',)"
@@ -80,12 +85,13 @@ class TreeTrainParams:
 @dataclass
 class EntingParams:
     """Contains parameters for a mean and uncertainty model.
-    
-    Provides a structured dataclass for the parameters of an Enting model, 
+
+    Provides a structured dataclass for the parameters of an Enting model,
     alongside default values and some light data validation."""
-    unc_params: "UncParams" = field(default_factory=dict) # type: ignore
-    tree_train_params: "TreeTrainParams" = field(default_factory=dict) # type: ignore
-    
+
+    unc_params: "UncParams" = field(default_factory=dict)  # type: ignore
+    tree_train_params: "TreeTrainParams" = field(default_factory=dict)  # type: ignore
+
     def __post_init__(self):
         if isinstance(self.unc_params, dict):
             self.unc_params = UncParams(**self.unc_params)

@@ -1,4 +1,4 @@
-from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
+from entmoot import Enting, GurobiOptimizer, ProblemConfig
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,

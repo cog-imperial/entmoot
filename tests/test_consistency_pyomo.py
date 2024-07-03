@@ -1,13 +1,18 @@
+import math
+import random
+
 import pytest
 
-import random
-import math
-
 from entmoot import Enting, ProblemConfig, PyomoOptimizer
-from entmoot.models.model_params import EntingParams, UncParams, TreeTrainParams, TrainParams
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
+)
+from entmoot.models.model_params import (
+    EntingParams,
+    TrainParams,
+    TreeTrainParams,
+    UncParams,
 )
 
 
@@ -123,9 +128,8 @@ def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric)
             dist_metric=dist_metric,
             acq_sense=acq_sense,
             dist_trafo="normal",
-            cat_metric=cat_metric
+            cat_metric=cat_metric,
         ),
-
         # make tree model smaller to reduce testing time
         tree_train_params=TreeTrainParams(
             train_lib="lgbm",
@@ -137,9 +141,9 @@ def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric)
                 max_depth=2,
                 min_data_in_leaf=1,
                 min_data_per_group=1,
-                verbose=-1
-            )
-        )
+                verbose=-1,
+            ),
+        ),
     )
 
     params.unc_params.beta = 0.05
