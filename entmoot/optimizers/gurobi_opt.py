@@ -6,6 +6,7 @@ import numpy as np
 
 from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
+from entmoot.problem_config import Categorical
 
 ActiveLeavesT = list[list[tuple[int, str]]]
 
@@ -132,7 +133,7 @@ class GurobiOptimizer:
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
             curr_var = solved_model._all_feat[idx]
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 # find active category
                 sol_cat = [
                     int(round(curr_var[enc_cat].x)) for enc_cat in feat.enc_cat_list

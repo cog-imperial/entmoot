@@ -5,6 +5,7 @@ import pyomo.environ as pyo
 
 from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
+from entmoot.problem_config import Categorical
 
 ActiveLeavesT = list[list[tuple[int, str]]]
 
@@ -123,7 +124,7 @@ class PyomoOptimizer:
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
             curr_var = solved_model._all_feat[idx]
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 # find active category
                 sol_cat = [
                     int(round(pyo.value(curr_var[enc_cat])))

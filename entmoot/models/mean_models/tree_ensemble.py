@@ -8,7 +8,7 @@ from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.lgbm_utils import read_lgbm_tree_model_dict
 from entmoot.models.mean_models.meta_tree_ensemble import MetaTreeModel
 from entmoot.models.model_params import TreeTrainParams
-from entmoot.problem_config import ProblemConfig
+from entmoot.problem_config import ProblemConfig, Categorical
 
 
 class TreeEnsemble(BaseModel):
@@ -172,7 +172,7 @@ class TreeEnsemble(BaseModel):
         model._breakpoint_index = []
 
         for idx, feat in enumerate(self._problem_config.feat_list):
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 continue
             else:
                 splits = set()
@@ -432,7 +432,7 @@ class TreeEnsemble(BaseModel):
         model._breakpoint_index = []
 
         for idx, feat in enumerate(self._problem_config.feat_list):
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 continue
             else:
                 splits = set()

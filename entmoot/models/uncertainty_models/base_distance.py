@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from entmoot.models.base_model import BaseModel
-from entmoot.problem_config import ProblemConfig
+from entmoot.problem_config import ProblemConfig, Categorical
 
 
 class NonCatDistance(BaseModel):
@@ -132,8 +132,7 @@ class CatDistance(BaseModel):
         # generate similarity matrix for all data points
         self._sim_map = {}
 
-        for idx in self._problem_config.cat_idx:
-            feat = self._problem_config.feat_list[idx]
+        for idx, feat in self._problem_config.get_idx_and_feat_by_type(Categorical):
             all_cats = feat.enc_cat_list
 
             # creates similarity entries for all categories of all categorical features
@@ -146,31 +145,31 @@ class CatDistance(BaseModel):
             self._sim_map[idx] = mat
 
     def get_gurobipy_model_constr_terms(self, model):
-        feat = model._all_feat
+        features = model._all_feat
         constr_list = []
         for xi in self.cache_x:
             constr = 0
 
             # iterate through all categories to check which distances are active
-            for idx in self._problem_config.cat_idx:
-                for cat in self._problem_config.feat_list[idx].enc_cat_list:
+            for idx, feat in self._problem_config.get_idx_and_feat_by_type(Categorical):
+                for cat in feat.enc_cat_list:
                     sim = self.sim_map[idx][cat, int(xi[idx])]
-                    constr += (1 - sim) * feat[idx][cat]
+                    constr += (1 - sim) * features[idx][cat]
 
             constr_list.append(constr)
         return constr_list
 
     def get_pyomo_model_constr_terms(self, model):
-        feat = model._all_feat
+        features = model._all_feat
         constr_list = []
         for xi in self.cache_x:
             constr = 0
 
             # iterate through all categories to check which distances are active
-            for idx in self._problem_config.cat_idx:
-                for cat in self._problem_config.feat_list[idx].enc_cat_list:
+            for idx, feat in self._problem_config.get_idx_and_feat_by_type(Categorical):
+                for cat in feat.enc_cat_list:
                     sim = self.sim_map[idx][cat, int(xi[idx])]
-                    constr += (1 - sim) * feat[idx][cat]
+                    constr += (1 - sim) * features[idx][cat]
 
             constr_list.append(constr)
         return constr_list

@@ -17,7 +17,7 @@ class L1Distance(NonCatDistance):
     def get_gurobipy_model_constr_terms(self, model):
         from gurobipy import GRB, quicksum
 
-        feat = model._all_feat
+        features = model._all_feat
 
         # define auxiliary variables
         feat_dict = {
@@ -35,7 +35,7 @@ class L1Distance(NonCatDistance):
             for i, idx in enumerate(self._problem_config.non_cat_idx):
                 # capture positive and negative contributions
                 model.addConstr(
-                    (xi[i] - (feat[idx] - self.shift[i]) / self.scale[i])
+                    (xi[i] - (features[idx] - self.shift[i]) / self.scale[i])
                     == aux_pos[data_idx, idx] - aux_neg[data_idx, idx],
                     name=f"unc_aux_({data_idx},{idx})",
                 )
@@ -59,7 +59,7 @@ class L1Distance(NonCatDistance):
     def get_pyomo_model_constr_terms(self, model):
         import pyomo.environ as pyo
 
-        feat = model._all_feat
+        features = model._all_feat
 
         # define auxiliary variables
         feat_dict = {
@@ -80,7 +80,7 @@ class L1Distance(NonCatDistance):
         def rule_contrs_l1_pos_neg_contr(modelobj, data_idx, i, idx):
             xi = self.x_trafo[data_idx]
             return (
-                xi[i] - (feat[idx] - self.shift[i]) / self.scale[i]
+                xi[i] - (features[idx] - self.shift[i]) / self.scale[i]
             ) == modelobj.aux_pos[data_idx, idx] - modelobj.aux_neg[data_idx, idx]
 
         model.contrs_l1_pos_neg_contr = pyo.Constraint(
@@ -91,11 +91,11 @@ class L1Distance(NonCatDistance):
             (data_idx, idx): max(
                 abs(
                     self.x_trafo[data_idx][i]
-                    - (feat[idx].ub - self.shift[i]) / self.scale[i]
+                    - (features[idx].ub - self.shift[i]) / self.scale[i]
                 ),
                 abs(
                     self.x_trafo[data_idx][i]
-                    - (feat[idx].lb - self.shift[i]) / self.scale[i]
+                    - (features[idx].lb - self.shift[i]) / self.scale[i]
                 ),
             )
             for (data_idx, i, idx) in indices_l1_constraints
