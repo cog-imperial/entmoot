@@ -32,11 +32,11 @@ def test_max_predictions_equal_min_predictions():
     pred_max = enting_max.predict(sample)
 
     for (m1, u1), (m2, u2) in zip(pred, pred_max):
-        assert np.allclose(m1, m2, rtol=1e-5)
-        assert np.allclose(u1, u2, rtol=1e-5)
+        print(">", m1, m2)
+        assert m1 == approx(m2, rel=1e-5)
+        assert u1 == approx(u2, rel=1e-5)
 
 
-@pytest.mark.pipeline_test
 def test_max_objective_equals_minus_min_objective():
     """Assert that the solution found by the minimiser is the same as that of the maximiser for the negative objective function"""
     problem_config = ProblemConfig(rnd_seed=73)

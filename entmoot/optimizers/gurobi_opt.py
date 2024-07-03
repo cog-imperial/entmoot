@@ -4,8 +4,8 @@ from typing import Optional
 import gurobipy as gur
 import numpy as np
 
-from entmoot.problem_config import ProblemConfig, Categorical
 from entmoot.models.enting import Enting
+from entmoot.problem_config import Categorical, ProblemConfig
 from entmoot.utils import OptResult
 
 ActiveLeavesT = list[list[tuple[int, str]]]

@@ -12,6 +12,7 @@ BoundsT = tuple[float, float]
 CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
 
 
+
 class FeatureType(ABC):
     def __init__(self, name: str):
         self.name = name
@@ -153,44 +154,57 @@ class Categorical(FeatureType):
     def is_cat(self):
         return True
 
-    def sample(self, num_samples, rng):
-        return rng.integers(0, len(self.cat_list), size=num_samples)
 
-    def get_pyomo_domain_and_bounds(self, i: int):
-        # We encode the index of this variable by (i, enc, cat), where 'i' is the position in the list of
-        # features, 'enc' is the corresponding encoded numerical value and 'cat' is the category
-        return {
-            (i, enc, cat): pyo.Binary
-            for (enc, cat) in zip(self.enc_cat_list, self.cat_list)
-        }, {}
+class Integer(FeatureType):
+    def __init__(self, lb: int, ub: int, name: str):
+        super().__init__(name)
+        self.lb = lb
+        self.ub = ub
 
-    def get_gurobi_variable(self, model: GurobiModelT):
-        return {
-            enc: model.addVar(name=f"{self.name}_{cat}", vtype="B")
-            for (enc, cat) in zip(self.enc_cat_list, self.cat_list)
-        }
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
+
+    def is_int(self):
+        return True
+
+    def decode(self, xi):
+        return int(xi)
+
+
+class Binary(FeatureType):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.lb = 0
+        self.ub = 1
+
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
+
+    def decode(self, xi):
+        return abs(int(xi))
+
+    def is_bin(self):
+        return True
 
 
 class Objective:
     def __init__(self, name):
         self.name = name
 
-    def __str__(self):
-        return f"{self.name} :: {self.__class__.__name__}"
-
 
 class MinObjective(Objective):
     sign = 1
-
 
 
 class MaxObjective(Objective):
     sign = -1
 
 
+
 AnyFeatureT = Real | Integer | Categorical | Binary
 FeatureT = TypeVar("FeatureT", bound=FeatureType)
 AnyObjectiveT = MinObjective | MaxObjective
+
 
 
 class ProblemConfig:
@@ -202,24 +216,59 @@ class ProblemConfig:
 
     @property
     def cat_idx(self):
-        return tuple([i for i, feat in self.get_idx_and_feat_by_type(Categorical)])
+        return tuple(
+            [
+                i
+                for i, feat in enumerate(self.feat_list)
+                if isinstance(feat, Categorical)
+            ]
+        )
 
     @property
     def non_cat_idx(self):
-        return tuple([i for i, feat in self.get_idx_and_feat_by_type(Ordinal)])
+        return tuple(
+            [
+                i
+                for i, feat in enumerate(self.feat_list)
+                if not isinstance(feat, Categorical)
+            ]
+        )
 
     @property
     def non_cat_lb(self):
-        return tuple([feat.lb for i, feat in self.get_idx_and_feat_by_type(Ordinal)])
+        return tuple(
+            [
+                feat.lb
+                for i, feat in enumerate(self.feat_list)
+                if not isinstance(feat, Categorical)
+            ]
+        )
 
     @property
     def non_cat_ub(self):
-        return tuple([feat.ub for i, feat in self.get_idx_and_feat_by_type(Ordinal)])
+        return tuple(
+            [
+                feat.ub
+                for i, feat in enumerate(self.feat_list)
+                if not isinstance(feat, Categorical)
+            ]
+        )
 
     @property
     def non_cat_bnd_diff(self):
         return tuple(
             [feat.ub - feat.lb for i, feat in self.get_idx_and_feat_by_type(Ordinal)]
+        )
+
+    def get_idx_and_feat_by_type(
+        self, feature_type: type[FeatureT]
+    ) -> tuple[tuple[int, FeatureT], ...]:
+        return tuple(
+            [
+                (i, feat)
+                for i, feat in enumerate(self.feat_list)
+                if isinstance(feat, feature_type)
+            ]
         )
 
     def get_idx_and_feat_by_type(
@@ -277,11 +326,10 @@ class ProblemConfig:
 
     def add_feature(
         self,
-        feat_type: Literal["real", "integer", "binary", "categorical"],
+        feat_type: str,
         bounds: Optional[BoundsT | CategoriesT] = None,
         name: Optional[str] = None,
     ):
-        # TODO: Move validation logic to Features
         if name is None:
             name = f"feat_{len(self.feat_list)}"
 
@@ -331,6 +379,7 @@ class ProblemConfig:
                 )
 
                 self._feat_list.append(Integer(lb=lb, ub=ub, name=name))
+                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))
 
         elif feat_type == "categorical":
             assert len(bounds) > 1, (
@@ -348,6 +397,7 @@ class ProblemConfig:
                 set(bounds)
             ), f"Categories of feat_type '{feat_type}' are not all unique."
 
+            self._feat_list.append(Categorical(cat_list=bounds, name=name))  # type: ignore
             self._feat_list.append(Categorical(cat_list=bounds, name=name))  # type: ignore
 
         else:
@@ -375,17 +425,39 @@ class ProblemConfig:
 
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
-        array_list = [feat.sample(num_samples, self.rng) for feat in self.feat_list]
+        # TODO: defer sample logic to feature
+        array_list = []
+        for feat in self.feat_list:
+            if isinstance(feat, Real):
+                array_list.append(
+                    self.rng.uniform(low=feat.lb, high=feat.ub, size=num_samples)
+                )
+            elif isinstance(feat, Categorical):
+                array_list.append(
+                    self.rng.integers(0, len(feat.cat_list), size=num_samples)
+                )
+            else:
+                array_list.append(
+                    self.rng.integers(low=feat.lb, high=feat.ub + 1, size=num_samples)
+                )
         return np.squeeze(np.column_stack(array_list))
 
     def get_rnd_sample_list(self, num_samples=1, cat_enc=False):
         # returns list of tuples
-        sample_list = self.get_rnd_sample_numpy(num_samples).tolist()
-        if not cat_enc:
-            for n, sample in enumerate(sample_list):
-                sample_list[n] = [
-                    feat.decode(sample[i]) for i, feat in enumerate(self.feat_list)
-                ]
+        sample_list = []
+        for _ in range(num_samples):
+            sample = []
+            for feat in self.feat_list:
+                if isinstance(feat, Real):
+                    sample.append(self.rng.uniform(feat.lb, feat.ub))
+                elif isinstance(feat, Categorical):
+                    if cat_enc:
+                        sample.append(self.rng.integers(0, len(feat.cat_list)))
+                    else:
+                        sample.append(self.rng.choice(feat.cat_list))
+                else:
+                    sample.append(self.rng.integers(feat.lb, feat.ub + 1))
+            sample_list.append(tuple(sample))
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
     def get_gurobi_model_core(self, env=None) -> GurobiModelT:
@@ -497,13 +569,20 @@ class ProblemConfig:
         return model_core.clone()
 
     def __str__(self):
-        return "\n".join(
-            (
-                "\nPROBLEM SUMMARY",
-                "-" * 15,
-                "features:",
-                *map(str, self.feat_list),
-                "\nobjectives:",
-                *map(str, self.obj_list),
-            )
-        )
+        out_str = ["\nPROBLEM SUMMARY"]
+        out_str.append(len(out_str[-1][:-1]) * "-")
+        out_str.append("features:")
+        for feat in self.feat_list:
+            if isinstance(feat, Categorical):
+                out_str.append(
+                    f"{feat.name} :: {feat.__class__.__name__} :: {feat.cat_list} "
+                )
+            else:
+                out_str.append(
+                    f"{feat.name} :: {feat.__class__.__name__} :: ({feat.lb}, {feat.ub}) "
+                )
+
+        out_str.append("\nobjectives:")
+        for obj in self.obj_list:
+            out_str.append(f"{obj.name} :: {obj.__class__.__name__}")
+        return "\n".join(out_str)
