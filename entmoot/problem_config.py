@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, TypeVar
 
 import numpy as np
+import pyomo.environ as pyo
 
 from entmoot.typing.optimizer_stubs import GurobiModelT, PyomoModelT
 
@@ -10,6 +11,8 @@ CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
 
 
 class FeatureType(ABC):
+    pyomo_domain: pyo.Set
+
     def __init__(self, name: str):
         self.name = name
 
@@ -35,8 +38,16 @@ class FeatureType(ABC):
     def decode(self, xi):
         return xi
 
+    def get_pyomo_domain_and_bounds(self, i: int):
+        return {i: self.pyomo_domain}, {i: self.get_enc_bnds()}
+
+    def __str__(self):
+        return f"{self.name} :: {self.__class__.__name__} :: {self.get_enc_bnds()}"
+
 
 class Real(FeatureType):
+    pyomo_domain = pyo.Reals
+
     def __init__(self, lb: float, ub: float, name: str):
         super().__init__(name)
         self.lb = lb
@@ -82,8 +93,21 @@ class Categorical(FeatureType):
     def is_cat(self):
         return True
 
+    def get_pyomo_domain_and_bounds(self, i: int):
+        # We encode the index of this variable by (i, enc, cat), where 'i' is the position in the list of
+        # features, 'enc' is the corresponding encoded numerical value and 'cat' is the category
+        return {
+            (i, enc, cat): pyo.Binary
+            for (enc, cat) in zip(self.enc_cat_list, self.cat_list)
+        }, {}
+
+    def __str__(self):
+        return f"{self.name} :: {self.__class__.__name__} :: {self.cat_list}"
+
 
 class Integer(FeatureType):
+    pyomo_domain = pyo.Integers
+
     def __init__(self, lb: int, ub: int, name: str):
         super().__init__(name)
         self.lb = lb
@@ -100,6 +124,8 @@ class Integer(FeatureType):
 
 
 class Binary(FeatureType):
+    pyomo_domain = pyo.Binary
+
     def __init__(self, name: str):
         super().__init__(name)
         self.lb = 0
@@ -118,6 +144,9 @@ class Binary(FeatureType):
 class Objective:
     def __init__(self, name):
         self.name = name
+
+    def __str__(self):
+        return f"{self.name} :: {self.__class__.__name__}"
 
 
 class MinObjective(Objective):
@@ -432,17 +461,6 @@ class ProblemConfig:
                 copy_model_core._all_feat.append(copy_model_core.getVarByName(var_name))
         return copy_model_core
 
-    def copy_pyomo_model_core(self, model_core: PyomoModelT) -> PyomoModelT:
-        """
-        Computes a copy of a Pyomo model which is decoupled from the original, i.e. you can modify the copy without
-        changing the original model.
-        :param model_core: A Pyomo model
-        :type model_core: pyomo.environ.ConcreteModel
-        :return: A copy of the Pyomo model
-        :rtype: pyomo.environ.ConcreteModel
-        """
-        return model_core.clone()
-
     def get_pyomo_model_core(self) -> PyomoModelT:
         import pyomo.environ as pyo
 
@@ -456,19 +474,9 @@ class ProblemConfig:
         index_to_var_domain = {}
         index_to_var_bounds = {}
         for i, feat in enumerate(self.feat_list):
-            if isinstance(feat, Real):
-                index_to_var_domain[i] = pyo.Reals
-                index_to_var_bounds[i] = (feat.lb, feat.ub)
-            elif isinstance(feat, Categorical):
-                for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
-                    # We encode the index of this variable by (i, enc, cat), where 'i' is the position in the list of
-                    # features, 'enc' is the corresponding encoded numerical value and 'cat' is the category
-                    index_to_var_domain[i, enc, cat] = pyo.Binary
-            elif isinstance(feat, Integer):
-                index_to_var_domain[i] = pyo.Integers
-                index_to_var_bounds[i] = (feat.lb, feat.ub)
-            elif isinstance(feat, Binary):
-                index_to_var_domain[i] = pyo.Binary
+            domain, bounds = feat.get_pyomo_domain_and_bounds(i)
+            index_to_var_domain.update(domain)
+            index_to_var_bounds.update(bounds)
 
         # Build Pyomo index set from dictionary keys
         # Why strings?? Well, pyomo doesn't support lists where some indices are multidimensional, but this is handy
@@ -485,10 +493,7 @@ class ProblemConfig:
             return index_to_var_domain[eval(i)]
 
         def i_to_bounds(model, i):
-            if eval(i) in index_to_var_bounds:
-                return index_to_var_bounds[eval(i)]
-            else:
-                return (None, None)
+            return index_to_var_bounds.get(eval(i), (None, None))
 
         # Define decision variables for Pyomo model
         model.x = pyo.Var(model.indices_features, domain=i_to_dom, bounds=i_to_bounds)
@@ -496,36 +501,37 @@ class ProblemConfig:
         # similar strategy to the gurobi model. Can be replaced in the future by a more direct approach.
         for i_str in model.x:
             i = eval(i_str)
-            if type(i) is int:
+            if isinstance(i, int):
                 model._all_feat.append(model.x[i_str])
-            elif type(i) is tuple:
+            elif isinstance(i, tuple):
                 if i[1] == 0:
                     model._all_feat.append({})
-                    model._all_feat[-1][i[1]] = model.x[i_str]
-                elif i[1] > 0:
-                    model._all_feat[-1][i[1]] = model.x[i_str]
-                else:
-                    raise TypeError
+
+                model._all_feat[-1][i[1]] = model.x[i_str]
             else:
                 raise TypeError
 
         return model
 
-    def __str__(self):
-        out_str = ["\nPROBLEM SUMMARY"]
-        out_str.append(len(out_str[-1][:-1]) * "-")
-        out_str.append("features:")
-        for feat in self.feat_list:
-            if isinstance(feat, Categorical):
-                out_str.append(
-                    f"{feat.name} :: {feat.__class__.__name__} :: {feat.cat_list} "
-                )
-            else:
-                out_str.append(
-                    f"{feat.name} :: {feat.__class__.__name__} :: ({feat.lb}, {feat.ub}) "
-                )
+    def copy_pyomo_model_core(self, model_core: PyomoModelT) -> PyomoModelT:
+        """
+        Computes a copy of a Pyomo model which is decoupled from the original, i.e. you can modify the copy without
+        changing the original model.
+        :param model_core: A Pyomo model
+        :type model_core: pyomo.environ.ConcreteModel
+        :return: A copy of the Pyomo model
+        :rtype: pyomo.environ.ConcreteModel
+        """
+        return model_core.clone()
 
-        out_str.append("\nobjectives:")
-        for obj in self.obj_list:
-            out_str.append(f"{obj.name} :: {obj.__class__.__name__}")
-        return "\n".join(out_str)
+    def __str__(self):
+        return "\n".join(
+            (
+                "\nPROBLEM SUMMARY",
+                "-" * 15,
+                "features:",
+                *map(str, self.feat_list),
+                "\nobjectives:",
+                *map(str, self.obj_list),
+            )
+        )
