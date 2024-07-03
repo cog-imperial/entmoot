@@ -1,9 +1,14 @@
-from collections import namedtuple
+import os
+from typing import Optional
+
+import gurobipy as gur
+import numpy as np
+
 from entmoot import Enting, ProblemConfig
 from entmoot.utils import OptResult
-import gurobipy as gur
-import os
+from entmoot.problem_config import Categorical
 
+ActiveLeavesT = list[list[tuple[int, str]]]
 
 class GurobiOptimizer:
     """
@@ -42,31 +47,31 @@ class GurobiOptimizer:
             # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
             X_opt_pyo, _, _ = opt_gur.solve(enting)
     """
-    def __init__(self, problem_config: ProblemConfig, params: dict = None) -> float:
+    def __init__(self, problem_config: ProblemConfig, params: Optional[dict] = None):
         self._params = {} if params is None else params
         self._problem_config = problem_config
         self._curr_sol = None
-        self._active_leaves = None
+        self._active_leaves: Optional[ActiveLeavesT] = None
 
-    def get_curr_sol(self) -> list:
+    def get_curr_sol(self) -> list | np.ndarray:
         """
         Returns current solution (i.e. optimal points) from optimization run
         """
         assert self._curr_sol is not None, "No solution was generated yet."
         return self._curr_sol
 
-    def get_active_leaf_sol(self) -> list:
+    def get_active_leaf_sol(self) -> ActiveLeavesT:
         """
         Returns active leaves in the tree model based on the current solution
         """
-        assert self._curr_sol is not None, "No solution was generated yet."
+        assert self._active_leaves is not None, "No solution was generated yet."
         return self._active_leaves
 
     def solve(
         self,
         tree_model: Enting,
-        model_core: gur.Model = None,
-        weights: tuple = None,
+        model_core: Optional[gur.Model] = None,
+        weights: Optional[tuple[float, ...]] = None,
         use_env: bool = False,
     ) -> OptResult:
         """
@@ -75,16 +80,18 @@ class GurobiOptimizer:
 
         if model_core is None:
             if use_env:
+                env_params = {}
                 if "CLOUDACCESSID" in os.environ:
                     # Use Gurobi Cloud
-                    connection_params_cld = {
-                        "CLOUDACCESSID": os.getenv("CLOUDACCESSID"),
-                        "CLOUDSECRETKEY": os.getenv("CLOUDSECRETKEY"),
-                        "CLOUDPOOL": os.getenv("CLOUDPOOL"),
+                    env_params = {
+                        "CLOUDACCESSID": os.getenv("CLOUDACCESSID", ""),
+                        "CLOUDSECRETKEY": os.getenv("CLOUDSECRETKEY", ""),
+                        "CLOUDPOOL": os.getenv("CLOUDPOOL", ""),
                     }
-                    env_cld = gur.Env(params=connection_params_cld)
-                    env_cld.start()
-                    opt_model = self._problem_config.get_gurobi_model_core(env=env_cld)
+                # TODO: Support passing in env params
+                env_cld = gur.Env(params=env_params)
+                env_cld.start()
+                opt_model = self._problem_config.get_gurobi_model_core(env=env_cld)
 
             else:
                 opt_model = self._problem_config.get_gurobi_model_core()
@@ -121,12 +128,12 @@ class GurobiOptimizer:
             self._active_leaves,
         )
 
-    def _get_sol(self, solved_model: gur.Model) -> list:
+    def _get_sol(self, solved_model: gur.Model) -> tuple[list | np.ndarray, ActiveLeavesT]:
         # extract solutions from conti and discrete variables
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
             curr_var = solved_model._all_feat[idx]
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 # find active category
                 sol_cat = [
                     int(round(curr_var[enc_cat].x)) for enc_cat in feat.enc_cat_list

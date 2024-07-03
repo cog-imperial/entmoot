@@ -1,29 +1,36 @@
-from entmoot.models.base_model import BaseModel
+from typing import Optional
+
 import numpy as np
+
+from entmoot.models.base_model import BaseModel
+from entmoot.problem_config import ProblemConfig, Categorical
 
 
 class NonCatDistance(BaseModel):
-    def __init__(self, problem_config, acq_sense, dist_trafo):
+    def __init__(self, problem_config: ProblemConfig, acq_sense, dist_trafo):
         self._problem_config = problem_config
         self._acq_sense = acq_sense
         self._dist_trafo = dist_trafo
 
-        self._shift, self._scale = None, None
+        self._shift: Optional[np.ndarray] = None
+        self._scale: Optional[np.ndarray] = None
         self._x_trafo = None
 
     @property
     def shift(self):
+        assert self._shift is not None, "Must first cache shift"
         return self._shift
 
     @property
     def scale(self):
+        assert self._scale is not None, "Must first cache scale"
         return self._scale
 
     @property
     def x_trafo(self):
         assert (
             self._x_trafo is not None
-        ), f"Uncertainty model needs fit function call before it can predict."
+        ), "Uncertainty model needs fit function call before it can predict."
         return self._x_trafo
 
     def get_big_m(self):
@@ -67,29 +74,36 @@ class NonCatDistance(BaseModel):
 
     def get_pyomo_model_constr(self, model_core):
         raise NotImplementedError()
+    
+    def get_gurobipy_model_constr_terms(self, model) -> list:
+        raise NotImplementedError()
+
+    def get_pyomo_model_constr_terms(self, model) -> list:
+        raise NotImplementedError()
+
 
 
 class CatDistance(BaseModel):
-    def __init__(self, problem_config, acq_sense):
+    def __init__(self, problem_config: ProblemConfig, acq_sense):
         self._problem_config = problem_config
         self._acq_sense = acq_sense
 
-        self._cat_x = None
-        self._sim_map = None
-        self._cache_x = None
+        self._cat_x: Optional[np.ndarray] = None
+        self._sim_map: Optional[dict[int, np.ndarray]] = None
+        self._cache_x: Optional[np.ndarray] = None
 
     @property
     def cache_x(self):
         assert (
             self._cache_x is not None
-        ), f"Uncertainty model needs fit function call before it can predict."
+        ), "Uncertainty model needs fit function call before it can predict."
         return self._cache_x
 
     @property
     def sim_map(self):
         assert (
             self._sim_map is not None
-        ), f"Uncertainty model needs fit function call before it can predict."
+        ), "Uncertainty model needs fit function call before it can predict."
         return self._sim_map
 
     def get_big_m(self):
@@ -118,8 +132,7 @@ class CatDistance(BaseModel):
         # generate similarity matrix for all data points
         self._sim_map = {}
 
-        for idx in self._problem_config.cat_idx:
-            feat = self._problem_config.feat_list[idx]
+        for idx, feat in self._problem_config.get_idx_and_feat_by_type(Categorical):
             all_cats = feat.enc_cat_list
 
             # creates similarity entries for all categories of all categorical features
@@ -132,31 +145,31 @@ class CatDistance(BaseModel):
             self._sim_map[idx] = mat
 
     def get_gurobipy_model_constr_terms(self, model):
-        feat = model._all_feat
+        features = model._all_feat
         constr_list = []
         for xi in self.cache_x:
             constr = 0
 
             # iterate through all categories to check which distances are active
-            for idx in self._problem_config.cat_idx:
-                for cat in self._problem_config.feat_list[idx].enc_cat_list:
+            for idx, feat in self._problem_config.get_idx_and_feat_by_type(Categorical):
+                for cat in feat.enc_cat_list:
                     sim = self.sim_map[idx][cat, int(xi[idx])]
-                    constr += (1 - sim) * feat[idx][cat]
+                    constr += (1 - sim) * features[idx][cat]
 
             constr_list.append(constr)
         return constr_list
 
     def get_pyomo_model_constr_terms(self, model):
-        feat = model._all_feat
+        features = model._all_feat
         constr_list = []
         for xi in self.cache_x:
             constr = 0
 
             # iterate through all categories to check which distances are active
-            for idx in self._problem_config.cat_idx:
-                for cat in self._problem_config.feat_list[idx].enc_cat_list:
+            for idx, feat in self._problem_config.get_idx_and_feat_by_type(Categorical):
+                for cat in feat.enc_cat_list:
                     sim = self.sim_map[idx][cat, int(xi[idx])]
-                    constr += (1 - sim) * feat[idx][cat]
+                    constr += (1 - sim) * features[idx][cat]
 
             constr_list.append(constr)
         return constr_list

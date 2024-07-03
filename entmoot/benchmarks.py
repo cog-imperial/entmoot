@@ -1,6 +1,8 @@
+from typing import Sequence
+
 import numpy as np
 from numpy.typing import ArrayLike
-from typing import Iterable
+
 from entmoot import ProblemConfig
 
 
@@ -38,7 +40,7 @@ def eval_small_single_obj_cat_testfunc(X: ArrayLike, no_cat=False) -> np.ndarray
     # without the dtype=object paramer, each entry of X is converted into a string
     X = np.array(X, dtype=object)
 
-    def compute_objectives(xi: Iterable, no_cat=False):
+    def compute_objectives(xi: Sequence, no_cat=False):
         if no_cat:
             return (
                 xi[1] * xi[2] * np.sin(sum(xi[3:]))
@@ -110,7 +112,7 @@ def eval_multi_obj_cat_testfunc(
     # without the dtype=object paramer, each entry of X is converted into a string
     X = np.array(X, dtype=object)
 
-    def compute_objectives(xi: Iterable, no_cat=False):
+    def compute_objectives(xi: Sequence, no_cat=False):
         if no_cat:
             return (
                 xi[1] * xi[2] * np.sin(sum(xi[3:]))

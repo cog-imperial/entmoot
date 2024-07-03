@@ -1,8 +1,13 @@
-from collections import namedtuple
-from entmoot import Enting, ProblemConfig
-from entmoot.utils import OptResult
+from typing import Optional
+
+import numpy as np
 import pyomo.environ as pyo
 
+from entmoot import Enting, ProblemConfig
+from entmoot.utils import OptResult
+from entmoot.problem_config import Categorical
+
+ActiveLeavesT = list[list[tuple[int, str]]]
 
 class PyomoOptimizer:
     """
@@ -43,29 +48,29 @@ class PyomoOptimizer:
             # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
-    def __init__(self, problem_config: ProblemConfig, params: dict = None):
+    def __init__(self, problem_config: ProblemConfig, params: Optional[dict] = None):
         self._params = {} if params is None else params
         self._problem_config = problem_config
         self._curr_sol = None
         self._active_leaves = None
 
     @property
-    def get_curr_sol(self) -> list:
+    def get_curr_sol(self) -> list | np.ndarray:
         """
         Returns current solution (i.e. optimal points) from optimization run
         """
         assert self._curr_sol is not None, "No solution was generated yet."
         return self._curr_sol
 
-    def get_active_leaf_sol(self) -> list:
+    def get_active_leaf_sol(self) -> ActiveLeavesT:
         """
         Returns active leaves in the tree model based on the current solution
         """
-        assert self._curr_sol is not None, "No solution was generated yet."
+        assert self._active_leaves is not None, "No solution was generated yet."
         return self._active_leaves
 
     def solve(
-        self, tree_model: Enting, model_core: pyo.ConcreteModel = None, weights: tuple = None
+        self, tree_model: Enting, model_core: Optional[pyo.ConcreteModel] = None, weights: Optional[tuple[float, ...]] = None
     ) -> OptResult:
         """
         Solves the Pyomo optimization model
@@ -114,12 +119,12 @@ class PyomoOptimizer:
             self._active_leaves
         )
 
-    def _get_sol(self, solved_model: pyo.ConcreteModel) -> list:
+    def _get_sol(self, solved_model: pyo.ConcreteModel) -> tuple[list | np.ndarray, ActiveLeavesT]:
         # extract solutions from conti and discrete variables
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
             curr_var = solved_model._all_feat[idx]
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 # find active category
                 sol_cat = [
                     int(round(pyo.value(curr_var[enc_cat])))

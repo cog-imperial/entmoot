@@ -1,6 +1,8 @@
-from entmoot.models.uncertainty_models.base_distance import CatDistance
-import numpy as np
 from math import log
+
+import numpy as np
+
+from entmoot.models.uncertainty_models.base_distance import CatDistance
 
 
 class OfDistance(CatDistance):
@@ -12,7 +14,7 @@ class OfDistance(CatDistance):
 
     def _sim_mat_rule(self, x_left, x_right, cat_idx):
         return (
-            self._get_of_frac(self._cache_x[:, cat_idx], x_left, x_right)
+            self._get_of_frac(self.cache_x[:, cat_idx], x_left, x_right)
             if x_left != x_right
             else 1.0
         )

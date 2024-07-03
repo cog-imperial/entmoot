@@ -1,7 +1,129 @@
-from typing import Tuple, List, Optional
-import numpy as np
-import random
+from typing import List, Optional, TypeVar
+from abc import ABC, abstractmethod
 
+import numpy as np
+
+BoundsT = tuple[float, float]
+CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
+
+class FeatureType(ABC):
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstractmethod
+    def get_enc_bnds(self):
+        pass
+
+    def is_real(self):
+        return False
+
+    def is_cat(self):
+        return False
+
+    def is_int(self):
+        return False
+
+    def is_bin(self):
+        return False
+
+    def encode(self, xi):
+        return xi
+
+    def decode(self, xi):
+        return xi
+
+
+class Real(FeatureType):
+    def __init__(self, lb: float, ub: float, name: str):
+        super().__init__(name)
+        self.lb = lb
+        self.ub = ub
+
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
+
+    def is_real(self):
+        return True
+
+
+class Categorical(FeatureType):
+    def __init__(self, cat_list: CategoriesT, name: str):
+        super().__init__(name)
+        self._cat_list = cat_list
+
+        # encode categories
+        self._enc2str, self._str2enc = {}, {}
+        self._enc_cat_list = []
+        for enc, cat in enumerate(cat_list):
+            self._enc_cat_list.append(enc)
+            self._enc2str[enc] = cat
+            self._str2enc[cat] = enc
+
+    def get_enc_bnds(self):
+        return self._enc_cat_list
+
+    @property
+    def cat_list(self):
+        return self._cat_list
+
+    @property
+    def enc_cat_list(self):
+        return self._enc_cat_list
+
+    def encode(self, xi):
+        return self._str2enc[xi]
+
+    def decode(self, xi):
+        return self._enc2str[xi]
+
+    def is_cat(self):
+        return True
+
+
+class Integer(FeatureType):
+    def __init__(self, lb: int, ub: int, name: str):
+        super().__init__(name)
+        self.lb = lb
+        self.ub = ub
+
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
+
+    def is_int(self):
+        return True
+
+    def decode(self, xi):
+        return int(xi)
+
+
+class Binary(FeatureType):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.lb = 0
+        self.ub = 1
+
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
+
+    def decode(self, xi):
+        return abs(int(xi))
+
+    def is_bin(self):
+        return True
+
+class Objective:
+    def __init__(self, name):
+        self.name = name
+
+class MinObjective(Objective):
+    sign = 1
+
+class MaxObjective(Objective):
+    sign = -1
+
+AnyFeatureT = Real | Integer | Categorical | Binary
+FeatureT = TypeVar("FeatureT", bound=FeatureType)
+AnyObjectiveT = MinObjective | MaxObjective
 
 class ProblemConfig:
     def __init__(self, rnd_seed: Optional[int] = None):
@@ -12,22 +134,22 @@ class ProblemConfig:
 
     @property
     def cat_idx(self):
-        return tuple([i for i, feat in enumerate(self.feat_list) if feat.is_cat()])
+        return tuple([i for i, feat in enumerate(self.feat_list) if isinstance(feat, Categorical)])
 
     @property
     def non_cat_idx(self):
-        return tuple([i for i, feat in enumerate(self.feat_list) if not feat.is_cat()])
+        return tuple([i for i, feat in enumerate(self.feat_list) if not isinstance(feat, Categorical)])
 
     @property
     def non_cat_lb(self):
         return tuple(
-            [feat.lb for i, feat in enumerate(self.feat_list) if not feat.is_cat()]
+            [feat.lb for i, feat in enumerate(self.feat_list) if not isinstance(feat, Categorical)]
         )
 
     @property
     def non_cat_ub(self):
         return tuple(
-            [feat.ub for i, feat in enumerate(self.feat_list) if not feat.is_cat()]
+            [feat.ub for i, feat in enumerate(self.feat_list) if not isinstance(feat, Categorical)]
         )
 
     @property
@@ -36,16 +158,19 @@ class ProblemConfig:
             [
                 feat.ub - feat.lb
                 for i, feat in enumerate(self.feat_list)
-                if not feat.is_cat()
+                if not isinstance(feat, Categorical)
             ]
         )
 
+    def get_idx_and_feat_by_type(self, feature_type: type[FeatureT]) -> tuple[tuple[int, FeatureT], ...]:
+        return tuple([(i, feat) for i, feat in enumerate(self.feat_list) if isinstance(feat, feature_type)])
+
     @property
-    def feat_list(self):
+    def feat_list(self) -> list[AnyFeatureT]:
         return self._feat_list
 
     @property
-    def obj_list(self):
+    def obj_list(self) -> list[AnyObjectiveT]:
         return self._obj_list
 
     @property
@@ -53,7 +178,7 @@ class ProblemConfig:
         return self._rnd_seed
 
     def get_enc_bnd(self):
-        return [feat.get_enc_bnds() for feat in self._feat_list]
+        return [feat.get_enc_bnds() for feat in self.feat_list]
 
     def _encode_xi(self, xi: List):
         return np.asarray(
@@ -81,12 +206,15 @@ class ProblemConfig:
             dec = [self._decode_xi(xi) for xi in X]
             return np.asarray(dec)
 
-    def add_feature(self, feat_type: str, bounds: Tuple = None, name: str = None):
+    def add_feature(self, feat_type: str, bounds: Optional[BoundsT | CategoriesT] = None, name: Optional[str] = None):
         if name is None:
             name = f"feat_{len(self.feat_list)}"
 
-        if bounds is None and feat_type in ("real", "integer", "categorical"):
-            raise IOError(
+        if bounds is None:
+            if feat_type == "binary":
+                self._feat_list.append(Binary(name=name))
+                return
+            raise ValueError(
                 "Please provide bounds for feature types in '(real, integer, categorical)'"
             )
 
@@ -127,10 +255,7 @@ class ProblemConfig:
                     f"smaller than upper bound. Check feature '{name}'."
                 )
 
-                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))
-
-        elif feat_type == "binary":
-            self._feat_list.append(Binary(name=name))
+                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))            
 
         elif feat_type == "categorical":
             assert len(bounds) > 1, (
@@ -148,20 +273,20 @@ class ProblemConfig:
                 set(bounds)
             ), f"Categories of feat_type '{feat_type}' are not all unique."
 
-            self._feat_list.append(Categorical(cat_list=bounds, name=name))
+            self._feat_list.append(Categorical(cat_list=bounds, name=name)) # type: ignore
 
         else:
-            raise IOError(
+            raise ValueError(
                 f"No support for feat_type '{feat_type}'. Check feature '{name}'."
             )
 
-    def add_min_objective(self, name: str = None):
+    def add_min_objective(self, name: Optional[str] = None):
         if name is None:
             name = f"obj_{len(self.obj_list)}"
 
         self._obj_list.append(MinObjective(name=name))
 
-    def add_max_objective(self, name: str = None):
+    def add_max_objective(self, name: Optional[str] = None):
         if name is None:
             name = f"obj_{len(self.obj_list)}"
 
@@ -177,17 +302,18 @@ class ProblemConfig:
 
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
+        # TODO: defer sample logic to feature
         array_list = []
         for feat in self.feat_list:
-            if feat.is_real():
+            if isinstance(feat, Real):
                 array_list.append(
                     self.rng.uniform(low=feat.lb, high=feat.ub, size=num_samples)
                 )
-            elif feat.is_cat():
+            elif isinstance(feat, Categorical):
                 array_list.append(
                     self.rng.integers(0, len(feat.cat_list), size=num_samples)
                 )
-            elif feat.is_int() or feat.is_bin():
+            else:
                 array_list.append(
                     self.rng.integers(
                         low=feat.lb, high=feat.ub+1, size=num_samples
@@ -201,14 +327,14 @@ class ProblemConfig:
         for _ in range(num_samples):
             sample = []
             for feat in self.feat_list:
-                if feat.is_real():
+                if isinstance(feat, Real):
                     sample.append(self.rng.uniform(feat.lb, feat.ub))
-                elif feat.is_cat():
+                elif isinstance(feat, Categorical):
                     if cat_enc:
                         sample.append(self.rng.integers(0, len(feat.cat_list)))
                     else:
                         sample.append(self.rng.choice(feat.cat_list))
-                elif feat.is_int() or feat.is_bin():
+                else:
                     sample.append(self.rng.integers(feat.lb, feat.ub+1))
             sample_list.append(tuple(sample))
         return sample_list if len(sample_list) > 1 else sample_list[0]
@@ -226,20 +352,20 @@ class ProblemConfig:
         model._all_feat = []
 
         for i, feat in enumerate(self.feat_list):
-            if feat.is_real():
+            if isinstance(feat, Real):
                 model._all_feat.append(
                     model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype="C")
                 )
-            elif feat.is_cat():
+            elif isinstance(feat, Categorical):
                 model._all_feat.append(dict())
                 for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
                     comb_name = f"{feat.name}_{cat}"
                     model._all_feat[i][enc] = model.addVar(name=comb_name, vtype="B")
-            elif feat.is_int():
+            elif isinstance(feat, Integer):
                 model._all_feat.append(
                     model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype="I")
                 )
-            elif feat.is_bin():
+            elif isinstance(feat, Binary):
                 model._all_feat.append(model.addVar(name=feat.name, vtype="B"))
 
         model.update()
@@ -260,7 +386,7 @@ class ProblemConfig:
 
         # transfer feature var list to model copy
         for i, feat in enumerate(self.feat_list):
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 copy_model_core._all_feat.append(dict())
                 for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
                     var_name = model_core._all_feat[i][enc].VarName
@@ -296,18 +422,18 @@ class ProblemConfig:
         index_to_var_domain = {}
         index_to_var_bounds = {}
         for i, feat in enumerate(self.feat_list):
-            if feat.is_real():
+            if isinstance(feat, Real):
                 index_to_var_domain[i] = pyo.Reals
                 index_to_var_bounds[i] = (feat.lb, feat.ub)
-            elif feat.is_cat():
+            elif isinstance(feat, Categorical):
                 for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
                     # We encode the index of this variable by (i, enc, cat), where 'i' is the position in the list of
                     # features, 'enc' is the corresponding encoded numerical value and 'cat' is the category
                     index_to_var_domain[i, enc, cat] = pyo.Binary
-            elif feat.is_int():
+            elif isinstance(feat, Integer):
                 index_to_var_domain[i] = pyo.Integers
                 index_to_var_bounds[i] = (feat.lb, feat.ub)
-            elif feat.is_bin():
+            elif isinstance(feat, Binary):
                 index_to_var_domain[i] = pyo.Binary
 
         # Build Pyomo index set from dictionary keys
@@ -352,11 +478,11 @@ class ProblemConfig:
         return model
 
     def __str__(self):
-        out_str = list(["\nPROBLEM SUMMARY"])
+        out_str = ["\nPROBLEM SUMMARY"]
         out_str.append(len(out_str[-1][:-1]) * "-")
         out_str.append("features:")
         for feat in self.feat_list:
-            if feat.is_cat():
+            if isinstance(feat, Categorical):
                 out_str.append(
                     f"{feat.name} :: {feat.__class__.__name__} :: {feat.cat_list} "
                 )
@@ -371,104 +497,3 @@ class ProblemConfig:
         return "\n".join(out_str)
 
 
-class FeatureType:
-    def get_enc_bnds(self):
-        return (self.lb, self.ub)
-
-    def is_real(self):
-        return False
-
-    def is_cat(self):
-        return False
-
-    def is_int(self):
-        return False
-
-    def is_bin(self):
-        return False
-
-    def encode(self, xi):
-        return xi
-
-    def decode(self, xi):
-        return xi
-
-
-class Real(FeatureType):
-    def __init__(self, lb, ub, name):
-        self.lb = lb
-        self.ub = ub
-        self.name = name
-
-    def is_real(self):
-        return True
-
-
-class Categorical(FeatureType):
-    def __init__(self, cat_list, name):
-        self._cat_list = cat_list
-        self.name = name
-
-        # encode categories
-        self._enc2str, self._str2enc = {}, {}
-        self._enc_cat_list = []
-        for enc, cat in enumerate(cat_list):
-            self._enc_cat_list.append(enc)
-            self._enc2str[enc] = cat
-            self._str2enc[cat] = enc
-
-    def get_enc_bnds(self):
-        return self._enc_cat_list
-
-    @property
-    def cat_list(self):
-        return self._cat_list
-
-    @property
-    def enc_cat_list(self):
-        return self._enc_cat_list
-
-    def encode(self, xi):
-        return self._str2enc[xi]
-
-    def decode(self, xi):
-        return self._enc2str[xi]
-
-    def is_cat(self):
-        return True
-
-
-class Integer(FeatureType):
-    def __init__(self, lb, ub, name):
-        self.lb = lb
-        self.ub = ub
-        self.name = name
-
-    def is_int(self):
-        return True
-
-    def decode(self, xi):
-        return int(xi)
-
-
-class Binary(FeatureType):
-    def __init__(self, name):
-        self.lb = 0
-        self.ub = 1
-        self.name = name
-
-    def decode(self, xi):
-        return abs(int(xi))
-
-    def is_bin(self):
-        return True
-
-class Objective:
-    def __init__(self, name):
-        self.name = name
-
-class MinObjective(Objective):
-    sign = 1
-
-class MaxObjective(Objective):
-    sign = -1

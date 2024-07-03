@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING, Callable
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Callable
 
 import pyomo.environ as pyo
 
