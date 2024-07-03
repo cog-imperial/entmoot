@@ -1,16 +1,17 @@
 import math
+import random
 
-from entmoot import Enting, ProblemConfig, GurobiOptimizer, PyomoOptimizer
-from entmoot.models.model_params import EntingParams, UncParams
+import numpy as np
+import pyomo.environ  # noqa: F401
+import pytest
+
+from entmoot import Enting, GurobiOptimizer, ProblemConfig, PyomoOptimizer
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
 )
+from entmoot.models.model_params import EntingParams, UncParams
 
-import numpy as np
-import pytest
-import random
-import pyomo.environ # noqa: F401
 
 @pytest.mark.pipeline_test
 def test_core_model_copy():

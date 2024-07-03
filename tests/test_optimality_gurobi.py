@@ -1,16 +1,16 @@
+import math
+
+import numpy as np
 import pytest
 
-import math
-import numpy as np
-
-from entmoot import Enting, ProblemConfig, GurobiOptimizer
-from entmoot.models.model_params import EntingParams, UncParams
+from entmoot import Enting, GurobiOptimizer, ProblemConfig
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
-    eval_multi_obj_cat_testfunc,
     build_small_single_obj_categorical_problem,
+    eval_multi_obj_cat_testfunc,
     eval_small_single_obj_cat_testfunc,
 )
+from entmoot.models.model_params import EntingParams, UncParams
 
 
 def run_gurobi(
@@ -66,7 +66,7 @@ def run_gurobi(
         est_pred_sol, obj, abs_tol=1e-1
     ), f"`{est_pred_sol}` and `{obj}` optimal values are not the same"
 
-    assert est_pred_sol >= obj, f"estimated value is smaller than solver solution"
+    assert est_pred_sol >= obj, "estimated value is smaller than solver solution"
 
     # check that mu values are sufficiently close
     est_mu = enting.mean_model.predict([samples[min_idx]])[0]

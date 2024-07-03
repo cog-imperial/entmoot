@@ -1,5 +1,13 @@
-from entmoot.models.model_params import EntingParams, UncParams, TrainParams, TreeTrainParams, ParamValidationError
 import pytest
+
+from entmoot.models.model_params import (
+    EntingParams,
+    ParamValidationError,
+    TrainParams,
+    TreeTrainParams,
+    UncParams,
+)
+
 
 def test_model_params_creation():
     """Check EntingParams is instantiated correctly, and check default values."""

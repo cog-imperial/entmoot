@@ -5,8 +5,8 @@ import gurobipy as gur
 import numpy as np
 
 from entmoot import Enting, ProblemConfig
-from entmoot.utils import OptResult
 from entmoot.problem_config import Categorical
+from entmoot.utils import OptResult
 
 ActiveLeavesT = list[list[tuple[int, str]]]
 

@@ -1,22 +1,22 @@
-from entmoot.problem_config import ProblemConfig
-from entmoot.models.enting import Enting
-from entmoot.optimizers.pyomo_opt import PyomoOptimizer
-from entmoot.models.model_params import EntingParams, UncParams
-from entmoot.constraints import LinearInequalityConstraint, ConstraintList
 import pyomo.environ as pyo
-
+import pytest
 
 from entmoot.benchmarks import (
-    build_reals_only_problem,
-    eval_reals_only_testfunc,
     build_multi_obj_categorical_problem,
+    build_reals_only_problem,
     eval_multi_obj_cat_testfunc,
+    eval_reals_only_testfunc,
 )
 from entmoot.constraints import (
+    ConstraintList,
     LinearEqualityConstraint,
+    LinearInequalityConstraint,
     NChooseKConstraint,
 )
-import pytest
+from entmoot.models.enting import Enting
+from entmoot.models.model_params import EntingParams, UncParams
+from entmoot.optimizers.pyomo_opt import PyomoOptimizer
+from entmoot.problem_config import ProblemConfig
 
 PARAMS = EntingParams(
     unc_params=UncParams(dist_metric="l1", acq_sense="exploration")

@@ -1,5 +1,5 @@
-from typing import List, Optional, TypeVar
 from abc import ABC, abstractmethod
+from typing import List, Optional, TypeVar
 
 import numpy as np
 

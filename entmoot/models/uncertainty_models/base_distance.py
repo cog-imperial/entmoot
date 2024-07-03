@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from entmoot.models.base_model import BaseModel
-from entmoot.problem_config import ProblemConfig, Categorical
+from entmoot.problem_config import Categorical, ProblemConfig
 
 
 class NonCatDistance(BaseModel):

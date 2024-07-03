@@ -6,3 +6,4 @@ pytest-cov
 IPython
 nbsphinx
 sphinx-rtd-theme
+pre-commit

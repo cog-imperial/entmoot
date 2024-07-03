@@ -1,9 +1,11 @@
+from pytest import approx
+
 from entmoot import Enting, ProblemConfig, PyomoOptimizer
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
 )
-from pytest import approx
+
 
 def test_max_predictions_equal_min_predictions():
     """The sign of the predicted objective is independent of max/min."""

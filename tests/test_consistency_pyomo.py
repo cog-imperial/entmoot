@@ -1,13 +1,18 @@
+import math
+import random
+
 import pytest
 
-import random
-import math
-
 from entmoot import Enting, ProblemConfig, PyomoOptimizer
-from entmoot.models.model_params import EntingParams, UncParams, TreeTrainParams, TrainParams
 from entmoot.benchmarks import (
     build_multi_obj_categorical_problem,
     eval_multi_obj_cat_testfunc,
+)
+from entmoot.models.model_params import (
+    EntingParams,
+    TrainParams,
+    TreeTrainParams,
+    UncParams,
 )
 
 

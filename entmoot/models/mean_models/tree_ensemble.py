@@ -8,7 +8,7 @@ from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.lgbm_utils import read_lgbm_tree_model_dict
 from entmoot.models.mean_models.meta_tree_ensemble import MetaTreeModel
 from entmoot.models.model_params import TreeTrainParams
-from entmoot.problem_config import ProblemConfig, Categorical
+from entmoot.problem_config import Categorical, ProblemConfig
 
 
 class TreeEnsemble(BaseModel):
