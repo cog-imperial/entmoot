@@ -74,13 +74,12 @@ class NonCatDistance(BaseModel):
 
     def get_pyomo_model_constr(self, model_core):
         raise NotImplementedError()
-    
+
     def get_gurobipy_model_constr_terms(self, model) -> list:
         raise NotImplementedError()
 
     def get_pyomo_model_constr_terms(self, model) -> list:
         raise NotImplementedError()
-
 
 
 class CatDistance(BaseModel):

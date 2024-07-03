@@ -152,10 +152,11 @@ def eval_multi_obj_cat_testfunc(
             f"Allowed values are 1 and 2"
         )
 
+
 def build_reals_only_problem(problem_config: ProblemConfig):
-    """A problem containing only real values, as used to demonstrate the NChooseK 
+    """A problem containing only real values, as used to demonstrate the NChooseK
     constraint.
-    
+
     The minimum is (1.0, 2.0, 3.0, ...)"""
 
     problem_config.add_feature("real", (0.0, 5.0), name="x1")
@@ -165,10 +166,11 @@ def build_reals_only_problem(problem_config: ProblemConfig):
     problem_config.add_feature("real", (0.0, 5.0), name="x5")
     problem_config.add_min_objective()
 
+
 def eval_reals_only_testfunc(X: ArrayLike):
     """The function (x1 - 1)**2 + (x2 - 2)**2 + ..."""
     x = np.atleast_2d(X)
     xbar = np.ones_like(x)
     xbar *= (np.arange(x.shape[1]) + 1)[None, :]
-    y = np.sum((x - xbar)**2, axis=1)
+    y = np.sum((x - xbar) ** 2, axis=1)
     return y.reshape(-1, 1)

@@ -11,12 +11,12 @@ from entmoot.models.model_params import (
 
 def test_model_params_creation():
     """Check EntingParams is instantiated correctly, and check default values."""
-    params = EntingParams(**{
-        "unc_params": {"beta": 2},
-        "tree_train_params" : {
-            "train_params": {"max_depth": 5}
-            }
-    })
+    params = EntingParams(
+        **{
+            "unc_params": {"beta": 2},
+            "tree_train_params": {"train_params": {"max_depth": 5}},
+        }
+    )
 
     assert params.unc_params.beta == 2
     assert params.tree_train_params.train_params.max_depth == 5
@@ -28,9 +28,7 @@ def test_model_params_creation():
     # check alternate initialisation method
     params_other = EntingParams(
         unc_params=UncParams(beta=2),
-        tree_train_params=TreeTrainParams(
-            train_params=TrainParams(max_depth=5)
-        )
+        tree_train_params=TreeTrainParams(train_params=TrainParams(max_depth=5)),
     )
     assert params == params_other
 

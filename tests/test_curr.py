@@ -46,10 +46,9 @@ def test_multiobj_constraints():
     rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
     testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=number_objectives)
 
-    params = EntingParams(unc_params=UncParams(
-        dist_metric="l1",
-        acq_sense="exploration"
-    ))
+    params = EntingParams(
+        unc_params=UncParams(dist_metric="l1", acq_sense="exploration")
+    )
     enting = Enting(problem_config, params=params)
     # fit tree ensemble
     enting.fit(rnd_sample, testfunc_evals)
@@ -115,10 +114,9 @@ def test_simple_test():
     y_train = np.reshape([my_func(x) for x in X_train], (-1, 1))
 
     # Define enting object and corresponding parameters
-    params = EntingParams(unc_params=UncParams(
-        dist_metric="l1",
-        acq_sense="exploration"
-    ))
+    params = EntingParams(
+        unc_params=UncParams(dist_metric="l1", acq_sense="exploration")
+    )
     enting = Enting(problem_config, params=params)
     # Fit tree model
     enting.fit(X_train, y_train)
@@ -149,10 +147,9 @@ def test_compare_pyomo_gurobipy_multiobj():
 
     for metric in ["l1", "l2", "euclidean_squared"]:
         for acq_sense in ["exploration", "penalty"]:
-            params = EntingParams(unc_params=UncParams(
-                dist_metric=metric,
-                acq_sense=acq_sense
-            ))
+            params = EntingParams(
+                unc_params=UncParams(dist_metric=metric, acq_sense=acq_sense)
+            )
             enting = Enting(problem_config, params=params)
             # fit tree ensemble
             enting.fit(rnd_sample, testfunc_evals)
@@ -193,10 +190,9 @@ def test_compare_pyomo_gurobipy_singleobj():
 
     for metric in ["l1", "l2", "euclidean_squared"]:
         for acq_sense in ["exploration", "penalty"]:
-            params = EntingParams(unc_params=UncParams(
-                dist_metric=metric,
-                acq_sense=acq_sense
-            ))            
+            params = EntingParams(
+                unc_params=UncParams(dist_metric=metric, acq_sense=acq_sense)
+            )
             enting = Enting(problem_config, params=params)
             # fit tree ensemble
             enting.fit(rnd_sample, testfunc_evals)

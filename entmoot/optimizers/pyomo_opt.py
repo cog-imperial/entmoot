@@ -4,10 +4,11 @@ import numpy as np
 import pyomo.environ as pyo
 
 from entmoot.models.enting import Enting
-from entmoot.problem_config import ProblemConfig, Categorical
+from entmoot.problem_config import Categorical, ProblemConfig
 from entmoot.utils import OptResult
 
 ActiveLeavesT = list[list[tuple[int, str]]]
+
 
 class PyomoOptimizer:
     """
@@ -48,6 +49,7 @@ class PyomoOptimizer:
             # As expected, the optimal input of the tree model is near the origin (cf. X_opt_pyo)
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
+
     def __init__(self, problem_config: ProblemConfig, params: Optional[dict] = None):
         self._params = {} if params is None else params
         self._problem_config = problem_config
@@ -70,7 +72,10 @@ class PyomoOptimizer:
         return self._active_leaves
 
     def solve(
-        self, tree_model: Enting, model_core: Optional[pyo.ConcreteModel] = None, weights: Optional[tuple[float, ...]] = None
+        self,
+        tree_model: Enting,
+        model_core: Optional[pyo.ConcreteModel] = None,
+        weights: Optional[tuple[float, ...]] = None,
     ) -> OptResult:
         """
         Solves the Pyomo optimization model
@@ -116,10 +121,12 @@ class PyomoOptimizer:
             pyo.value(opt_model.obj),
             [opt_model._unscaled_mu[k].value for k in opt_model._unscaled_mu],
             pyo.value(opt_model._unc),
-            self._active_leaves
+            self._active_leaves,
         )
 
-    def _get_sol(self, solved_model: pyo.ConcreteModel) -> tuple[list | np.ndarray, ActiveLeavesT]:
+    def _get_sol(
+        self, solved_model: pyo.ConcreteModel
+    ) -> tuple[list | np.ndarray, ActiveLeavesT]:
         # extract solutions from conti and discrete variables
         res = []
         for idx, feat in enumerate(self._problem_config.feat_list):
@@ -144,7 +151,12 @@ class PyomoOptimizer:
         act_leaves = []
         for idx, obj in enumerate(self._problem_config.obj_list):
             act_leaves.append(
-                [(tree_id, leaf_enc) for tree_id, leaf_enc in obj_leaf_index(solved_model, obj.name)
-                 if round(pyo.value(solved_model._z[obj.name, tree_id, leaf_enc])) == 1.0])
+                [
+                    (tree_id, leaf_enc)
+                    for tree_id, leaf_enc in obj_leaf_index(solved_model, obj.name)
+                    if round(pyo.value(solved_model._z[obj.name, tree_id, leaf_enc]))
+                    == 1.0
+                ]
+            )
 
         return self._problem_config.decode([res]), act_leaves

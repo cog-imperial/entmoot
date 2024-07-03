@@ -30,7 +30,6 @@ class L2Distance(NonCatDistance):
         return constr_list
 
     def get_pyomo_model_constr_terms(self, model):
-
         features = model._all_feat
 
         constr_list = []

@@ -65,7 +65,9 @@ class ConstraintList:
         for constraint in self._constraints:
             features = constraint._get_feature_vars(model, feat_list)
             if not isinstance(constraint, ExpressionConstraint):
-                raise TypeError("Only ExpressionConstraints are supported in a constraint list")
+                raise TypeError(
+                    "Only ExpressionConstraints are supported in a constraint list"
+                )
 
             expr = constraint._get_expr(model, features)
             pyo_constraint_list.add(expr)

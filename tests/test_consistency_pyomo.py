@@ -128,9 +128,8 @@ def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric)
             dist_metric=dist_metric,
             acq_sense=acq_sense,
             dist_trafo="normal",
-            cat_metric=cat_metric
+            cat_metric=cat_metric,
         ),
-
         # make tree model smaller to reduce testing time
         tree_train_params=TreeTrainParams(
             train_lib="lgbm",
@@ -142,9 +141,9 @@ def test_pyomo_consistency3(rnd_seed, n_obj, acq_sense, dist_metric, cat_metric)
                 max_depth=2,
                 min_data_in_leaf=1,
                 min_data_per_group=1,
-                verbose=-1
-            )
-        )
+                verbose=-1,
+            ),
+        ),
     )
 
     params.unc_params.beta = 0.05

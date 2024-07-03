@@ -2,7 +2,6 @@ def read_lgbm_tree_model_dict(tree_model_dict, cat_idx):
     ordered_tree_list = []
 
     for tree in tree_model_dict["tree_info"]:
-
         # generate list of nodes in tree
         root_node = [tree["tree_structure"]]
         node_list = []

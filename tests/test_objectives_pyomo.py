@@ -31,10 +31,11 @@ def test_max_predictions_equal_min_predictions():
     pred = enting.predict(sample)
     pred_max = enting_max.predict(sample)
 
-    for ((m1, u1), (m2, u2)) in zip(pred, pred_max):
+    for (m1, u1), (m2, u2) in zip(pred, pred_max):
         print(">", m1, m2)
         assert m1 == approx(m2, rel=1e-5)
         assert u1 == approx(u2, rel=1e-5)
+
 
 def test_max_objective_equals_minus_min_objective():
     """Assert that the solution found by the minimiser is the same as that of the maximiser for the negative objective function"""
@@ -62,6 +63,3 @@ def test_max_objective_equals_minus_min_objective():
     res_max = PyomoOptimizer(problem_config_max, params=params_pyomo).solve(enting)
 
     assert res.opt_point == approx(res_max.opt_point, rel=1e-5)
-
-
-

@@ -2,13 +2,13 @@ from typing import Optional, Union
 
 import numpy as np
 
-from entmoot.problem_config import ProblemConfig
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.model_params import EntingParams
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
     DistanceBasedUncertainty,
 )
+from entmoot.problem_config import ProblemConfig
 from entmoot.utils import sample
 
 
@@ -52,7 +52,9 @@ class Enting(BaseModel):
             X_opt_pyo, _, _ = opt_pyo.solve(enting)
     """
 
-    def __init__(self, problem_config: ProblemConfig, params: Union[EntingParams, dict, None]):
+    def __init__(
+        self, problem_config: ProblemConfig, params: Union[EntingParams, dict, None]
+    ):
         if params is None:
             params = {}
         if isinstance(params, dict):
@@ -128,9 +130,9 @@ class Enting(BaseModel):
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
         )
 
-        mean_pred = self.mean_model.predict(X) #.tolist()
+        mean_pred = self.mean_model.predict(X)  # .tolist()
         unc_pred = self.unc_model.predict(X)
-        
+
         mean_pred = self._problem_config.transform_objective(mean_pred)
         mean_pred = mean_pred.tolist()
 
@@ -147,7 +149,9 @@ class Enting(BaseModel):
             acq_pred.append(mean + self._beta * unc)
         return acq_pred
 
-    def add_to_gurobipy_model(self, core_model, weights: Optional[tuple[float, ...]] = None) -> None:
+    def add_to_gurobipy_model(
+        self, core_model, weights: Optional[tuple[float, ...]] = None
+    ) -> None:
         """
         Enriches the core model by adding variables and constraints based on information
         from the tree model.
@@ -173,7 +177,9 @@ class Enting(BaseModel):
             if weights is not None:
                 moo_weights = weights
             else:
-                moo_weights = sample(len(self._problem_config.obj_list), 1, self._problem_config.rng)[0]
+                moo_weights = sample(
+                    len(self._problem_config.obj_list), 1, self._problem_config.rng
+                )[0]
 
             for idx, obj in enumerate(self._problem_config.obj_list):
                 core_model.addConstr(
@@ -184,7 +190,9 @@ class Enting(BaseModel):
         core_model.setObjective(core_model._mu + self._beta * core_model._unc)
         core_model.update()
 
-    def add_to_pyomo_model(self, core_model, weights: Optional[tuple[float, ...]] = None) -> None:
+    def add_to_pyomo_model(
+        self, core_model, weights: Optional[tuple[float, ...]] = None
+    ) -> None:
         """
         Enriches the core model by adding variables and constraints based on information
         from the tree model.
@@ -212,7 +220,9 @@ class Enting(BaseModel):
             if weights is not None:
                 moo_weights = weights
             else:
-                moo_weights = sample(len(self._problem_config.obj_list), 1, self._problem_config.rng)[0]
+                moo_weights = sample(
+                    len(self._problem_config.obj_list), 1, self._problem_config.rng
+                )[0]
 
             objectives_position_name = list(
                 enumerate([obj.name for obj in self._problem_config.obj_list])

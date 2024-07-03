@@ -15,7 +15,6 @@ class EuclideanSquaredDistance(NonCatDistance):
         raise NotImplementedError()
 
     def get_gurobipy_model_constr_terms(self, model):
-
         from gurobipy import quicksum
 
         features = model._all_feat
@@ -31,7 +30,6 @@ class EuclideanSquaredDistance(NonCatDistance):
         return constr_list
 
     def get_pyomo_model_constr_terms(self, model):
-
         features = model._all_feat
 
         constr_list = []

@@ -18,9 +18,8 @@ from entmoot.models.model_params import EntingParams, UncParams
 from entmoot.optimizers.pyomo_opt import PyomoOptimizer
 from entmoot.problem_config import ProblemConfig
 
-PARAMS = EntingParams(
-    unc_params=UncParams(dist_metric="l1", acq_sense="exploration")
-)
+PARAMS = EntingParams(unc_params=UncParams(dist_metric="l1", acq_sense="exploration"))
+
 
 def test_linear_equality_constraint():
     problem_config = ProblemConfig(rnd_seed=73)
@@ -110,16 +109,14 @@ def test_constraint_list():
     # define the constraints
     constraints = [
         NChooseKConstraint(
-            feature_keys=["x1", "x2", "x3", "x4", "x5"], 
+            feature_keys=["x1", "x2", "x3", "x4", "x5"],
             min_count=1,
             max_count=3,
-            none_also_valid=True
+            none_also_valid=True,
         ),
         LinearInequalityConstraint(
-            feature_keys=["x3", "x4", "x5"],
-            coefficients=[1, 1, 1],
-            rhs=10.0
-        )
+            feature_keys=["x3", "x4", "x5"], coefficients=[1, 1, 1], rhs=10.0
+        ),
     ]
 
     # apply constraints to the model
