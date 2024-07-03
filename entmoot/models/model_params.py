@@ -1,7 +1,8 @@
 """Dataclasses containing the parameters for Enting models"""
 
-from typing import Literal
 from dataclasses import dataclass, field
+from typing import Literal
+
 
 class ParamValidationError(ValueError):
     """A model parameter takes an invalid value."""

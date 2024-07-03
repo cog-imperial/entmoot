@@ -1,6 +1,6 @@
-from typing import Tuple, List, Optional
+from typing import List, Optional
+
 import numpy as np
-import random
 
 
 class ProblemConfig:
@@ -81,12 +81,14 @@ class ProblemConfig:
             dec = [self._decode_xi(xi) for xi in X]
             return np.asarray(dec)
 
-    def add_feature(self, feat_type: str, bounds: Tuple = None, name: str = None):
+    def add_feature(self, feat_type: str, bounds: Optional[tuple[str | float | int, ...]] = None, name: Optional[str] = None):
         if name is None:
             name = f"feat_{len(self.feat_list)}"
 
-        if bounds is None and feat_type in ("real", "integer", "categorical"):
-            raise IOError(
+        if bounds is None:
+            if feat_type == "binary":
+                self._feat_list.append(Binary(name=name))
+            raise ValueError(
                 "Please provide bounds for feature types in '(real, integer, categorical)'"
             )
 
@@ -127,10 +129,7 @@ class ProblemConfig:
                     f"smaller than upper bound. Check feature '{name}'."
                 )
 
-                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))
-
-        elif feat_type == "binary":
-            self._feat_list.append(Binary(name=name))
+                self._feat_list.append(Integer(lb=lb, ub=ub, name=name))            
 
         elif feat_type == "categorical":
             assert len(bounds) > 1, (
@@ -155,13 +154,13 @@ class ProblemConfig:
                 f"No support for feat_type '{feat_type}'. Check feature '{name}'."
             )
 
-    def add_min_objective(self, name: str = None):
+    def add_min_objective(self, name: Optional[str] = None):
         if name is None:
             name = f"obj_{len(self.obj_list)}"
 
         self._obj_list.append(MinObjective(name=name))
 
-    def add_max_objective(self, name: str = None):
+    def add_max_objective(self, name: Optional[str] = None):
         if name is None:
             name = f"obj_{len(self.obj_list)}"
 
@@ -373,7 +372,7 @@ class ProblemConfig:
 
 class FeatureType:
     def get_enc_bnds(self):
-        return (self.lb, self.ub)
+        pass
 
     def is_real(self):
         return False
@@ -399,6 +398,9 @@ class Real(FeatureType):
         self.lb = lb
         self.ub = ub
         self.name = name
+
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
 
     def is_real(self):
         return True
@@ -443,6 +445,9 @@ class Integer(FeatureType):
         self.lb = lb
         self.ub = ub
         self.name = name
+
+    def get_enc_bnds(self):
+        return (self.lb, self.ub)
 
     def is_int(self):
         return True

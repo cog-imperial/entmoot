@@ -1,14 +1,15 @@
+from typing import Optional, Union
+
+import numpy as np
+
 from entmoot import ProblemConfig
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
+from entmoot.models.model_params import EntingParams
 from entmoot.models.uncertainty_models.distance_based_uncertainty import (
     DistanceBasedUncertainty,
 )
 from entmoot.utils import sample
-
-from entmoot.models.model_params import EntingParams
-import numpy as np
-from typing import Union, Optional
 
 
 class Enting(BaseModel):
@@ -146,7 +147,7 @@ class Enting(BaseModel):
             acq_pred.append(mean + self._beta * unc)
         return acq_pred
 
-    def add_to_gurobipy_model(self, core_model, weights: tuple = None) -> None:
+    def add_to_gurobipy_model(self, core_model, weights: Optional[tuple[float, ...]] = None) -> None:
         """
         Enriches the core model by adding variables and constraints based on information
         from the tree model.
@@ -157,7 +158,7 @@ class Enting(BaseModel):
         self.unc_model.add_to_gurobipy_model(core_model)
 
         core_model._mu = core_model.addVar(
-            lb=-GRB.INFINITY, ub=GRB.INFINITY, name=f"mean_obj", vtype="C"
+            lb=-GRB.INFINITY, ub=GRB.INFINITY, name="mean_obj", vtype="C"
         )
 
         if len(self._problem_config.obj_list) == 1:
@@ -183,7 +184,7 @@ class Enting(BaseModel):
         core_model.setObjective(core_model._mu + self._beta * core_model._unc)
         core_model.update()
 
-    def add_to_pyomo_model(self, core_model, weights: Optional[tuple[float]] = None) -> None:
+    def add_to_pyomo_model(self, core_model, weights: Optional[tuple[float, ...]] = None) -> None:
         """
         Enriches the core model by adding variables and constraints based on information
         from the tree model.
