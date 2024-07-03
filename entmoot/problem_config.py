@@ -12,6 +12,7 @@ CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
 
 class FeatureType(ABC):
     pyomo_domain: pyo.Set
+    gurobi_vtype: str
 
     def __init__(self, name: str):
         self.name = name
@@ -41,12 +42,18 @@ class FeatureType(ABC):
     def get_pyomo_domain_and_bounds(self, i: int):
         return {i: self.pyomo_domain}, {i: self.get_enc_bnds()}
 
+    def get_gurobi_variable(self, model: GurobiModelT):
+        return model.addVar(
+            lb=self.lb, ub=self.ub, name=self.name, vtype=self.gurobi_vtype
+        )
+
     def __str__(self):
         return f"{self.name} :: {self.__class__.__name__} :: {self.get_enc_bnds()}"
 
 
 class Real(FeatureType):
     pyomo_domain = pyo.Reals
+    gurobi_vtype = "C"
 
     def __init__(self, lb: float, ub: float, name: str):
         super().__init__(name)
@@ -101,12 +108,19 @@ class Categorical(FeatureType):
             for (enc, cat) in zip(self.enc_cat_list, self.cat_list)
         }, {}
 
+    def get_gurobi_variable(self, model: GurobiModelT):
+        return {
+            enc: model.addVar(name=f"{self.name}_{cat}", vtype="B")
+            for (enc, cat) in zip(self.enc_cat_list, self.cat_list)
+        }
+
     def __str__(self):
         return f"{self.name} :: {self.__class__.__name__} :: {self.cat_list}"
 
 
 class Integer(FeatureType):
     pyomo_domain = pyo.Integers
+    gurobi_vtype = "I"
 
     def __init__(self, lb: int, ub: int, name: str):
         super().__init__(name)
@@ -125,6 +139,7 @@ class Integer(FeatureType):
 
 class Binary(FeatureType):
     pyomo_domain = pyo.Binary
+    gurobi_vtype = "B"
 
     def __init__(self, name: str):
         super().__init__(name)
@@ -412,24 +427,7 @@ class ProblemConfig:
         model: GurobiModelT = gur.Model(env=env)  # type: ignore
 
         # initalize var space
-        model._all_feat = []
-
-        for i, feat in enumerate(self.feat_list):
-            if isinstance(feat, Real):
-                model._all_feat.append(
-                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype="C")
-                )
-            elif isinstance(feat, Categorical):
-                model._all_feat.append(dict())
-                for enc, cat in zip(feat.enc_cat_list, feat.cat_list):
-                    comb_name = f"{feat.name}_{cat}"
-                    model._all_feat[i][enc] = model.addVar(name=comb_name, vtype="B")
-            elif isinstance(feat, Integer):
-                model._all_feat.append(
-                    model.addVar(lb=feat.lb, ub=feat.ub, name=feat.name, vtype="I")
-                )
-            elif isinstance(feat, Binary):
-                model._all_feat.append(model.addVar(name=feat.name, vtype="B"))
+        model._all_feat = [feat.get_gurobi_variable(model) for feat in self.feat_list]
 
         model.update()
         return model
