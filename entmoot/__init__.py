@@ -7,4 +7,4 @@ from entmoot.models.model_params import (
 )
 from entmoot.optimizers.gurobi_opt import GurobiOptimizer
 from entmoot.optimizers.pyomo_opt import PyomoOptimizer
-from entmoot.problem_config import ProblemConfig as ProblemConfig
+from entmoot.problem_config import ProblemConfig
