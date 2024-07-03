@@ -3,6 +3,8 @@ from typing import List, Optional, TypeVar
 
 import numpy as np
 
+from entmoot.typing.optimizer_stubs import GurobiModelT, PyomoModelT
+
 BoundsT = tuple[float, float]
 CategoriesT = list[str | float | int] | tuple[str | float | int, ...]
 
@@ -374,14 +376,11 @@ class ProblemConfig:
             sample_list.append(tuple(sample))
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
-    def get_gurobi_model_core(self, env=None):
+    def get_gurobi_model_core(self, env=None) -> GurobiModelT:
         import gurobipy as gur
 
         # initialize gurobi model
-        if env is None:
-            model = gur.Model()
-        else:
-            model = gur.Model(env=env)
+        model: GurobiModelT = gur.Model(env=env)  # type: ignore
 
         # initalize var space
         model._all_feat = []
@@ -406,7 +405,7 @@ class ProblemConfig:
         model.update()
         return model
 
-    def copy_gurobi_model_core(self, model_core):
+    def copy_gurobi_model_core(self, model_core: GurobiModelT) -> GurobiModelT:
         """
         Computes a copy of a Gurobi model which is decoupled from the original, i.e. you can modify the copy without
         changing the original model.
@@ -415,7 +414,7 @@ class ProblemConfig:
         :return:
         :rtype: gurobi.Model
         """
-        copy_model_core = model_core.copy()
+        copy_model_core: GurobiModelT = model_core.copy()
         # Since Gurobi's .copy() method does not copy attributes like ._all_feat we have to copy them manually
         copy_model_core._all_feat = []
 
@@ -433,7 +432,7 @@ class ProblemConfig:
                 copy_model_core._all_feat.append(copy_model_core.getVarByName(var_name))
         return copy_model_core
 
-    def copy_pyomo_model_core(self, model_core):
+    def copy_pyomo_model_core(self, model_core: PyomoModelT) -> PyomoModelT:
         """
         Computes a copy of a Pyomo model which is decoupled from the original, i.e. you can modify the copy without
         changing the original model.
@@ -444,11 +443,11 @@ class ProblemConfig:
         """
         return model_core.clone()
 
-    def get_pyomo_model_core(self):
+    def get_pyomo_model_core(self) -> PyomoModelT:
         import pyomo.environ as pyo
 
         # initialize Pyomo model
-        model = pyo.ConcreteModel()
+        model: PyomoModelT = pyo.ConcreteModel()
 
         # Initialize var space
         model._all_feat = []

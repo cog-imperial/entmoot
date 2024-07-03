@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 import pyomo.environ as pyo
 
 from entmoot.problem_config import FeatureType
+from entmoot.typing.optimizer_stubs import PyomoModelT
 
-if TYPE_CHECKING:
-    from problem_config import FeatureType
-
-ConstraintFunctionType = Callable[[pyo.ConcreteModel, int], pyo.Expression]
+ConstraintFunctionType = Callable[[PyomoModelT, int], pyo.Expression]
 
 
 class Constraint(ABC):
@@ -23,7 +21,7 @@ class Constraint(ABC):
         self.feature_keys = feature_keys
 
     def _get_feature_vars(
-        self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
+        self, model: PyomoModelT, feat_list: list["FeatureType"]
     ) -> list[pyo.Var]:
         """Return a list of all the pyo.Vars, in the order of the constraint definition"""
         all_keys = [feat.name for feat in feat_list]
@@ -33,7 +31,7 @@ class Constraint(ABC):
 
     @abstractmethod
     def as_pyomo_constraint(
-        self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
+        self, model: PyomoModelT, feat_list: list["FeatureType"]
     ) -> pyo.Constraint:
         """Convert to a pyomo.Constraint object.
 
@@ -53,7 +51,7 @@ class ConstraintList:
 
     def apply_pyomo_constraints(
         self,
-        model: pyo.ConcreteModel,
+        model: PyomoModelT,
         feat_list: list[FeatureType],
         pyo_constraint_list: pyo.ConstraintList,
     ) -> None:
@@ -80,7 +78,7 @@ class ExpressionConstraint(Constraint):
     """
 
     def as_pyomo_constraint(
-        self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
+        self, model: PyomoModelT, feat_list: list["FeatureType"]
     ) -> pyo.Constraint:
         features = self._get_feature_vars(model, feat_list)
         return pyo.Constraint(expr=self._get_expr(model, features))
@@ -97,14 +95,14 @@ class FunctionalConstraint(Constraint):
     """
 
     def as_pyomo_constraint(
-        self, model: pyo.ConcreteModel, feat_list: list["FeatureType"]
+        self, model: PyomoModelT, feat_list: list["FeatureType"]
     ) -> pyo.Constraint:
         features = self._get_feature_vars(model, feat_list)
         return pyo.Constraint(rule=self._get_function(model, features))
 
     @abstractmethod
     def _get_function(
-        self, model: pyo.ConcreteModel, features: list["FeatureType"]
+        self, model: PyomoModelT, features: list["FeatureType"]
     ) -> ConstraintFunctionType:
         pass
 
@@ -118,7 +116,7 @@ class LinearConstraint(ExpressionConstraint):
         self.rhs = rhs
         super().__init__(feature_keys)
 
-    def _get_lhs(self, features: pyo.ConcreteModel) -> pyo.Expression:
+    def _get_lhs(self, features) -> pyo.Expression:
         """Get the left-hand side of the linear constraint"""
         return sum(f * c for f, c in zip(features, self.coefficients))
 
