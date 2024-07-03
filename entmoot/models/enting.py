@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 import numpy as np
 
+from entmoot.problem_config import ProblemConfig
 from entmoot.models.base_model import BaseModel
 from entmoot.models.mean_models.tree_ensemble import TreeEnsemble
 from entmoot.models.model_params import EntingParams
