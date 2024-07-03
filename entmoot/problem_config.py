@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, Literal, Optional, TypeVar
+from typing import List, Optional, TypeVar
 
 import gurobipy
 import numpy as np

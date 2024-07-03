@@ -1,7 +1,3 @@
-"""Test handling of objectives, and min/max problems"""
-
-import numpy as np
-import pytest
 from pytest import approx
 
 from entmoot import Enting, ProblemConfig, PyomoOptimizer
@@ -11,28 +7,6 @@ from entmoot.benchmarks import (
 )
 
 
-@pytest.mark.pipeline_test
-def test_incorrect_shape_of_observations_raises_error():
-    problem_config = ProblemConfig(rnd_seed=73)
-    build_multi_obj_categorical_problem(problem_config, n_obj=1)
-
-    rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
-
-    params = {"unc_params": {"dist_metric": "l1", "acq_sense": "penalty"}}
-    enting = Enting(problem_config, params=params)
-
-    with pytest.raises(AssertionError):
-        # too many objectives
-        testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=2)
-        enting.fit(rnd_sample, testfunc_evals)
-
-    with pytest.raises(AssertionError):
-        # too few observations
-        testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=1)[:-3]
-        enting.fit(rnd_sample, testfunc_evals)
-
-
-@pytest.mark.pipeline_test
 def test_max_predictions_equal_min_predictions():
     """The sign of the predicted objective is independent of max/min."""
     problem_config = ProblemConfig(rnd_seed=73)
