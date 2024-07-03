@@ -39,6 +39,10 @@ class FeatureType(ABC):
         return xi
 
     @abstractmethod
+    def sample(self, num_samples: int, rng: np.random.Generator):
+        pass
+
+    @abstractmethod
     def get_pyomo_domain_and_bounds(self, i: int) -> tuple[dict, dict]:
         pass
 
@@ -47,7 +51,7 @@ class FeatureType(ABC):
         pass
 
     def __str__(self):
-        return f"{self.name} :: {self.__class__.__name__} :: {self.get_enc_bnds()}"
+        return f"{self.name} :: {self.__class__.__name__}"
 
 
 class Ordinal(FeatureType, Generic[B]):
@@ -70,6 +74,9 @@ class Ordinal(FeatureType, Generic[B]):
             lb=self.lb, ub=self.ub, name=self.name, vtype=self.gurobi_vtype
         )
 
+    def __str__(self):
+        return f"{super().__str__()} :: {self.get_enc_bnds()}"
+
 
 class Real(Ordinal[float]):
     pyomo_domain = pyo.Reals
@@ -77,6 +84,9 @@ class Real(Ordinal[float]):
 
     def is_real(self):
         return True
+
+    def sample(self, num_samples, rng):
+        return rng.uniform(low=self.lb, high=self.ub, size=num_samples)
 
 
 class Integer(Ordinal[int]):
@@ -88,6 +98,9 @@ class Integer(Ordinal[int]):
 
     def decode(self, xi):
         return int(xi)
+
+    def sample(self, num_samples, rng):
+        return rng.integers(low=self.lb, high=self.ub, size=num_samples, endpoint=True)
 
 
 class Binary(Ordinal[int]):
@@ -102,6 +115,9 @@ class Binary(Ordinal[int]):
 
     def is_bin(self):
         return True
+
+    def sample(self, num_samples, rng):
+        return rng.integers(low=self.lb, high=self.ub, size=num_samples, endpoint=True)
 
 
 class Categorical(FeatureType):
@@ -137,6 +153,9 @@ class Categorical(FeatureType):
     def is_cat(self):
         return True
 
+    def sample(self, num_samples, rng):
+        return rng.integers(0, len(self.cat_list), size=num_samples)
+
     def get_pyomo_domain_and_bounds(self, i: int):
         # We encode the index of this variable by (i, enc, cat), where 'i' is the position in the list of
         # features, 'enc' is the corresponding encoded numerical value and 'cat' is the category
@@ -152,7 +171,7 @@ class Categorical(FeatureType):
         }
 
     def __str__(self):
-        return f"{self.name} :: {self.__class__.__name__} :: {self.cat_list}"
+        return f"{super().__str__()} :: {self.cat_list}"
 
 
 class Objective:
@@ -385,38 +404,17 @@ class ProblemConfig:
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
         # TODO: defer sample logic to feature
-        array_list = []
-        for feat in self.feat_list:
-            if isinstance(feat, Real):
-                array_list.append(
-                    self.rng.uniform(low=feat.lb, high=feat.ub, size=num_samples)
-                )
-            elif isinstance(feat, Categorical):
-                array_list.append(
-                    self.rng.integers(0, len(feat.cat_list), size=num_samples)
-                )
-            else:
-                array_list.append(
-                    self.rng.integers(low=feat.lb, high=feat.ub + 1, size=num_samples)
-                )
+        array_list = [feat.sample(num_samples, self.rng) for feat in self.feat_list]
         return np.squeeze(np.column_stack(array_list))
 
     def get_rnd_sample_list(self, num_samples=1, cat_enc=False):
         # returns list of tuples
-        sample_list = []
-        for _ in range(num_samples):
-            sample = []
-            for feat in self.feat_list:
-                if isinstance(feat, Real):
-                    sample.append(self.rng.uniform(feat.lb, feat.ub))
-                elif isinstance(feat, Categorical):
-                    if cat_enc:
-                        sample.append(self.rng.integers(0, len(feat.cat_list)))
-                    else:
-                        sample.append(self.rng.choice(feat.cat_list))
-                else:
-                    sample.append(self.rng.integers(feat.lb, feat.ub + 1))
-            sample_list.append(tuple(sample))
+        sample_list = self.get_rnd_sample_numpy(num_samples).tolist()
+        if not cat_enc:
+            for n, sample in enumerate(sample_list):
+                sample_list[n] = [
+                    feat.decode(sample[i]) for i, feat in enumerate(self.feat_list)
+                ]
         return sample_list if len(sample_list) > 1 else sample_list[0]
 
     def get_gurobi_model_core(self, env=None) -> GurobiModelT:
