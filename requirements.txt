@@ -1,4 +1,4 @@
 numpy<2.0.0
 lightgbm>=4.0.0
 gurobipy
-pyomo==6.7.0
+pyomo==6.7.1

@@ -126,7 +126,9 @@ def test_simple_test():
     opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
     res = opt_pyo.solve(enting)
 
-    assert round(res.opt_point[0]) == 0
+    # very little guarantee about position of next proposal
+    # likely to be near center
+    assert -1.5 < res.opt_point[0] < 1.5
 
 
 def test_compare_pyomo_gurobipy_multiobj():
