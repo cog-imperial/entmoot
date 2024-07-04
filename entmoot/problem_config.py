@@ -170,9 +170,6 @@ class Categorical(FeatureType):
             for (enc, cat) in zip(self.enc_cat_list, self.cat_list)
         }
 
-    def __str__(self):
-        return f"{super().__str__()} :: {self.cat_list}"
-
 
 class Objective:
     def __init__(self, name):
