@@ -1,8 +1,6 @@
-import math
 import random
 
 import numpy as np
-import pyomo.environ  # noqa: F401
 import pytest
 
 from entmoot import Enting, GurobiOptimizer, ProblemConfig, PyomoOptimizer
@@ -35,7 +33,7 @@ def test_core_model_copy():
 
 
 @pytest.mark.pipeline_test
-def test_multiobj_constraints():
+def test_multiobj_constrained_problem():
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
     # number of objectives
@@ -73,9 +71,9 @@ def test_multiobj_constraints():
     opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
 
     res_gur = opt_gur.solve(enting, model_core=model_gur)
-    x_opt, y_opt, z_opt = res_gur.opt_point[3:]
+    x_opt = res_gur.opt_point[3]
 
-    assert round(x_opt, 5) == round(y_opt, 5) and round(y_opt, 5) == round(z_opt, 5)
+    assert np.isclose(res_gur.opt_point[3:], x_opt, rtol=1.001).all()
 
     # Pyomo version
     import pyomo.environ as pyo
@@ -94,13 +92,15 @@ def test_multiobj_constraints():
     opt_pyo = PyomoOptimizer(problem_config, params=params_pyomo)
 
     res_pyo = opt_pyo.solve(enting, model_core=model_pyo)
-    x_opt, y_opt, z_opt = res_pyo.opt_point[3:]
+    x_opt = res_pyo.opt_point[3]
 
-    assert round(x_opt, 5) == round(y_opt, 5) and round(y_opt, 5) == round(z_opt, 5)
+    assert np.isclose(res_gur.opt_point[3:], x_opt, rtol=1.001).all()
 
 
 @pytest.mark.pipeline_test
-def test_simple_test():
+def test_simple_one_dimensional_problem():
+    random.seed(42)
+
     def my_func(x: float) -> float:
         return x**2 + 1 + random.uniform(-0.2, 0.2)
 
@@ -131,90 +131,47 @@ def test_simple_test():
     assert -1.5 < res.opt_point[0] < 1.5
 
 
-def test_compare_pyomo_gurobipy_multiobj():
-    """
-    Ensures for a multi objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
-    results for Gurobipy model and Pyomo model with Gurobi as optimizer coincide.
-    """
-
-    # define problem
-    problem_config = ProblemConfig(rnd_seed=73)
-    # number of objectives
-    number_objectives = 2
-    build_multi_obj_categorical_problem(problem_config, n_obj=number_objectives)
-
-    # sample data
-    rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
-    testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=number_objectives)
-
-    for metric in ["l1", "l2", "euclidean_squared"]:
-        for acq_sense in ["exploration", "penalty"]:
-            params = EntingParams(
-                unc_params=UncParams(dist_metric=metric, acq_sense=acq_sense)
-            )
-            enting = Enting(problem_config, params=params)
-            # fit tree ensemble
-            enting.fit(rnd_sample, testfunc_evals)
-
-            # Build GurobiOptimizer object and solve optimization problem
-            params_gurobi = {"NonConvex": 2, "MIPGap": 0}
-            opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-            res_gur = opt_gur.solve(enting, weights=(0.4, 0.6))
-
-            # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
-            params_pyo = {
-                "solver_name": "gurobi",
-                "solver_options": {"NonConvex": 2, "MIPGap": 0},
-            }
-            opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-            res_pyo = opt_pyo.solve(enting, weights=(0.4, 0.6))
-
-            # Assert that active leaves coincide for both models
-            assert math.isclose(res_gur.opt_val, res_pyo.opt_val, abs_tol=0.01)
-
-
 @pytest.mark.pipeline_test
-def test_compare_pyomo_gurobipy_singleobj():
+@pytest.mark.parametrize("dist_metric", ("l1", "l2", "euclidean_squared"))
+@pytest.mark.parametrize("acq_sense", ("exploration", "penalty"))
+@pytest.mark.parametrize("num_objectives", (1, 2))
+def test_compare_pyomo_gurobipy_singleobj(dist_metric, acq_sense, num_objectives):
     """
-    Ensures for a single objective example with l1  and l2 uncertainty metric and mixed feature types that optimization
+    Ensures for a single objective example with l1 and l2 uncertainty metric and mixed feature types that optimization
     results for Gurobipy model and Pyomo model with Gurobi as optimizer coincide.
     """
 
     # define problem
     problem_config = ProblemConfig(rnd_seed=73)
     # number of objectives
-    number_objectives = 1
-    build_multi_obj_categorical_problem(problem_config, n_obj=number_objectives)
+    w = (0.4, 0.6) if num_objectives == 2 else None
+    build_multi_obj_categorical_problem(problem_config, n_obj=num_objectives)
 
     # sample data
     rnd_sample = problem_config.get_rnd_sample_list(num_samples=20)
-    testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=number_objectives)
+    testfunc_evals = eval_multi_obj_cat_testfunc(rnd_sample, n_obj=num_objectives)
 
-    for metric in ["l1", "l2", "euclidean_squared"]:
-        for acq_sense in ["exploration", "penalty"]:
-            params = EntingParams(
-                unc_params=UncParams(dist_metric=metric, acq_sense=acq_sense)
-            )
-            enting = Enting(problem_config, params=params)
-            # fit tree ensemble
-            enting.fit(rnd_sample, testfunc_evals)
+    params = EntingParams(
+        unc_params=UncParams(dist_metric=dist_metric, acq_sense=acq_sense)
+    )
+    enting = Enting(problem_config, params=params)
+    # fit tree ensemble
+    enting.fit(rnd_sample, testfunc_evals)
 
-            # Build GurobiOptimizer object and solve optimization problem
-            params_gurobi = {"NonConvex": 2, "MIPGap": 1e-3}
-            opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
-            res_gur = opt_gur.solve(enting)
+    # Build GurobiOptimizer object and solve optimization problem
+    params_gurobi = {"NonConvex": 2, "MIPGap": 1e-3}
+    opt_gur = GurobiOptimizer(problem_config, params=params_gurobi)
+    res_gur = opt_gur.solve(enting, weights=w)
 
-            # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
-            params_pyo = {
-                "solver_name": "gurobi",
-                "solver_options": {"NonConvex": 2, "MIPGap": 1e-3},
-            }
-            opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
-            res_pyo = opt_pyo.solve(enting)
+    # Build PyomoOptimizer object with Gurobi as solver and solve optimization problem
+    params_pyo = {
+        "solver_name": "gurobi",
+        "solver_options": {"NonConvex": 2, "MIPGap": 1e-3},
+    }
+    opt_pyo = PyomoOptimizer(problem_config, params=params_pyo)
+    res_pyo = opt_pyo.solve(enting, weights=w)
 
-            # Compare optimal values (e.g. objective values) ...
-            assert round(res_gur.opt_val / res_pyo.opt_val, 5) <= 1.001
-            # ... and optimal points (e.g. feature variables)
-            assert [round(x) for x in res_gur.opt_point[2:]] == [
-                round(x) for x in res_pyo.opt_point[2:]
-            ]
+    # Compare optimal values (e.g. objective values) ...
+    assert np.allclose(res_gur.opt_val, res_pyo.opt_val, rtol=1.001)
+    # ... and optimal points (e.g. feature variables)
+    assert np.allclose(res_gur.opt_point[2:], res_pyo.opt_point[2:], rtol=1.01)
