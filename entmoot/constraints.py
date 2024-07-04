@@ -3,7 +3,7 @@ from typing import Callable
 
 import pyomo.environ as pyo
 
-from entmoot.problem_config import FeatureType
+from entmoot.problem_config import AnyFeatureT
 from entmoot.typing.optimizer_stubs import PyomoModelT
 
 ConstraintFunctionType = Callable[[PyomoModelT, int], pyo.Expression]
@@ -21,7 +21,7 @@ class Constraint(ABC):
         self.feature_keys = feature_keys
 
     def _get_feature_vars(
-        self, model: PyomoModelT, feat_list: list["FeatureType"]
+        self, model: PyomoModelT, feat_list: list[AnyFeatureT]
     ) -> list[pyo.Var]:
         """Return a list of all the pyo.Vars, in the order of the constraint definition"""
         all_keys = [feat.name for feat in feat_list]
@@ -31,7 +31,7 @@ class Constraint(ABC):
 
     @abstractmethod
     def as_pyomo_constraint(
-        self, model: PyomoModelT, feat_list: list["FeatureType"]
+        self, model: PyomoModelT, feat_list: list[AnyFeatureT]
     ) -> pyo.Constraint:
         """Convert to a pyomo.Constraint object.
 
@@ -52,7 +52,7 @@ class ConstraintList:
     def apply_pyomo_constraints(
         self,
         model: PyomoModelT,
-        feat_list: list[FeatureType],
+        feat_list: list[AnyFeatureT],
         pyo_constraint_list: pyo.ConstraintList,
     ) -> None:
         """Add constraints to a pyo.ConstraintList object.
@@ -77,14 +77,14 @@ class ExpressionConstraint(Constraint):
     For constraints that can be simply defined by an expression of variables.
     """
 
-    def as_pyomo_constraint(
-        self, model: PyomoModelT, feat_list: list["FeatureType"]
-    ) -> pyo.Constraint:
+    def as_pyomo_constraint(self, model, feat_list):
         features = self._get_feature_vars(model, feat_list)
         return pyo.Constraint(expr=self._get_expr(model, features))
 
     @abstractmethod
-    def _get_expr(self, model, features) -> pyo.Expression:
+    def _get_expr(
+        self, model: PyomoModelT, features: list[AnyFeatureT]
+    ) -> pyo.Expression:
         pass
 
 
@@ -94,15 +94,13 @@ class FunctionalConstraint(Constraint):
     For constraints that require creating intermediate variables and access to the model.
     """
 
-    def as_pyomo_constraint(
-        self, model: PyomoModelT, feat_list: list["FeatureType"]
-    ) -> pyo.Constraint:
+    def as_pyomo_constraint(self, model, feat_list):
         features = self._get_feature_vars(model, feat_list)
         return pyo.Constraint(rule=self._get_function(model, features))
 
     @abstractmethod
     def _get_function(
-        self, model: PyomoModelT, features: list["FeatureType"]
+        self, model: PyomoModelT, features: list[AnyFeatureT]
     ) -> ConstraintFunctionType:
         pass
 

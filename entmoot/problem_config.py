@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, List, Literal, Optional, TypeVar
 
 import gurobipy
 import numpy as np
@@ -204,52 +204,24 @@ class ProblemConfig:
 
     @property
     def cat_idx(self):
-        return tuple(
-            [
-                i
-                for i, feat in enumerate(self.feat_list)
-                if isinstance(feat, Categorical)
-            ]
-        )
+        return tuple([i for i, feat in self.get_idx_and_feat_by_type(Categorical)])
 
     @property
     def non_cat_idx(self):
-        return tuple(
-            [
-                i
-                for i, feat in enumerate(self.feat_list)
-                if not isinstance(feat, Categorical)
-            ]
-        )
+        return tuple([i for i, feat in self.get_idx_and_feat_by_type(Ordinal)])
 
     @property
     def non_cat_lb(self):
-        return tuple(
-            [
-                feat.lb
-                for i, feat in enumerate(self.feat_list)
-                if not isinstance(feat, Categorical)
-            ]
-        )
+        return tuple([feat.lb for i, feat in self.get_idx_and_feat_by_type(Ordinal)])
 
     @property
     def non_cat_ub(self):
-        return tuple(
-            [
-                feat.ub
-                for i, feat in enumerate(self.feat_list)
-                if not isinstance(feat, Categorical)
-            ]
-        )
+        return tuple([feat.ub for i, feat in self.get_idx_and_feat_by_type(Ordinal)])
 
     @property
     def non_cat_bnd_diff(self):
         return tuple(
-            [
-                feat.ub - feat.lb
-                for i, feat in enumerate(self.feat_list)
-                if not isinstance(feat, Categorical)
-            ]
+            [feat.ub - feat.lb for i, feat in self.get_idx_and_feat_by_type(Ordinal)]
         )
 
     def get_idx_and_feat_by_type(
@@ -286,30 +258,32 @@ class ProblemConfig:
     def _decode_xi(self, xi: List):
         return [feat.decode(xi[idx]) for idx, feat in enumerate(self.feat_list)]
 
-    def encode(self, X: List):
+    def encode(self, X: list) -> np.ndarray:
         if len(X) == 0:
-            return []
+            return np.array([])
         elif len(X) == 1:
             return self._encode_xi(X[0])
         else:
             enc = [self._encode_xi(xi) for xi in X]
             return np.asarray(enc)
 
-    def decode(self, X: List):
+    def decode(self, X: list | np.ndarray) -> list[float | int | str] | np.ndarray:
         if len(X) == 0:
             return []
         elif len(X) == 1:
             return self._decode_xi(X[0])
         else:
             dec = [self._decode_xi(xi) for xi in X]
+            # TODO: change to list for consistency
             return np.asarray(dec)
 
     def add_feature(
         self,
-        feat_type: str,
+        feat_type: Literal["real", "integer", "binary", "categorical"],
         bounds: Optional[BoundsT | CategoriesT] = None,
         name: Optional[str] = None,
     ):
+        # TODO: Move validation logic to Features
         if name is None:
             name = f"feat_{len(self.feat_list)}"
 
@@ -403,7 +377,6 @@ class ProblemConfig:
 
     def get_rnd_sample_numpy(self, num_samples):
         # returns np.array for faster processing
-        # TODO: defer sample logic to feature
         array_list = [feat.sample(num_samples, self.rng) for feat in self.feat_list]
         return np.squeeze(np.column_stack(array_list))
 

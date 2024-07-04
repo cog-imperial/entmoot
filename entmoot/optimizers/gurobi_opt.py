@@ -6,6 +6,7 @@ import numpy as np
 
 from entmoot.models.enting import Enting
 from entmoot.problem_config import Categorical, ProblemConfig
+from entmoot.typing.optimizer_stubs import GurobiModelT
 from entmoot.utils import OptResult
 
 ActiveLeavesT = list[list[tuple[int, str]]]
@@ -72,7 +73,7 @@ class GurobiOptimizer:
     def solve(
         self,
         tree_model: Enting,
-        model_core: Optional[gur.Model] = None,
+        model_core: Optional[GurobiModelT] = None,
         weights: Optional[tuple[float, ...]] = None,
         use_env: bool = False,
     ) -> OptResult:
