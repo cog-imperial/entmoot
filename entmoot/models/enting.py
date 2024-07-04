@@ -80,7 +80,7 @@ class Enting(BaseModel):
             problem_config=problem_config, params=unc_params
         )
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+    def fit(self, X: list | np.ndarray, y: np.ndarray) -> None:
         """
         Performs the training of you tree model using training data and labels
         """
@@ -113,7 +113,7 @@ class Enting(BaseModel):
         bnds = self._problem_config.get_enc_bnd()
         return self.mean_model.meta_tree_dict[obj_name].prune_var_bnds(leaf_enc, bnds)
 
-    def predict(self, X: np.ndarray, is_enc=False) -> list:
+    def predict(self, X: list | np.ndarray, is_enc=False) -> list:
         """
         Computes prediction value of tree model for X.
         """
