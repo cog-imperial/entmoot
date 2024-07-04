@@ -88,19 +88,16 @@ class Enting(BaseModel):
         X = self._problem_config.encode(X)
 
         # check dims of X and y
-        if X.ndim == 1:
-            X = np.atleast_2d(X)
+        X = np.atleast_2d(X)
+        y = np.atleast_2d(y)
 
         assert X.shape[-1] == len(self._problem_config.feat_list), (
             "Argument 'X' has wrong dimensions. "
             f"Expected '(num_samples, {len(self._problem_config.feat_list)})', got '{X.shape}'."
         )
 
-        if y.ndim == 1:
-            y = np.atleast_2d(y)
-
-        assert (y.shape[-1] == 2 and len(self._problem_config.obj_list) == 1) or (
-            y.shape[-1] == len(self._problem_config.obj_list)
+        assert y.shape[-2] == X.shape[-2] and y.shape[-1] == len(
+            self._problem_config.obj_list
         ), (
             "Argument 'y' has wrong dimensions. "
             f"Expected '(num_samples, {len(self._problem_config.obj_list)})', got '{y.shape}'."

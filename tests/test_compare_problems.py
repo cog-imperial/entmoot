@@ -1,3 +1,5 @@
+"""Integration tests on benchmark problems, comparing Pyomo and Gurobi"""
+
 import random
 
 import numpy as np
