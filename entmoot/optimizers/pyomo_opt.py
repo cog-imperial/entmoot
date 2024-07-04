@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -97,6 +98,7 @@ class PyomoOptimizer:
         # choose solver
         opt = pyo.SolverFactory(
             self._params["solver_name"],
+            solver_io=self._params.get("solver_io", "python"),
             manage_env="solver_factory_options" in self._params,
             options=self._params.get("solver_factory_options", {}),
         )
@@ -111,7 +113,10 @@ class PyomoOptimizer:
 
         # Solve optimization model
         verbose = self._params.get("verbose", True)
-        opt.solve(opt_model, tee=verbose)
+        with warnings.catch_warnings():
+            # pyomo<6.7.2 raises a warning when creating a Gurobi model
+            warnings.simplefilter("ignore", category=DeprecationWarning)
+            opt.solve(opt_model, tee=verbose)
 
         # update current solution
         self._curr_sol, self._active_leaves = self._get_sol(opt_model)
