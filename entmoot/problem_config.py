@@ -284,10 +284,11 @@ class ProblemConfig:
         if name is None:
             name = f"feat_{len(self.feat_list)}"
 
+        if feat_type == "binary":
+            self._feat_list.append(Binary(name=name))
+            return
+
         if bounds is None:
-            if feat_type == "binary":
-                self._feat_list.append(Binary(name=name))
-                return
             raise ValueError(
                 "Please provide bounds for feature types in '(real, integer, categorical)'"
             )
