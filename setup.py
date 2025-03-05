@@ -21,12 +21,12 @@ setup(
         "numpy~=2.0.0",
         "lightgbm~=4.6.0",
         "gurobipy<12.0.0",
-        "pyomo==6.7.1",
+        "pyomo~=6.9.0",
     ],
     setup_requires=[
         "numpy~=2.0.0",
         "lightgbm~=4.6.0",
         "gurobipy<12.0.0",
-        "pyomo==6.7.1",
+        "pyomo~=6.9",
     ],
 )
