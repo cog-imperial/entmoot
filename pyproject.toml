@@ -17,8 +17,9 @@ dependencies = [
     "pyomo~=6.9.0",
 ]
 
-[tool.setuptools]
-packages = ["entmoot"]
+[tool.setuptools.packages.find]
+include = ["entmoot"]
+exclude = ["docs*", "tests*"]
 
 [tool.pytest.ini_options]
 markers = [
