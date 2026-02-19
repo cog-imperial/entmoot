@@ -1,6 +1,6 @@
 [project]
 name = "entmoot"
-version = "2.1.0"
+version = "2.1.1"
 authors = [
     {name = "Alexander Thebelt", email = "alexander.thebelt18@imperial.ac.uk"},
     {name = "Nathan Sudermann-Merx", email = "nathan.sudermann-merx@dhbw.de"}
@@ -18,8 +18,9 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["entmoot"]
-exclude = ["docs*", "tests*"]
+include = ["entmoot*"]
+exclude = ["docs*", "tests*", "media*"]
+namespaces = true
 
 [tool.pytest.ini_options]
 markers = [
