@@ -1,3 +1,25 @@
+[project]
+name = "entmoot"
+version = "2.1.0"
+authors = [
+    {name = "Alexander Thebelt", email = "alexander.thebelt18@imperial.ac.uk"},
+    {name = "Nathan Sudermann-Merx", email = "nathan.sudermann-merx@dhbw.de"}
+]
+maintainers = [
+    {name = "Toby Boyne", email = "t.boyne23@imperial.ac.uk"}
+]
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "gurobipy>=11.0.0",
+    "lightgbm~=4.6.0",
+    "numpy",
+    "pyomo~=6.9.0",
+]
+
+[tool.setuptools]
+packages = ["entmoot"]
+
 [tool.pytest.ini_options]
 markers = [
     "pipeline_test: marks tests as test which can be run in the pipeline (deselect with '-m \"not pipeline_test\"')",
@@ -11,3 +33,24 @@ ignore = ["E721", "E731", "F722", "F821"]
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "conf.py" = ["F401", "I001"]
+
+[tool.isort]
+multi-line-output=3
+include-trailing-comma=true
+force-grid-wrap=0
+use-parentheses=true
+line-length=88
+known-first-party="entmoot"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.38.0",
+    "nbsphinx>=0.9.8",
+    "pre-commit>=4.5.1",
+    "pytest-cov>=7.0.0",
+    "sphinx-rtd-theme>=3.1.0",
+]
